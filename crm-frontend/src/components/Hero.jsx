@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
-import BrowserMock from './BrowserMock';
 
 const Hero = ({ onNavigate }) => {
     return (
         <section className="min-h-screen flex items-center relative" style={{
             paddingTop: 'clamp(80px, 15vw, 100px)',
             paddingBottom: 'clamp(2rem, 4vw, 3rem)',
-            overflowX: 'hidden'
+            overflowX: 'hidden',
+            backgroundImage: 'url(/Modern_CRM_Platform_Background.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'right center',
+            backgroundRepeat: 'no-repeat'
         }}>
             <div className="section-container grid grid-cols-1 md:grid-cols-[1fr_1.3fr] items-center w-full" style={{
                 gap: 'clamp(3rem, 6vw, 8rem)',
@@ -91,41 +94,6 @@ const Hero = ({ onNavigate }) => {
                         >
                             Explore Portals
                         </motion.button>
-                    </div>
-                </motion.div>
-
-                {/* Right Content - Browser Mock */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.85, x: 50 }}
-                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
-                    className="[perspective:2000px] origin-center w-full z-10 order-2"
-                >
-                    <motion.div
-                        animate={{
-                            y: [0, -10, 0],
-                            rotateZ: [0, 0.5, 0]
-                        }}
-                        transition={{
-                            duration: 6,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
-                    >
-                        <BrowserMock />
-                    </motion.div>
-
-                    {/* Decorative SVG elements - Hidden on mobile */}
-                    <div className="hero-decorative absolute -top-[10%] -right-[10%] -z-10 hidden md:block">
-                        <svg width="200" height="200" viewBox="0 0 200 200">
-                            <motion.circle
-                                cx="100" cy="100" r="80"
-                                fill="var(--secondary)"
-                                opacity="0.1"
-                                animate={{ scale: [1, 1.1, 1] }}
-                                transition={{ duration: 4, repeat: Infinity }}
-                            />
-                        </svg>
                     </div>
                 </motion.div>
             </div>
