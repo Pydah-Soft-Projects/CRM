@@ -71,8 +71,10 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               const db = await getHRMSDb();
               if (db) {
                 const doc = await db.collection('users').findOne({
-                  $or: [{ username: identifier }, { email: identifier }],
-                  $or: [{ isActive: true }, { isActive: { $exists: false } }]
+                  $and: [
+                    { $or: [{ username: identifier }, { email: identifier }] },
+                    { $or: [{ isActive: true }, { isActive: { $exists: false } }] }
+                  ]
                 });
                 if (doc) portals.add('hrms');
               }
@@ -479,8 +481,10 @@ export const generatePortalToken = async (userId, portalId, role, databaseSource
       throw new Error('User does not have access to this portal');
     }
 
-    // Generate SSO JWT token (include databaseSource and username for lookup/fallback)
-    const ssoToken = generateSSOToken(userId, portalId, role, databaseSource, username);
+    // Generate SSO JWT token (include databaseSource, username, email for lookup/fallback)
+    const ssoToken = generateSSOToken(userId, portalId, role, databaseSource, username, {
+      ...(options.email && { email: options.email })
+    });
     
     // Encrypt the token
     const encryptedToken = encryptToken(ssoToken);
@@ -507,7 +511,8 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
         return {
           email: hrmsUser.email || null,
           name: hrmsUser.name || null,
-          employeeId: hrmsUser.employeeId || null
+          employeeId: hrmsUser.employeeId || null,
+          phone: hrmsUser.phone || null
         };
       }
       return null;

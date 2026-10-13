@@ -19,7 +19,7 @@ const portalDetails = [
         category: 'Learning & Academics',
         color: '#f59e0b',
         image: '/5a2e2b1a96243304c98937fb2b0444d5.jpg',
-        url: 'https://pydahsdms.vercel.app/student/login',
+        url: 'https://sdms.pydah.edu.in/student/login',
         portalId: 'student-portal'
     },
     {

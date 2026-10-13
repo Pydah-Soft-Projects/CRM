@@ -15,7 +15,7 @@ const solutions = [
   {
     title: 'Student Portal',
     desc: 'Unified dashboard for student academics and life.',
-    url: 'https://pydahsdms.vercel.app',
+    url: 'https://sdms.pydah.edu.in',
     icon: UserCircle,
     color: '#f59e0b',
     portalId: 'student-portal'

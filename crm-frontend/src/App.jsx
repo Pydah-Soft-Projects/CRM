@@ -59,7 +59,7 @@ function App() {
     setLaunchError(null);
 
     try {
-      const tokenResponse = await authAPI.generatePortalToken(portalInfo.portalId, false);
+      const tokenResponse = await authAPI.generatePortalToken(portalInfo.portalId, true);
 
       if (tokenResponse.success && tokenResponse.data?.encryptedToken) {
         let redirectUrl = portalInfo.url;
