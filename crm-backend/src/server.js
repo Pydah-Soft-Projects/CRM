@@ -43,7 +43,9 @@ const productionOrigins = [
   'https://pydah-fee-management.vercel.app', // Production Fee Management
   'https://fees.pydah.edu.in',               // Production Fee Management Custom Domain
   'https://pydah-transport.vercel.app',      // Production Transport
-  'https://transport.pydah.edu.in'           // Production Transport Custom Domain
+  'https://transport.pydah.edu.in',          // Production Transport Custom Domain
+  'https://academic.pydah.edu.in',           // Production Academic Portal
+  'https://acad.pydah.edu.in'                // Production Academic Portal (acad.pydah.edu.in)
 ];
 
 // Combine and remove duplicates

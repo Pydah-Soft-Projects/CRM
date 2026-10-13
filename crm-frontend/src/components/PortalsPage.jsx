@@ -53,6 +53,14 @@ const portalDetails = [
         image: '/7a41f43d70ae2960e8bead5fa240591f.jpg',
         url: 'https://hrms.pydah.edu.in/login',
         portalId: 'hrms'
+    },
+    {
+        title: 'Academic Portal',
+        category: 'Academics & Faculty',
+        color: '#8b5cf6',
+        image: '/30e0526855959f629396058ac463bc26.jpg',
+        url: 'https://acad.pydah.edu.in/login',
+        portalId: 'academic-portal'
     }
 ];
 

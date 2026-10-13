@@ -14,9 +14,33 @@ import { findTransportUserRole } from '../services/transport.service.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
 import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
+import { findAcademicUser } from '../models/academic.model.js';
 import { getFeeDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
 import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS } from '../config/constants.js';
+
+// Cache for tracking one-time used SSO tokens to prevent replay attacks
+const usedSsoTokens = new Map();
+
+function isTokenUsed(tokenKey) {
+  const exp = usedSsoTokens.get(tokenKey);
+  if (!exp) return false;
+  if (Date.now() > exp) {
+    usedSsoTokens.delete(tokenKey);
+    return false;
+  }
+  return true;
+}
+
+function markTokenUsed(tokenKey, expTimestamp) {
+  usedSsoTokens.set(tokenKey, expTimestamp || (Date.now() + 15 * 60 * 1000));
+  if (usedSsoTokens.size > 1000) {
+    const now = Date.now();
+    for (const [k, exp] of usedSsoTokens.entries()) {
+      if (now > exp) usedSsoTokens.delete(k);
+    }
+  }
+}
 
 /**
  * Authentication Controller
@@ -577,7 +601,63 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
-    // 7. General fallback
+    // 7. For Academic Portal: return verified user details (userId, role, email, employeeId, expiresAt)
+    if (decoded.portalId === PORTAL_IDS.ACADEMIC_PORTAL) {
+      // Prevent replay attacks (one-time token use)
+      const tokenKey = `${decoded.userId}_${decoded.iat}_${decoded.portalId}`;
+      if (isTokenUsed(tokenKey)) {
+        console.warn(`[VerifyToken] Academic Portal token already used: ${tokenKey}`);
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          valid: false,
+          message: 'Invalid or expired token'
+        });
+      }
+      markTokenUsed(tokenKey, decoded.exp * 1000);
+
+      // Attempt to resolve user in academic_portal database
+      let academicUser = null;
+      try {
+        academicUser = await findAcademicUser({
+          email: email,
+          employeeId: crmUser?.employeeId || decoded.employeeId,
+          username: username,
+          phone: crmUser?.phone || decoded.phone
+        });
+      } catch (err) {
+        console.warn('[VerifyToken] Academic DB lookup error:', err.message);
+      }
+
+      if (!academicUser && decoded.databaseSource !== 'academic_portal') {
+        console.warn(`[VerifyToken] Access Denied: User ${decoded.userId} (${email || username}) not found in academic_portal database`);
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          success: false,
+          valid: false,
+          message: 'User not found in Academic Portal system'
+        });
+      }
+
+      const resolvedUserId = academicUser?.id ? String(academicUser.id) : (crmUser?.employeeId || String(decoded.userId));
+      const resolvedEmployeeId = academicUser?.employee_id || academicUser?.employeeId || crmUser?.employeeId || String(decoded.userId);
+      const resolvedRole = academicUser?.role || academicUser?.role_name || decoded.role || 'faculty';
+      const resolvedEmail = academicUser?.email || email || '';
+
+      console.log(`[VerifyToken] Academic Portal resolved: userId=${resolvedUserId}, employeeId=${resolvedEmployeeId}, role=${resolvedRole}`);
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: String(resolvedUserId),
+          portalId: 'academic-portal',
+          role: resolvedRole,
+          email: resolvedEmail,
+          employeeId: String(resolvedEmployeeId),
+          expiresAt
+        }
+      });
+    }
+
+    // 8. General fallback
     console.log(`[VerifyToken] Token verification successful for portal: ${decoded.portalId}`);
     res.status(HTTP_STATUS.OK).json({
       success: true,

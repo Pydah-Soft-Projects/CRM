@@ -334,6 +334,7 @@ const BackgroundAnimations = ({ portalId, color }) => {
             case 'transport-management': return <TransportAnimation />;
             case 'hostel-automation': return <HostelAnimation />;
             case 'hrms': return <HRMSAnimation />;
+            case 'academic-portal': return <StudentAnimation />;
             default: return <DefaultAnimation />;
         }
     };

@@ -13,6 +13,7 @@ dotenv.config();
 
 let studentPool = null;
 let admissionsPool = null;
+let academicPool = null;
 let hrmsMongoClient = null;
 let hrmsMongoDb = null;
 let hostelMongoClient = null;
@@ -73,6 +74,35 @@ export const createAdmissionsPool = () => {
 };
 
 /**
+ * Create MySQL connection pool for academic portal database
+ */
+export const createAcademicPool = () => {
+  if (academicPool) {
+    return academicPool;
+  }
+
+  academicPool = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME_ACADEMIC || 'academic_portal',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  });
+
+  return academicPool;
+};
+
+export const getAcademicPool = () => {
+  return createAcademicPool();
+};
+
+/**
  * Create MySQL connection pool (legacy - defaults to student database)
  */
 export const createPool = () => {
@@ -126,6 +156,19 @@ export const connectDatabase = async () => {
       console.log(`✅ Admissions database (${process.env.DB_NAME_ADMISSIONS}) connection established`);
     }
 
+    // Connect to academic portal database if configured
+    if (process.env.DB_NAME_ACADEMIC) {
+      try {
+        academicPool = createAcademicPool();
+        const academicConnection = await academicPool.getConnection();
+        await academicConnection.ping();
+        academicConnection.release();
+        console.log(`✅ Academic portal database (${process.env.DB_NAME_ACADEMIC}) connection established`);
+      } catch (acadErr) {
+        console.error(`❌ Academic portal database (${process.env.DB_NAME_ACADEMIC}) connection error:`, acadErr.message);
+      }
+    }
+
     // Connect to HRMS MongoDB if configured
     if (process.env.HRMS_MONGO_URI || process.env.HRMS_MONGO_URL) {
       await connectHRMSMongo();
@@ -146,7 +189,7 @@ export const connectDatabase = async () => {
       await connectFeeMongo();
     }
 
-    return { studentPool, admissionsPool, hrmsMongoDb, hostelMongoDb, transportMongoDb, feeMongoDb };
+    return { studentPool, admissionsPool, academicPool, hrmsMongoDb, hostelMongoDb, transportMongoDb, feeMongoDb };
   } catch (error) {
     console.error('❌ Database connection error:', error);
     throw error;
@@ -167,6 +210,11 @@ export const closeDatabase = async () => {
       await admissionsPool.end();
       admissionsPool = null;
       console.log('✅ Admissions database connection pool closed');
+    }
+    if (academicPool) {
+      await academicPool.end();
+      academicPool = null;
+      console.log('✅ Academic portal database connection pool closed');
     }
     if (hrmsMongoClient) {
       await hrmsMongoClient.close();
@@ -364,4 +412,6 @@ export default {
   getPool,
   getStudentPool,
   getAdmissionsPool,
+  createAcademicPool,
+  getAcademicPool,
 };
