@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowRight, Lock, LogOut, Sparkles, Loader2,
-    AlertCircle, ArrowUpRight, Search, ShieldCheck
+    AlertCircle, ArrowUpRight, Search, ShieldCheck, X
 } from 'lucide-react';
 
 const portalDetails = [
     {
         title: 'Admission Portal',
         category: 'Enrollment Management',
-        color: '#0ea5e9',
+        description: 'Student inquiry pipeline, counselor workflows, and institutional admissions.',
+        color: '#0284c7',
         image: '/4e04c9e0dd9b0a5360fe5c9a5784b862.jpg',
         url: 'https://admissions.pydah.edu.in/auth/login',
         portalId: 'admissions-crm'
@@ -17,7 +18,8 @@ const portalDetails = [
     {
         title: 'Student Portal',
         category: 'Learning & Academics',
-        color: '#f59e0b',
+        description: 'Central student profile, academic records, digital schedules, and updates.',
+        color: '#2563eb',
         image: '/5a2e2b1a96243304c98937fb2b0444d5.jpg',
         url: 'https://sdms.pydah.edu.in/student/login',
         portalId: 'student-portal'
@@ -25,7 +27,8 @@ const portalDetails = [
     {
         title: 'Fee Management',
         category: 'Financial Operations',
-        color: '#00a6ffff',
+        description: 'Tuition collection, pending balances, invoice records, and reconciliation.',
+        color: '#059669',
         image: '/931962fb2d5f2bf75f94b526891c3f43.jpg',
         url: 'https://fees.pydah.edu.in/login',
         portalId: 'fee-management'
@@ -33,7 +36,8 @@ const portalDetails = [
     {
         title: 'Transport Management',
         category: 'Logistics Hub',
-        color: '#0f73ffff',
+        description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',
+        color: '#d97706',
         image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.png',
         url: 'https://transport.pydah.edu.in/login',
         portalId: 'transport-management'
@@ -41,7 +45,8 @@ const portalDetails = [
     {
         title: 'Hostel Automation',
         category: 'Facility Management',
-        color: '#f59e0b',
+        description: 'Campus room allotments, warden logs, hostel passes, and mess management.',
+        color: '#db2777',
         image: '/be5b597fc3fce8fb5502c228cafa87f1.jpg',
         url: 'https://hms.pydahsoft.in/login',
         portalId: 'hostel-automation'
@@ -49,7 +54,8 @@ const portalDetails = [
     {
         title: 'HRMS & Payroll',
         category: 'Staff Operations',
-        color: '#6366f1',
+        description: 'Staff directory, biometric attendance, salary payroll, and leave management.',
+        color: '#7c3aed',
         image: '/7a41f43d70ae2960e8bead5fa240591f.jpg',
         url: 'https://hrms.pydah.edu.in/login',
         portalId: 'hrms'
@@ -57,16 +63,18 @@ const portalDetails = [
     {
         title: 'Academic Portal',
         category: 'Academics & Faculty',
-        color: '#8b5cf6',
-        image: '/30e0526855959f629396058ac463bc26.jpg',
+        description: 'Course curriculum delivery, syllabus schedules, faculty workloads, and timetable.',
+        color: '#0d9488',
+        image: '/academic-card.jpg',
         url: 'https://acad.pydah.edu.in/login',
         portalId: 'academic-portal'
     },
     {
         title: 'Examination Management System',
         category: 'Exams & Assessment',
+        description: 'Examination scheduling, hall tickets, marks evaluation, and result processing.',
         color: '#ea580c',
-        image: '/30e0526855959f629396058ac463bc26.jpg',
+        image: '/ems-card.jpg',
         url: 'https://ems.pydah.edu.in/login',
         portalId: 'examination-portal'
     }
@@ -74,6 +82,7 @@ const portalDetails = [
 
 const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, launchingPortalId, launchError }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     // Check authorization for a portal - strictly driven by discovered user.portals
     const isPortalAuthorized = (portalId) => {
@@ -97,39 +106,50 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
     }, [accessiblePortals, searchQuery]);
 
     return (
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden" style={{
+        <div className="min-h-screen bg-[#F8FAFC] relative overflow-hidden" style={{
             paddingTop: 'clamp(75px, 10vw, 95px)',
             paddingBottom: 'clamp(3rem, 6vw, 5rem)'
         }}>
-            {/* Background subtle ambiance */}
+            {/* Professional Corporate Background Grid & Ambiance */}
+            <div
+                className="absolute inset-0 pointer-events-none opacity-50"
+                style={{
+                    backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.3) 1.2px, transparent 1.2px)',
+                    backgroundSize: '24px 24px'
+                }}
+            />
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div
-                    className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] rounded-full blur-[100px] opacity-[0.05]"
+                    className="absolute -top-[15%] left-[10%] w-[550px] h-[450px] rounded-full blur-[140px] opacity-[0.08]"
                     style={{ backgroundColor: '#4f46e5' }}
                 />
                 <div
-                    className="absolute top-[30%] -right-[5%] w-[40%] h-[40%] rounded-full blur-[120px] opacity-[0.04]"
-                    style={{ backgroundColor: '#0ea5e9' }}
+                    className="absolute top-[25%] -right-[5%] w-[500px] h-[500px] rounded-full blur-[150px] opacity-[0.07]"
+                    style={{ backgroundColor: '#0284c7' }}
+                />
+                <div
+                    className="absolute bottom-[5%] left-[5%] w-[450px] h-[450px] rounded-full blur-[130px] opacity-[0.06]"
+                    style={{ backgroundColor: '#7c3aed' }}
                 />
             </div>
 
             <div className="section-container px-4 sm:px-8 lg:px-12 relative z-10 max-w-7xl mx-auto">
-                {/* Authenticated Dashboard Header */}
+                {/* Authenticated Dashboard Header - Neatly aligned, non-card layout */}
                 {user ? (
                     <motion.div
-                        initial={{ opacity: 0, y: -15 }}
+                        initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-[0_15px_35px_rgba(0,0,0,0.03)] mb-8 sm:mb-10"
+                        transition={{ duration: 0.3 }}
+                        className="mb-8 sm:mb-10"
                     >
                         {/* Profile Bar */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
-                            <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-slate-200/80">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                                 {user.profilePhoto ? (
                                     <img
                                         src={user.profilePhoto}
                                         alt={user.name || user.username || 'User'}
-                                        className="w-14 h-14 rounded-2xl object-cover shrink-0 border-2 border-indigo-200 shadow-lg shadow-indigo-500/10"
+                                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover shrink-0 border-2 border-indigo-200/80 shadow-sm"
                                         referrerPolicy="no-referrer"
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';
@@ -139,89 +159,78 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                                         }}
                                     />
                                 ) : null}
-                                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-500/20 shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}>
+                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-md shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}>
                                     {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                                 </div>
-                                <div>
-                                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                                <div className="min-w-0 flex-1">
+                                    <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight truncate">
                                         {user.name || user.username || 'Pydah Member'}
                                     </h1>
-                                    <p className="text-slate-500 text-xs sm:text-sm mt-1 font-medium flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span>Authenticated Session · {user.email || user.username}</span>
+                                    <p className="text-slate-500 text-xs sm:text-sm mt-0.5 font-medium flex items-center gap-1.5 truncate">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                        <span className="truncate">Authenticated Session · {user.email || user.username}</span>
                                     </p>
                                 </div>
                             </div>
 
                             {/* Session stats & Sign out */}
-                            <div className="flex items-center gap-3 self-start md:self-center flex-wrap">
-                                <div className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-2">
-                                    <ShieldCheck size={16} className="text-emerald-600" />
+                            <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-between sm:justify-end flex-wrap">
+                                <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xs">
+                                    <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
                                     <span>{accessiblePortals.length} Authorized Applications</span>
                                 </div>
                                 {onLogout && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={onLogout}
-                                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 border border-slate-200 hover:border-red-200 text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                                    <button
+                                        onClick={() => setShowLogoutModal(true)}
+                                        style={{ backgroundColor: '#ffffff', color: '#475569' }}
+                                        className="px-3.5 py-1.5 sm:py-2 rounded-xl hover:bg-red-50 hover:text-red-600 border border-slate-200 hover:border-red-200 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-sm"
                                     >
-                                        <LogOut size={15} />
+                                        <LogOut size={14} className="shrink-0" />
                                         <span>Sign Out</span>
-                                    </motion.button>
+                                    </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Search and Header Subtitle */}
-                        <div className="pt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                            <div className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                        {/* Search and Category Subtitle */}
+                        <div className="pt-4 sm:pt-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                            <div className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 ring-4 ring-indigo-100" />
                                 <span>Your Portals ({filteredPortals.length})</span>
                             </div>
 
-                            {/* Search Bar */}
-                            <div className="relative min-w-[240px] sm:w-72">
+                            {/* Search Bar - Full width on mobile */}
+                            <div className="relative w-full sm:w-72">
                                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
                                     placeholder="Search your portals..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm font-medium outline-none transition-all bg-white"
+                                    className="w-full pl-10 pr-4 py-2 sm:py-2 rounded-xl border border-slate-200/90 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm font-medium outline-none transition-all bg-white shadow-xs"
                                 />
                             </div>
                         </div>
                     </motion.div>
                 ) : (
-                    /* Logged-Out Header */
-                    <motion.div
-                        initial={{ opacity: 0, y: -15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-sm mb-8 sm:mb-10 text-center"
-                    >
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold mb-3">
-                            <Sparkles size={14} className="text-amber-500" />
-                            Pydah Single Sign-On Gateway
-                        </div>
-                        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                    /* Logged-Out Header - Clean heading and search */
+                    <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-slate-200/80">
+                        <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight text-center sm:text-left">
                             Campus Applications & Portals
                         </h1>
-                        <p className="text-slate-500 text-sm sm:text-base mt-2 max-w-lg mx-auto font-medium">
-                            Sign in once with your central credentials to launch your assigned applications.
-                        </p>
-                        <div className="mt-5">
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={onLoginClick}
-                                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md inline-flex items-center gap-2 cursor-pointer transition-colors"
-                            >
-                                <span>Sign In to Access Portals</span>
-                                <ArrowRight size={16} />
-                            </motion.button>
+
+                        {/* Search Bar - Full width on mobile */}
+                        <div className="relative w-full sm:w-72">
+                            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search portals..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200/90 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm font-medium outline-none transition-all bg-white shadow-xs"
+                            />
                         </div>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Error Banner */}
@@ -256,7 +265,7 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                         )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 items-stretch">
                         {filteredPortals.map((portal) => {
                             const isLaunching = launchingPortalId === portal.portalId;
 
@@ -274,6 +283,76 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                     </div>
                 )}
             </div>
+
+            {/* Sign Out Confirmation Modal */}
+            <AnimatePresence>
+                {showLogoutModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowLogoutModal(false)}
+                            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
+                        />
+
+                        {/* Modal Dialog */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ duration: 0.2 }}
+                            className="relative bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200/90 z-10 overflow-hidden"
+                        >
+                            <button
+                                onClick={() => setShowLogoutModal(false)}
+                                className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                aria-label="Close"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 text-red-600 flex items-center justify-center shrink-0">
+                                    <LogOut size={22} className="translate-x-0.5" />
+                                </div>
+                                <div className="pr-6">
+                                    <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+                                        Sign Out Confirmation
+                                    </h3>
+                                    <p className="text-slate-500 text-sm mt-1.5 leading-relaxed">
+                                        Are you sure you want to sign out of your Pydah CRM session?
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowLogoutModal(false)}
+                                    style={{ backgroundColor: '#f1f5f9', color: '#334155' }}
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer border border-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowLogoutModal(false);
+                                        if (onLogout) onLogout();
+                                    }}
+                                    style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-red-600/25 transition-all cursor-pointer flex items-center justify-center gap-2"
+                                >
+                                    <LogOut size={16} style={{ color: '#ffffff' }} />
+                                    <span style={{ color: '#ffffff' }}>Yes, Sign Out</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
@@ -298,68 +377,90 @@ const PortalAppCard = ({
 
     return (
         <motion.div
-            whileHover={{ y: -4 }}
+            whileHover={{ y: -5 }}
             transition={{ duration: 0.2 }}
             onClick={handleCardClick}
-            className="group bg-white rounded-2xl border border-slate-200/90 hover:border-indigo-400/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] cursor-pointer flex flex-col overflow-hidden transition-all duration-300"
+            style={{
+                borderColor: `${portal.color}55`,
+                boxShadow: `0 4px 20px -4px ${portal.color}22, 0 2px 6px -1px rgba(0,0,0,0.04)`
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = portal.color;
+                e.currentTarget.style.boxShadow = `0 16px 36px -6px ${portal.color}35, 0 4px 12px -2px rgba(0,0,0,0.06)`;
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = `${portal.color}55`;
+                e.currentTarget.style.boxShadow = `0 4px 20px -4px ${portal.color}22, 0 2px 6px -1px rgba(0,0,0,0.04)`;
+            }}
+            className="group bg-white rounded-2xl border-2 cursor-pointer flex flex-col h-full w-full overflow-hidden transition-all duration-300"
         >
             {/* Optimized Compact Thumbnail */}
-            <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+            <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 shrink-0">
                 <img
                     src={portal.image}
                     alt={portal.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
                 />
-
-                {/* Status Badge */}
-                <div className="absolute top-3 left-3 z-10">
-                    {user ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/95 text-emerald-700 backdrop-blur-sm shadow-sm border border-emerald-100">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Active
-                        </span>
-                    ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/95 text-slate-700 backdrop-blur-sm shadow-sm">
-                            SSO
-                        </span>
-                    )}
-                </div>
-
-                {/* Accent color dot */}
-                <div
-                    className="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white shadow-sm"
-                    style={{ backgroundColor: portal.color }}
-                />
             </div>
 
-            {/* Compact Details & Launch Button */}
-            <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between gap-3">
+            {/* Structured Content & Launch Button */}
+            <div className="p-4 sm:p-5 flex flex-col flex-1">
                 <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                    <span
+                        style={{ color: portal.color }}
+                        className="text-[11px] font-extrabold uppercase tracking-wider block mb-1"
+                    >
                         {portal.category}
                     </span>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors leading-snug">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight group-hover:text-slate-950 transition-colors leading-snug min-h-[2.8rem] sm:min-h-[3.25rem] flex items-start">
                         {portal.title}
                     </h3>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-2 min-h-[2.5rem]">
+                        {portal.description}
+                    </p>
                 </div>
 
-                {/* 1-Click Launch Button */}
-                <div className="pt-2 border-t border-slate-100">
+                {/* 1-Click Launch Button - filled with distinct portal color by default */}
+                <div className="mt-auto pt-3 border-t border-slate-100">
                     {isLaunching ? (
-                        <div className="w-full py-2 px-3 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center gap-2">
-                            <Loader2 size={14} className="animate-spin text-indigo-600" />
+                        <div
+                            style={{
+                                backgroundColor: `${portal.color}15`,
+                                borderColor: `${portal.color}40`,
+                                color: portal.color
+                            }}
+                            className="w-full py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border shadow-inner"
+                        >
+                            <Loader2 size={14} className="animate-spin" />
                             <span>Launching SSO...</span>
                         </div>
-                    ) : user ? (
-                        <div className="w-full py-2 px-3 rounded-xl bg-slate-50 group-hover:bg-indigo-600 text-slate-700 group-hover:text-white font-bold text-xs flex items-center justify-between transition-colors">
-                            <span>Launch Application</span>
-                            <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                        </div>
                     ) : (
-                        <div className="w-full py-2 px-3 rounded-xl bg-slate-50 group-hover:bg-slate-900 text-slate-700 group-hover:text-white font-bold text-xs flex items-center justify-between transition-colors">
-                            <span>Sign In to Launch</span>
-                            <ArrowRight size={14} />
+                        <div
+                            style={{
+                                backgroundColor: portal.color,
+                                borderColor: portal.color,
+                                boxShadow: `0 4px 14px -2px ${portal.color}50`,
+                                color: '#ffffff'
+                            }}
+                            className="w-full py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-between border shadow-sm transition-all duration-200 group-hover:brightness-110 group-hover:shadow-md cursor-pointer"
+                        >
+                            <span style={{ color: '#ffffff' }} className="tracking-wide">
+                                {user ? 'Launch Application' : 'Sign In to Launch'}
+                            </span>
+                            {user ? (
+                                <ArrowUpRight
+                                    size={15}
+                                    style={{ color: '#ffffff' }}
+                                    className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0"
+                                />
+                            ) : (
+                                <ArrowRight
+                                    size={15}
+                                    style={{ color: '#ffffff' }}
+                                    className="group-hover:translate-x-0.5 transition-transform shrink-0"
+                                />
+                            )}
                         </div>
                     )}
                 </div>

@@ -153,8 +153,8 @@ const Hero = ({ onNavigate }) => {
                         </motion.button>
                     </div>
 
-                    {/* Smarter Management Feature Card */}
-                    <div className="relative mx-auto md:mx-0 max-w-[560px] mt-3 mb-2 sm:mt-4 sm:mb-3">
+                    {/* Smarter Management Feature Card (Mobile screens only) */}
+                    <div className="block md:hidden relative mx-auto max-w-[560px] mt-3 mb-2 sm:mt-4 sm:mb-3">
                         {/* Top-Left Corner Accent Line */}
                         <svg
                             className="absolute -top-2 -left-2 w-7 h-7 text-blue-500 pointer-events-none"
