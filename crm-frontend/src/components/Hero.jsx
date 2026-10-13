@@ -3,18 +3,18 @@ import { motion } from 'framer-motion';
 const Hero = ({ onNavigate }) => {
     return (
         <section
-            className="min-h-screen flex items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.png')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat"
+            className="min-h-screen flex items-start md:items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.png')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat"
             style={{
-                paddingTop: 'clamp(80px, 15vw, 100px)',
-                paddingBottom: 'clamp(2rem, 4vw, 3rem)',
+                paddingTop: 'clamp(70px, 9vw, 100px)',
+                paddingBottom: 'clamp(1rem, 4vw, 3rem)',
             }}
         >
             <div
                 className="section-container grid grid-cols-1 md:grid-cols-[1fr_1.3fr] items-center w-full"
                 style={{
-                    gap: 'clamp(2rem, 6vw, 8rem)',
-                    paddingTop: 'clamp(1rem, 3vw, 2.5rem)',
-                    paddingBottom: 'clamp(1rem, 3vw, 2.5rem)'
+                    gap: 'clamp(1rem, 4vw, 8rem)',
+                    paddingTop: 'clamp(0.25rem, 1.5vw, 2.5rem)',
+                    paddingBottom: 'clamp(0.5rem, 1.5vw, 2.5rem)'
                 }}
             >
                 {/* Left Content */}
@@ -101,7 +101,7 @@ const Hero = ({ onNavigate }) => {
                 </motion.div>
 
                 {/* Mobile Illustration - full width edge-to-edge, uses leftside space, hidden on desktop */}
-                <div className="block md:hidden order-2 w-screen relative left-1/2 -translate-x-1/2 mt-4 overflow-hidden">
+                <div className="block md:hidden order-2 w-screen relative left-1/2 -translate-x-1/2 mt-2 overflow-hidden">
                     <img
                         src="/hero-mobile-illustration.png"
                         alt="Pydah CRM Platform Preview"

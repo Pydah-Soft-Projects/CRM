@@ -17,24 +17,24 @@ const FeaturesSection = () => {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="font-extrabold tracking-tight text-center"
+                        className="font-extrabold text-slate-900 tracking-tight text-center"
                         style={{
-                            fontSize: 'clamp(1.4rem, 4.5vw, 3.25rem)',
+                            fontSize: 'clamp(1.4rem, 4.5vw, 3.5rem)',
                             lineHeight: '1.2',
-                            marginBottom: 'clamp(0.75rem, 2vw, 1.5rem)',
+                            marginBottom: 'clamp(1rem, 2.5vw, 1.5rem)',
                         }}
                     >
-                        <span className="block text-slate-900">An Integrated</span>
-                        <span className="block text-indigo-600">Institutional Core.</span>
+                        <span className="block md:inline text-slate-900">An Integrated </span>
+                        <span className="block md:inline text-indigo-600">Institutional Core.</span>
                     </motion.h2>
                     <p
-                        className="leading-relaxed text-slate-600 text-xs sm:text-sm md:text-lg max-w-[340px] sm:max-w-[540px] md:max-w-[700px] mx-auto text-center"
+                        className="leading-relaxed text-slate-600 text-xs sm:text-sm md:text-lg lg:text-xl max-w-[340px] sm:max-w-[540px] md:max-w-3xl lg:max-w-none mx-auto text-center"
                         style={{
                             lineHeight: '1.6'
                         }}
                     >
                         Experience the power of a fully connected campus where every module—from admissions to examinations—talks to the central nervous system.
-                        <span className="block mt-1 sm:mt-2 font-medium text-indigo-500">
+                        <span className="block mt-1 md:mt-2 font-medium text-indigo-500">
                             One Source of Truth. Infinite Possibilities.
                         </span>
                     </p>
