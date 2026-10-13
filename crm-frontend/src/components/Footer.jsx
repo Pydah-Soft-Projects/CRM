@@ -1,97 +1,82 @@
 import { motion } from 'framer-motion';
 import {
     Facebook, Twitter, Instagram, Linkedin,
-    Mail, Phone, MapPin, ExternalLink,
-    ArrowRight, Github
+    Mail, Phone, MapPin
 } from 'lucide-react';
 
 const Footer = () => {
+    const quickLinks = [
+        { name: 'Home', href: '#home' },
+        { name: 'About Us', href: '#about' },
+        { name: 'Portals', href: '#portals' },
+        { name: 'Features', href: '#features' },
+        { name: 'Contact', href: '#contact' },
+    ];
+
     const portalLinks = [
         { name: 'Admission Portal', id: 'admissions-crm' },
         { name: 'Student Portal', id: 'student-portal' },
         { name: 'Fee Management', id: 'fee-management' },
         { name: 'Transport Hub', id: 'transport-management' },
-        { name: 'HRMS & Payroll', id: 'hrms' }
-    ];
-
-    const companyLinks = [
-        { name: 'About Us', href: '#' },
-        { name: 'Features', href: '#' },
-        { name: 'Success Stories', href: '#' },
-        { name: 'Support', href: '#' },
-        { name: 'Privacy Policy', href: '#' }
+        { name: 'HRMS & Payroll', id: 'hrms' },
+        { name: 'Hostel Automation', id: 'hostel-automation' }
     ];
 
     const socialLinks = [
         { icon: Facebook, href: '#', label: 'Facebook' },
-        { icon: Twitter, href: '#', label: 'Twitter' },
-        { icon: Instagram, href: '#', label: 'Instagram' },
         { icon: Linkedin, href: '#', label: 'LinkedIn' },
-        { icon: Github, href: '#', label: 'GitHub' }
+        { icon: Instagram, href: '#', label: 'Instagram' },
+        { icon: Twitter, href: '#', label: 'Twitter' }
     ];
 
     return (
-        <footer className="w-full h-40 relative overflow-hidden bg-[#0A0C10] text-white pt-12 pb-8 border-t border-white/5">
-            {/* Background Glow */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-sky-600/5 blur-[120px] rounded-full pointer-events-none" />
-
-            <div className="section-container relative z-10 px-6 sm:px-12 h-full flex flex-col justify-between">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-6">
+        <footer className="w-full relative bg-[#07090E] text-white pt-20 pb-10 border-t-[4px] border-indigo-500 overflow-hidden">
+            <div className="w-full px-6 sm:px-12 lg:px-20 flex flex-col justify-between">
+                
+                {/* Top Section: 4 Columns */}
+                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-14 pt-4 pb-12">
 
                     {/* Brand Column */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-sky-500 rounded-lg flex items-center justify-center font-bold text-lg shadow-lg shadow-indigo-500/20">
-                                P
-                            </div>
-                            <span className="text-xl font-bold tracking-tight">
-                                Pydah<span className="text-indigo-400">Soft</span>
-                            </span>
+                    <div className="space-y-5">
+                        <div>
+                            <h3 className="text-2xl font-bold tracking-wider text-white">
+                                PYDAH<span className="text-indigo-400">SOFT</span>
+                            </h3>
+                            <p className="text-[11px] font-bold tracking-[0.25em] text-indigo-400 uppercase mt-1">
+                                Organization
+                            </p>
                         </div>
-                        <p className="text-gray-400 leading-relaxed max-w-sm text-[0.85rem]">
-                            Empowering educational institutions with next-generation smart ERP solutions.
-                            Automate operations and drive excellence.
+                        <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                            Building future-ready digital solutions that drive innovation and institutional excellence.
                         </p>
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex items-center gap-3 pt-2">
                             {socialLinks.map((social, idx) => (
                                 <motion.a
                                     key={idx}
                                     href={social.href}
-                                    whileHover={{ y: -5, scale: 1.05 }}
+                                    whileHover={{ y: -2, scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-indigo-400 hover:bg-white/10 transition-all duration-300"
+                                    className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-300 hover:text-indigo-400 hover:border-indigo-400/60 hover:bg-indigo-500/10 transition-all duration-200"
                                     aria-label={social.label}
                                 >
-                                    <social.icon size={16} />
+                                    <social.icon size={15} />
                                 </motion.a>
                             ))}
                         </div>
                     </div>
 
-                    {/* Portals Column */}
+                    {/* Quick Links Column */}
                     <div>
-                        <h4 className="text-[0.95rem] font-semibold mb-4 text-white tracking-wide">Cloud Portals</h4>
-                        <ul className="space-y-2">
-                            {portalLinks.map((link, idx) => (
+                        <h4 className="text-base font-semibold text-white mb-6 tracking-wide">
+                            Quick Links
+                        </h4>
+                        <ul className="space-y-4">
+                            {quickLinks.map((link, idx) => (
                                 <li key={idx}>
-                                    <button className="text-gray-400 hover:text-indigo-400 transition-all duration-300 flex items-center group text-[0.85rem]">
-                                        <ArrowRight size={12} className="mr-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
-                                        {link.name}
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* Links Column */}
-                    <div>
-                        <h4 className="text-[0.95rem] font-semibold mb-4 text-white tracking-wide">Company</h4>
-                        <ul className="space-y-2">
-                            {companyLinks.map((link, idx) => (
-                                <li key={idx}>
-                                    <a href={link.href} className="text-gray-400 hover:text-indigo-400 transition-all duration-300 flex items-center group text-[0.85rem]">
-                                        <ArrowRight size={12} className="mr-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                                    <a
+                                        href={link.href}
+                                        className="text-slate-300 hover:text-indigo-400 transition-colors duration-200 text-sm block"
+                                    >
                                         {link.name}
                                     </a>
                                 </li>
@@ -99,51 +84,74 @@ const Footer = () => {
                         </ul>
                     </div>
 
-                    {/* Contact Column */}
+                    {/* Cloud Portals Column */}
                     <div>
-                        <h4 className="text-[0.95rem] font-semibold mb-4 text-white tracking-wide">Contact Us</h4>
-                        <ul className="space-y-3">
-                            <li className="flex gap-3">
-                                <MapPin className="text-indigo-400 shrink-0 mt-1" size={16} />
-                                <span className="text-gray-400 leading-tight text-[0.85rem]">
-                                    Pydah Group of Institutions,<br />
-                                    Kakinada, AP, India
+                        <h4 className="text-base font-semibold text-white mb-6 tracking-wide">
+                            Cloud Portals
+                        </h4>
+                        <ul className="space-y-4">
+                            {portalLinks.map((link, idx) => (
+                                <li key={idx}>
+                                    <button
+                                        className="text-slate-300 hover:text-indigo-400 transition-colors duration-200 text-sm block text-left"
+                                    >
+                                        {link.name}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Contact Us Column */}
+                    <div>
+                        <h4 className="text-base font-semibold text-white mb-6 tracking-wide">
+                            Contact Us
+                        </h4>
+                        <ul className="space-y-4.5">
+                            <li className="flex gap-3 items-start">
+                                <MapPin size={18} className="text-indigo-400 shrink-0 mt-0.5" />
+                                <span className="text-slate-300 leading-relaxed text-sm">
+                                    Kakinada – Yanam Road, Patavala, Tallarevu (M), Kakinada District, Andhra Pradesh, India Pincode 533461
                                 </span>
                             </li>
                             <li className="flex gap-3 items-center">
-                                <Mail className="text-indigo-400 shrink-0" size={16} />
-                                <a href="mailto:support@pydahsoft.com" className="text-gray-400 hover:text-white transition-colors text-[0.85rem]">
-                                    support@pydahsoft.com
-                                </a>
+                                <Phone size={18} className="text-indigo-400 shrink-0" />
+                                <span className="text-slate-300 text-sm">+91 9951354444</span>
                             </li>
                             <li className="flex gap-3 items-center">
-                                <Phone className="text-indigo-400 shrink-0" size={16} />
-                                <span className="text-gray-400 text-[0.85rem]">+91 1800-425-6789</span>
+                                <Mail size={18} className="text-indigo-400 shrink-0" />
+                                <a
+                                    href="mailto:team@pydahsoft.in"
+                                    className="text-slate-300 hover:text-indigo-400 transition-colors duration-200 text-sm"
+                                >
+                                    team@pydahsoft.in
+                                </a>
                             </li>
                         </ul>
                     </div>
                 </div>
 
-                {/* Bottom Bar */}
-                <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-[0.75rem] text-gray-500 font-medium relative z-20">
-                    <p>© {new Date().getFullYear()} PydahSoft Educational Systems.</p>
-                    <div className="flex gap-6">
-                        <a href="#" className="hover:text-white transition-colors">Terms</a>
-                        <a href="#" className="hover:text-white transition-colors">Privacy</a>
-                        <a href="#" className="hover:text-white transition-colors">Cookies</a>
+                {/* Massive Brand Name Display (Antigravity Style) */}
+                <div className="w-full text-center select-none overflow-hidden my-6 md:my-10">
+                    <h2 className="text-[13vw] font-black tracking-tighter leading-none text-white whitespace-nowrap block">
+                        PYDAH<span className="text-indigo-500">SOFT</span>
+                    </h2>
+                </div>
+
+                {/* Bottom Bar: Divider, Copyright & Legal Links */}
+                <div className="w-full pt-8 pb-4 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-slate-400 font-medium">
+                    <p>
+                        © {new Date().getFullYear()} PYDAH SOFT. All Rights Reserved.
+                    </p>
+                    <div className="flex gap-6 sm:gap-8 items-center">
+                        <a href="#" className="hover:text-indigo-400 transition-colors duration-200">Terms of Service</a>
+                        <a href="#" className="hover:text-indigo-400 transition-colors duration-200">Privacy Policy</a>
+                        <a href="#" className="hover:text-indigo-400 transition-colors duration-200">Cookie Policy</a>
                     </div>
                 </div>
-            </div>
-
-            {/* Subtle Watermark BG */}
-            <div className="absolute bottom-0 left-0 right-0 opacity-[0.012] pointer-events-none select-none overflow-hidden z-0">
-                <span className="text-[15vw] font-[900] whitespace-nowrap leading-none tracking-tighter block text-center uppercase text-white/50">
-                    PYDAHSOFT
-                </span>
             </div>
         </footer>
     );
 };
 
 export default Footer;
-

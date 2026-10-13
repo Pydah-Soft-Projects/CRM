@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import ModuleShowcase from './components/ModuleShowcase';
 import AboutUsSection from './components/AboutUsSection';
 import FeaturesSection from './components/FeaturesSection';
 import CTASection from './components/CTASection';
@@ -137,7 +136,6 @@ function App() {
         {currentPage === 'home' ? (
           <>
             <Hero onNavigate={handleNavigate} />
-            <ModuleShowcase />
             <AboutUsSection />
             <FeaturesSection />
             <CTASection onNavigate={handleNavigate} />
