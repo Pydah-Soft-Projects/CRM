@@ -49,7 +49,7 @@ const Hero = ({ onNavigate }) => {
                         }}
                     >
                         Experience the smoothness of high-performance management.
-                        Automate portals, hostels, HRMS, and inventory in one elegant interface.
+                        Automate student portals, hostels, HRMS, fees, and transport in one elegant interface.
                     </p>
                     <div
                         className="flex flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-4 flex-nowrap"

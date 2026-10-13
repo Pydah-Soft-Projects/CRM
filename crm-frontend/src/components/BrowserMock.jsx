@@ -29,17 +29,7 @@ const tabs = [
         icon: CreditCard,
         color: '#10b981',
         bgColor: '#F0FDF4'
-    },
-    {
-        id: 'inventory',
-        name: 'Inventory System',
-        displayUrl: 'inventory.pydahsoft.in',
-        redirectUrl: 'https://pydah-pharmacy-labs.vercel.app',
-        icon: PieChart,
-        color: '#3B82F6',
-        theme: 'linear-gradient(135deg, #3B82F6, #6366F1)',
-        bgColor: '#EFF6FF'
-    },
+    }
 ];
 
 const BrowserMock = () => {

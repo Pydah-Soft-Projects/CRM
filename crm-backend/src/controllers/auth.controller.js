@@ -432,8 +432,7 @@ export const verifyToken = async (req, res, next) => {
           valid: true,
           data: {
             userId: rbacUser.id,
-            role: rbacUser.role || decoded.role,
-            email: rbacUser.email || email,
+            email: rbacUser.email,
             name: rbacUser.name,
             ...baseData
           }
@@ -490,13 +489,22 @@ export const verifyToken = async (req, res, next) => {
         databaseSource: decoded.databaseSource
       });
       if (transportRole) {
-        console.log(`[VerifyToken] Transport lookup: resolved to userId=${transportRole._id}`);
+        // Transport's ssoLogin queries Employee.findById(crmUserId) || Employee.findOne({ emp_no: crmUserId })
+        // and falls back to Admin.findById(crmUserId).
+        // Therefore, userId MUST be the HRMS Employee _id (employeeId), not the userroles._id!
+        const resolvedUserId = (transportRole.employeeId ? transportRole.employeeId.toString() : null)
+          || (crmUser?.employeeId ? crmUser.employeeId.toString() : null)
+          || (decoded.userId ? decoded.userId.toString() : null)
+          || transportRole._id.toString();
+
+        console.log(`[VerifyToken] Transport lookup: resolved to employee/admin userId=${resolvedUserId} (roleDoc _id=${transportRole._id})`);
         return res.status(HTTP_STATUS.OK).json({
           success: true,
           valid: true,
           data: {
-            userId: transportRole._id.toString(),
+            userId: resolvedUserId,
             employeeId: transportRole.employeeId ? transportRole.employeeId.toString() : (crmUser?.employeeId || null),
+            roleId: transportRole._id ? transportRole._id.toString() : null,
             phone: transportRole.phone || crmUser?.phone || null,
             username: transportRole.phone || transportRole.username || username,
             role: (transportRole.roles && transportRole.roles[0]) || transportRole.role || decoded.role,
@@ -506,15 +514,11 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
-      return res.status(HTTP_STATUS.OK).json({
-        success: true,
-        valid: true,
-        data: {
-          userId: String(decoded.userId),
-          ...(email && { email }),
-          username: username,
-          ...baseData
-        }
+      console.warn(`[VerifyToken] Forbidden: User ${decoded.userId} has no assigned role in Transport system`);
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        valid: false,
+        message: 'User does not have an assigned role in Transport system'
       });
     }
 

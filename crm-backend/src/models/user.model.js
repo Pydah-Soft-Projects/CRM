@@ -196,7 +196,7 @@ export const getUserPortals = async (userId) => {
         return allPortals.map(p => p.portal_id);
       } catch (error) {
         // If portals table doesn't exist, return default portal IDs
-        return ['admissions-crm', 'student-portal', 'hostel-automation', 'hrms', 'pharmacy'];
+        return ['admissions-crm', 'student-portal', 'hostel-automation', 'hrms'];
       }
     }
 

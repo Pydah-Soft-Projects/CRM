@@ -79,11 +79,23 @@ export const findTransportUserRole = async (user) => {
       console.log(`[Transport] Checking 'userroles' collection with ${orConditions.length} conditions`);
       const roleDoc = await userRolesCol.findOne({ $or: orConditions });
       if (roleDoc) {
-        console.log(`[Transport] Match found in 'userroles': id=${roleDoc._id}, phone=${roleDoc.phone}`);
-        return {
-          ...roleDoc,
-          sourceCollection: 'userroles'
-        };
+        // Exclude generic 'user' role. Only consider active staff/admin transport roles
+        const rawRoles = Array.isArray(roleDoc.roles) ? roleDoc.roles : (roleDoc.role ? [roleDoc.role] : []);
+        const validRoles = rawRoles
+          .map(r => String(r).toLowerCase().trim())
+          .filter(r => r && r !== 'user' && r !== 'none');
+
+        const hasValidPermissions = Array.isArray(roleDoc.permissions) && roleDoc.permissions.length > 0;
+
+        if (validRoles.length > 0 || hasValidPermissions) {
+          console.log(`[Transport] Match found in 'userroles': id=${roleDoc._id}, phone=${roleDoc.phone}, roles=${JSON.stringify(roleDoc.roles)}`);
+          return {
+            ...roleDoc,
+            sourceCollection: 'userroles'
+          };
+        } else {
+          console.log(`[Transport] Document found in 'userroles' (id=${roleDoc._id}), but user only has basic 'user' or no valid roles`);
+        }
       }
     }
 
