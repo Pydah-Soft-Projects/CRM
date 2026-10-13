@@ -51,14 +51,6 @@ const solutions = [
     icon: CreditCard,
     color: '#5372ffff',
     portalId: 'hrms'
-  },
-  {
-    title: 'Pharmacy Inventory',
-    desc: 'Specially crafted stock management for college labs.',
-    url: 'https://pydah-pharmacy-labs.vercel.app',
-    icon: Box,
-    color: '#10b981',
-    portalId: 'pharmacy'
   }
 ];
 

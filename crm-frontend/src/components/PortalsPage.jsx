@@ -53,24 +53,15 @@ const portalDetails = [
         image: '/7a41f43d70ae2960e8bead5fa240591f.jpg',
         url: 'https://hrms.pydah.edu.in/login',
         portalId: 'hrms'
-    },
-    {
-        title: 'Pharmacy Inventory',
-        category: 'Lab & Stock Management',
-        color: '#10b981',
-        image: '/30e0526855959f629396058ac463bc26.jpg',
-        url: 'https://pydah-pharmacy-labs.vercel.app',
-        portalId: 'pharmacy'
     }
 ];
 
 const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, launchingPortalId, launchError }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Check authorization for a portal
+    // Check authorization for a portal - strictly driven by discovered user.portals
     const isPortalAuthorized = (portalId) => {
         if (!user) return true; // when viewing public catalog without logging in
-        if (user.role === 'super_admin' || user.role === 'superadmin') return true;
         return Array.isArray(user.portals) && user.portals.includes(portalId);
     };
 

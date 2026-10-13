@@ -26,13 +26,6 @@ import { ERROR_MESSAGES } from '../config/constants.js';
  */
 export const discoverUserPortals = async (user, databaseSource = null) => {
   try {
-    const role = (user.role || user.role_name || '').toLowerCase();
-
-    // Super admins always have full access to all portals
-    if (role === 'super_admin' || role === 'superadmin') {
-      return ['admissions-crm', 'student-portal', 'fee-management', 'transport-management', 'hostel-automation', 'hrms', 'pharmacy'];
-    }
-
     const portals = new Set();
 
     // 1. Grant the portal of the primary authentication source
@@ -42,13 +35,8 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'fee') portals.add('fee-management');
     if (databaseSource === 'admissions_db') portals.add('admissions-crm');
     if (databaseSource === 'student_credentials') portals.add('student-portal');
-    if (databaseSource === 'rbac_users') {
-      portals.add('admissions-crm');
-      portals.add('student-portal');
-      if (['management', 'admin'].includes(role)) {
-        return ['admissions-crm', 'student-portal', 'fee-management', 'transport-management', 'hostel-automation', 'hrms', 'pharmacy'];
-      }
-    }
+    // rbac_users table in student_database is strictly for the Student Portal only
+    if (databaseSource === 'rbac_users') portals.add('student-portal');
 
     const username = (user.username || '').trim();
     const email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
@@ -163,7 +151,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       );
     }
 
-    // Check Student Portal & RBAC
+    // Check Student Portal (checks student_credentials or rbac_users in student_database)
     if (!portals.has('student-portal')) {
       checks.push(
         (async () => {
@@ -171,35 +159,19 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             const target = rollOrEmp || identifier;
             if (target) {
               const stuUser = await findStudentByUsername(target);
-              if (stuUser) portals.add('student-portal');
-            }
-          } catch (e) {
-            console.error('[discoverUserPortals] Student check error:', e.message);
-          }
-        })()
-      );
-    }
-
-    // Check RBAC MySQL
-    if (databaseSource !== 'rbac_users' && identifier) {
-      checks.push(
-        (async () => {
-          try {
-            const rbacUser = await findRBACUserByIdentifier(identifier);
-            if (rbacUser) {
-              const rbacRole = (rbacUser.role || '').toLowerCase();
-              if (['admin', 'super_admin', 'superadmin', 'management'].includes(rbacRole)) {
-                ['admissions-crm', 'student-portal', 'fee-management', 'transport-management', 'hostel-automation', 'hrms', 'pharmacy'].forEach(p => portals.add(p));
-              } else {
-                portals.add('admissions-crm');
+              if (stuUser) {
                 portals.add('student-portal');
-                if (rbacUser.permissions && (rbacUser.permissions.includes('pharmacy') || rbacRole === 'pharmacy')) {
-                  portals.add('pharmacy');
-                }
+                return;
+              }
+            }
+            if (identifier) {
+              const rbacUser = await findRBACUserByIdentifier(identifier);
+              if (rbacUser) {
+                portals.add('student-portal');
               }
             }
           } catch (e) {
-            console.error('[discoverUserPortals] RBAC check error:', e.message);
+            console.error('[discoverUserPortals] Student portal check error:', e.message);
           }
         })()
       );
@@ -458,14 +430,11 @@ export const generatePortalToken = async (userId, portalId, role, databaseSource
     let userPortals = [];
     const normalizedRole = (role || '').toLowerCase();
     
-    // 1. Super admins have universal access to all portals
-    if (normalizedRole === 'super_admin' || normalizedRole === 'superadmin') {
-      userPortals = ['admissions-crm', 'hostel-automation', 'hrms', 'student-portal', 'transport-management', 'fee-management', 'pharmacy'];
-    } else if (Array.isArray(options.portals) && options.portals.length > 0) {
-      // 2. Use portals verified and authorized during login session
+    if (Array.isArray(options.portals) && options.portals.length > 0) {
+      // 1. Use portals verified and authorized during login session
       userPortals = options.portals;
     } else {
-      // 3. Fallback: discover portals dynamically with full identity
+      // 2. Discover portals dynamically with full identity
       const email = options.email || (username && username.includes('@') ? username : null);
       userPortals = await discoverUserPortals({
         id: userId,
