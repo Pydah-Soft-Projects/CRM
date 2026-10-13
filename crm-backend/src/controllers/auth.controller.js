@@ -514,15 +514,11 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
-      return res.status(HTTP_STATUS.OK).json({
-        success: true,
-        valid: true,
-        data: {
-          userId: String(decoded.userId),
-          ...(email && { email }),
-          username: username,
-          ...baseData
-        }
+      console.warn(`[VerifyToken] Forbidden: User ${decoded.userId} has no assigned role in Transport system`);
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        valid: false,
+        message: 'User does not have an assigned role in Transport system'
       });
     }
 

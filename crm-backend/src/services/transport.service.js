@@ -79,11 +79,19 @@ export const findTransportUserRole = async (user) => {
       console.log(`[Transport] Checking 'userroles' collection with ${orConditions.length} conditions`);
       const roleDoc = await userRolesCol.findOne({ $or: orConditions });
       if (roleDoc) {
-        console.log(`[Transport] Match found in 'userroles': id=${roleDoc._id}, phone=${roleDoc.phone}`);
-        return {
-          ...roleDoc,
-          sourceCollection: 'userroles'
-        };
+        const hasRoles = (Array.isArray(roleDoc.roles) && roleDoc.roles.length > 0) ||
+          (typeof roleDoc.role === 'string' && roleDoc.role.trim() !== '') ||
+          (Array.isArray(roleDoc.permissions) && roleDoc.permissions.length > 0);
+
+        if (hasRoles) {
+          console.log(`[Transport] Match found in 'userroles': id=${roleDoc._id}, phone=${roleDoc.phone}, roles=${JSON.stringify(roleDoc.roles)}`);
+          return {
+            ...roleDoc,
+            sourceCollection: 'userroles'
+          };
+        } else {
+          console.log(`[Transport] Document found in 'userroles' (id=${roleDoc._id}), but user has NO active roles or permissions`);
+        }
       }
     }
 
