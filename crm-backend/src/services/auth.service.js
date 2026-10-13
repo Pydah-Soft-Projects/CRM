@@ -3,7 +3,7 @@ import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model
 import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
-import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail } from './hrms.service.js';
+import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail, getEmployeeProfilePhoto } from './hrms.service.js';
 import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify } from './hostel.service.js';
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
 import { validateFeeCredentials, getFeeUserById } from './fee.service.js';
@@ -276,6 +276,20 @@ export const validateCredentials = async (username, password, role = null) => {
         databaseSource: databaseSource
       };
 
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.emp_no || normalizedUser.admission_number,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone || normalizedUser.mobile
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {
+          // ignore error
+        }
+      }
+
       normalizedUser.portals = await discoverUserPortals(normalizedUser, databaseSource);
       return normalizedUser;
     }
@@ -302,6 +316,17 @@ export const validateCredentials = async (username, password, role = null) => {
         ...hostelUser,
         databaseSource: 'hostel'
       };
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.emp_no || normalizedUser.rollNumber,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {}
+      }
       normalizedUser.portals = await discoverUserPortals(normalizedUser, 'hostel');
       return normalizedUser;
     }
@@ -314,6 +339,17 @@ export const validateCredentials = async (username, password, role = null) => {
         ...transportUser,
         databaseSource: transportUser.databaseSource || 'transport'
       };
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.emp_no,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {}
+      }
       normalizedUser.portals = await discoverUserPortals(normalizedUser, 'transport');
       return normalizedUser;
     }
@@ -326,6 +362,17 @@ export const validateCredentials = async (username, password, role = null) => {
         ...feeUser,
         databaseSource: feeUser.databaseSource || 'fee'
       };
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.emp_no,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {}
+      }
       normalizedUser.portals = await discoverUserPortals(normalizedUser, 'fee');
       return normalizedUser;
     }
@@ -352,6 +399,17 @@ export const validateCredentialsForHRMS = async (username, password) => {
     username: user.email || user.name,
     databaseSource: 'hrms'
   };
+  if (!normalizedUser.profilePhoto) {
+    try {
+      const photo = await getEmployeeProfilePhoto({
+        email: normalizedUser.email,
+        employeeId: normalizedUser.employeeId || normalizedUser.emp_no,
+        username: normalizedUser.username,
+        phone: normalizedUser.phone
+      });
+      if (photo) normalizedUser.profilePhoto = photo;
+    } catch (e) {}
+  }
   normalizedUser.portals = await discoverUserPortals(normalizedUser, 'hrms');
   return normalizedUser;
 };
@@ -370,6 +428,17 @@ export const validateCredentialsForHostel = async (username, password) => {
     ...user,
     databaseSource: 'hostel'
   };
+  if (!normalizedUser.profilePhoto) {
+    try {
+      const photo = await getEmployeeProfilePhoto({
+        email: normalizedUser.email,
+        employeeId: normalizedUser.employeeId || normalizedUser.emp_no || normalizedUser.rollNumber,
+        username: normalizedUser.username,
+        phone: normalizedUser.phone
+      });
+      if (photo) normalizedUser.profilePhoto = photo;
+    } catch (e) {}
+  }
   normalizedUser.portals = await discoverUserPortals(normalizedUser, 'hostel');
   return normalizedUser;
 };
@@ -398,6 +467,17 @@ export const validateCredentialsForTransport = async (username, password) => {
       ...user,
       databaseSource: dbSource
     };
+    if (!normalizedUser.profilePhoto) {
+      try {
+        const photo = await getEmployeeProfilePhoto({
+          email: normalizedUser.email,
+          employeeId: normalizedUser.employeeId || normalizedUser.emp_no,
+          username: normalizedUser.username,
+          phone: normalizedUser.phone
+        });
+        if (photo) normalizedUser.profilePhoto = photo;
+      } catch (e) {}
+    }
     normalizedUser.portals = await discoverUserPortals(normalizedUser, dbSource);
     return normalizedUser;
   }
@@ -430,6 +510,17 @@ export const validateCredentialsForFee = async (username, password) => {
       ...user,
       databaseSource: dbSource
     };
+    if (!normalizedUser.profilePhoto) {
+      try {
+        const photo = await getEmployeeProfilePhoto({
+          email: normalizedUser.email,
+          employeeId: normalizedUser.employeeId || normalizedUser.emp_no,
+          username: normalizedUser.username,
+          phone: normalizedUser.phone
+        });
+        if (photo) normalizedUser.profilePhoto = photo;
+      } catch (e) {}
+    }
     normalizedUser.portals = await discoverUserPortals(normalizedUser, dbSource);
     return normalizedUser;
   }
@@ -504,7 +595,8 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
           email: hrmsUser.email || null,
           name: hrmsUser.name || null,
           employeeId: hrmsUser.employeeId || null,
-          phone: hrmsUser.phone || null
+          phone: hrmsUser.phone || null,
+          profilePhoto: hrmsUser.profilePhoto || null
         };
       }
       return null;
