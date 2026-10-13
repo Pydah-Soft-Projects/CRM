@@ -15,7 +15,8 @@ export const PORTAL_IDS = {
   HRMS: 'hrms',
   TRANSPORT_MANAGEMENT: 'transport-management',
   FEE_MANAGEMENT: 'fee-management',
-  ACADEMIC_PORTAL: 'academic-portal'
+  ACADEMIC_PORTAL: 'academic-portal',
+  EXAMINATION_PORTAL: 'examination-portal'
 };
 
 export const HTTP_STATUS = {

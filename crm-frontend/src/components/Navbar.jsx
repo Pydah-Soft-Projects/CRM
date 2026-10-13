@@ -59,6 +59,14 @@ const solutions = [
     icon: BookOpen,
     color: '#8b5cf6',
     portalId: 'academic-portal'
+  },
+  {
+    title: 'Examination Management System',
+    desc: 'Automated exam scheduling, hall tickets, marks, and evaluations.',
+    url: 'https://ems.pydah.edu.in',
+    icon: ClipboardCheck,
+    color: '#ea580c',
+    portalId: 'examination-portal'
   }
 ];
 

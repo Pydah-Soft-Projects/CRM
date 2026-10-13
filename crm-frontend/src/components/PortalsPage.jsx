@@ -61,6 +61,14 @@ const portalDetails = [
         image: '/30e0526855959f629396058ac463bc26.jpg',
         url: 'https://acad.pydah.edu.in/login',
         portalId: 'academic-portal'
+    },
+    {
+        title: 'Examination Management System',
+        category: 'Exams & Assessment',
+        color: '#ea580c',
+        image: '/30e0526855959f629396058ac463bc26.jpg',
+        url: 'https://ems.pydah.edu.in/login',
+        portalId: 'examination-portal'
     }
 ];
 

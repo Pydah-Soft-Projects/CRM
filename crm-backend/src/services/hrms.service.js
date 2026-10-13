@@ -45,47 +45,54 @@ export function extractProfilePhoto(doc) {
   return null;
 }
 
+const photoCache = new Map();
+
 /**
  * Look up HRMS employee profile photo by email, employee number, username, or phone.
  * @param {Object} params - { email, employeeId, username, phone }
  * @returns {Promise<string|null>} Photo URL or null
  */
 export const getEmployeeProfilePhoto = async ({ email, employeeId, username, phone } = {}) => {
+  const cacheKey = (email || employeeId || username || phone || '').trim().toLowerCase();
+  if (cacheKey && photoCache.has(cacheKey)) {
+    return photoCache.get(cacheKey);
+  }
+
   try {
     const db = await getHRMSDb();
     if (!db) return null;
     const empCol = db.collection('employees');
+    const projection = { profilePhoto: 1, profile_photo: 1, photo: 1, dynamicFields: 1 };
 
-    const orConditions = [];
-    if (email && typeof email === 'string' && email.trim()) {
-      orConditions.push({ email: email.trim() });
-    }
-    if (employeeId && typeof employeeId === 'string' && employeeId.trim()) {
-      const trimmed = employeeId.trim();
-      orConditions.push({ emp_no: trimmed });
-      orConditions.push({ emp_no: trimmed.toUpperCase() });
-    }
-    if (username && typeof username === 'string' && username.trim()) {
-      const trimmed = username.trim();
-      if (trimmed.includes('@')) {
-        orConditions.push({ email: trimmed });
-      }
-      orConditions.push({ emp_no: trimmed });
-      orConditions.push({ emp_no: trimmed.toUpperCase() });
-    }
-    if (phone && typeof phone === 'string' && phone.trim()) {
-      const trimmed = phone.trim();
-      orConditions.push({ phone_number: trimmed });
-      orConditions.push({ phone: trimmed });
+    let doc = null;
+    const normEmail = email && typeof email === 'string' ? email.trim() : null;
+    const empId = (employeeId || (username && !username.includes('@') ? username : null) || '').trim();
+
+    // 1. Indexed lookup by email
+    if (normEmail) {
+      doc = await empCol.findOne({ email: normEmail }, { projection });
     }
 
-    if (orConditions.length === 0) return null;
-
-    const doc = await empCol.findOne({ $or: orConditions });
-    if (doc) {
-      return extractProfilePhoto(doc);
+    // 2. Indexed lookup by emp_no
+    if (!doc && empId) {
+      doc = await empCol.findOne(
+        { $or: [{ emp_no: empId }, { emp_no: empId.toUpperCase() }] },
+        { projection }
+      );
     }
-    return null;
+
+    // 3. Fallback by phone
+    if (!doc && phone && typeof phone === 'string') {
+      const p = phone.trim();
+      doc = await empCol.findOne({ $or: [{ phone_number: p }, { phone: p }] }, { projection });
+    }
+
+    const photo = doc ? extractProfilePhoto(doc) : null;
+    if (cacheKey) {
+      photoCache.set(cacheKey, photo);
+      if (photoCache.size > 500) photoCache.clear();
+    }
+    return photo;
   } catch (error) {
     console.error('[HRMS] getEmployeeProfilePhoto error:', error.message);
     return null;

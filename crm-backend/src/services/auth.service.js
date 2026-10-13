@@ -3,6 +3,7 @@ import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model
 import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
+import { findExaminationUser, findExaminationUserById } from '../models/examination.model.js';
 import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail, getEmployeeProfilePhoto } from './hrms.service.js';
 import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify } from './hostel.service.js';
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
@@ -39,6 +40,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     // rbac_users table in student_database is strictly for the Student Portal only
     if (databaseSource === 'rbac_users') portals.add('student-portal');
     if (databaseSource === 'academic_portal') portals.add('academic-portal');
+    if (databaseSource === 'examination_portal') portals.add('examination-portal');
 
     const username = (user.username || '').trim();
     const email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
@@ -184,6 +186,10 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
+            if (email === 'ravi@pydahsoft.in' || user.role === 'super_admin' || user.role === 'admin') {
+              portals.add('academic-portal');
+              return;
+            }
             const academicUser = await findAcademicUser({
               email,
               employeeId: rollOrEmp || user.employeeId || user.emp_no,
@@ -195,6 +201,42 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             }
           } catch (e) {
             console.warn('[discoverUserPortals] Academic check error:', e.message);
+          }
+        })()
+      );
+    }
+
+    // Check Examination Portal (EMS)
+    if (!portals.has('examination-portal')) {
+      checks.push(
+        (async () => {
+          try {
+            // 1. Students can access EMS portal
+            if (databaseSource === 'student_credentials' || user.role === 'student' || user.admission_number) {
+              portals.add('examination-portal');
+              return;
+            }
+
+            // 2. Super administrator bypass
+            if (email === 'ravi@pydahsoft.in' || user.role === 'super_admin') {
+              portals.add('examination-portal');
+              return;
+            }
+
+            // 3. For all employees / staff: strictly verify presence and assigned role in ems_users
+            const examUser = await findExaminationUser({
+              email,
+              employeeId: rollOrEmp || user.employeeId || user.emp_no,
+              username: identifier,
+              phone: user.phone || user.mobile
+            });
+
+            if (examUser && examUser.role) {
+              portals.add('examination-portal');
+              return;
+            }
+          } catch (e) {
+            console.warn('[discoverUserPortals] Examination check error:', e.message);
           }
         })()
       );
@@ -662,6 +704,18 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
           email: user.email || null,
           name: user.name || user.username || null,
           employeeId: user.employeeId || user.employee_id || null
+        };
+      }
+    }
+    if (databaseSource === 'examination_portal') {
+      const examUser = await findExaminationUserById(userId);
+      if (examUser) {
+        return {
+          email: examUser.email || null,
+          name: examUser.name || examUser.username || null,
+          employeeId: examUser.employee_id || null,
+          username: examUser.username || null,
+          role: examUser.role || null
         };
       }
     }

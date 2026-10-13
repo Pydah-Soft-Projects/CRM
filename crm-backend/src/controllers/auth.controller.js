@@ -15,6 +15,7 @@ import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/adm
 import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
+import { findExaminationUser } from '../models/examination.model.js';
 import { getFeeDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
 import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS } from '../config/constants.js';
@@ -659,7 +660,134 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
-    // 8. General fallback
+    // 8. For Examination Management System (EMS / examination-portal)
+    if (
+      decoded.portalId === PORTAL_IDS.EXAMINATION_PORTAL ||
+      decoded.portalId === 'ems' ||
+      decoded.portalId === 'examination'
+    ) {
+      // Prevent replay attacks (one-time token use)
+      const tokenKey = `${decoded.userId}_${decoded.iat}_${decoded.portalId}`;
+      if (isTokenUsed(tokenKey)) {
+        console.warn(`[VerifyToken] Examination Portal token already used: ${tokenKey}`);
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          valid: false,
+          message: 'Invalid or expired token'
+        });
+      }
+      markTokenUsed(tokenKey, decoded.exp * 1000);
+
+      // A. Check if Student
+      const isStudent =
+        decoded.role === 'student' ||
+        decoded.databaseSource === 'student_credentials' ||
+        (crmUser && (crmUser.admission_number || crmUser.rollNumber));
+
+      if (isStudent) {
+        let stuUser = null;
+        if (username) stuUser = await findStudentByUsername(username);
+        if (!stuUser && decoded.userId) stuUser = await findStudentById(decoded.userId);
+
+        const studentPin = stuUser?.pin_no || stuUser?.admission_number || stuUser?.username || username || String(decoded.userId);
+        const studentUserId = stuUser?.id ? String(stuUser.id) : String(decoded.userId);
+
+        console.log(`[VerifyToken] Examination Portal resolved Student: userId=${studentUserId}, pinNo=${studentPin}`);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(studentUserId),
+            portalId: 'examination-portal',
+            role: 'student',
+            pinNo: String(studentPin),
+            username: String(studentPin),
+            expiresAt
+          }
+        });
+      }
+
+      // B. Bootstrap Super Administrator
+      if (email === 'ravi@pydahsoft.in') {
+        console.log(`[VerifyToken] Examination Portal resolved Super Admin: ${email}`);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            portalId: 'examination-portal',
+            role: 'super_admin',
+            email: 'ravi@pydahsoft.in',
+            employeeId: crmUser?.employeeId || 'SUPER_ADMIN',
+            username: username || 'ravi@pydahsoft.in',
+            expiresAt
+          }
+        });
+      }
+
+      // C. Staff & Administrators: Check examination_portal database first
+      let examUser = null;
+      try {
+        examUser = await findExaminationUser({
+          email: email,
+          employeeId: crmUser?.employeeId || decoded.employeeId,
+          username: username,
+          phone: crmUser?.phone || decoded.phone
+        });
+      } catch (err) {
+        console.warn('[VerifyToken] Examination DB lookup error:', err.message);
+      }
+
+      if (examUser) {
+        const resolvedUserId = examUser.id || crmUser?.employeeId || String(decoded.userId);
+        const resolvedEmployeeId = examUser.employee_id || crmUser?.employeeId || username || String(decoded.userId);
+        const resolvedRole = examUser.role || decoded.role || 'staff';
+        const resolvedEmail = examUser.email || email || '';
+        const resolvedUsername = examUser.username || username || resolvedEmail;
+
+        console.log(`[VerifyToken] Examination Portal resolved from DB: userId=${resolvedUserId}, employeeId=${resolvedEmployeeId}, role=${resolvedRole}`);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(resolvedUserId),
+            portalId: 'examination-portal',
+            role: resolvedRole,
+            email: resolvedEmail,
+            employeeId: String(resolvedEmployeeId),
+            username: resolvedUsername,
+            expiresAt
+          }
+        });
+      }
+
+      // D. Fallback for HRMS / CRM staff
+      let hrmsUserId = decoded.userId;
+      let hrmsEmpId = crmUser?.employeeId || decoded.employeeId || null;
+      if (email) {
+        const hrmsIdentity = await findHRMSUserByEmail(email, hrmsEmpId);
+        if (hrmsIdentity?.userId) {
+          hrmsUserId = hrmsIdentity.userId;
+        }
+      }
+
+      console.log(`[VerifyToken] Examination Portal resolved Staff: userId=${hrmsUserId}, employeeId=${hrmsEmpId}`);
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: String(hrmsUserId),
+          portalId: 'examination-portal',
+          role: decoded.role || 'staff',
+          email: email || '',
+          employeeId: String(hrmsEmpId || hrmsUserId),
+          username: username || email || String(hrmsUserId),
+          expiresAt
+        }
+      });
+    }
+
+    // 9. General fallback
     console.log(`[VerifyToken] Token verification successful for portal: ${decoded.portalId}`);
     res.status(HTTP_STATUS.OK).json({
       success: true,
