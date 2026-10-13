@@ -3,18 +3,12 @@ import { motion } from 'framer-motion';
 const Hero = ({ onNavigate }) => {
     return (
         <section
-            className="min-h-screen flex items-start md:items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.png')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat"
-            style={{
-                paddingTop: 'clamp(70px, 9vw, 100px)',
-                paddingBottom: 'clamp(1rem, 4vw, 3rem)',
-            }}
+            className="min-h-screen flex flex-col justify-between md:flex-row md:items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.png')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat pt-[85px] md:pt-[100px] pb-0 md:pb-12"
         >
             <div
-                className="section-container grid grid-cols-1 md:grid-cols-[1fr_1.3fr] items-center w-full"
+                className="section-container flex-1 flex flex-col justify-between md:grid md:grid-cols-[1fr_1.3fr] items-center w-full pt-2 md:pt-8 pb-0 md:pb-8"
                 style={{
                     gap: 'clamp(1rem, 4vw, 8rem)',
-                    paddingTop: 'clamp(0.25rem, 1.5vw, 2.5rem)',
-                    paddingBottom: 'clamp(0.5rem, 1.5vw, 2.5rem)'
                 }}
             >
                 {/* Left Content */}
@@ -22,7 +16,7 @@ const Hero = ({ onNavigate }) => {
                     initial={{ opacity: 0, x: -50 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                    className="order-1"
+                    className="order-1 pt-2 sm:pt-3 md:pt-0"
                 >
                     <h1
                         className="text-[clamp(1.35rem,5.5vw,1.75rem)] md:text-[clamp(2rem,5vw,3.5rem)] leading-[1.15] md:leading-[1.1] font-extrabold tracking-tight text-center md:text-left"
@@ -100,12 +94,16 @@ const Hero = ({ onNavigate }) => {
                     </div>
                 </motion.div>
 
-                {/* Mobile Illustration - full width edge-to-edge, uses leftside space, hidden on desktop */}
-                <div className="block md:hidden order-2 w-screen relative left-1/2 -translate-x-1/2 mt-2 overflow-hidden">
+                {/* Mobile Illustration - full width edge-to-edge, anchored at bottom */}
+                <div className="block md:hidden order-2 mt-auto w-screen relative left-1/2 -translate-x-1/2 overflow-hidden">
                     <img
                         src="/hero-mobile-illustration.png"
                         alt="Pydah CRM Platform Preview"
-                        className="w-full h-auto block"
+                        className="w-full block"
+                        style={{
+                            height: 'clamp(255px, 29vh, 305px)',
+                            objectFit: 'fill',
+                        }}
                     />
                 </div>
             </div>
