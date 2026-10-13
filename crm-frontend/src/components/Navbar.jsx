@@ -84,13 +84,26 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
   return (
     <nav className="glass fixed top-0 w-full z-[1000] border-b" style={{ borderColor: 'var(--color-border-soft)', paddingTop: 'clamp(1rem, 2.5vw, 1.25rem)', paddingBottom: 'clamp(1rem, 2.5vw, 1.25rem)' }}>
       <div className="section-container flex justify-between items-center">
-        <div className="flex items-center">
+        <div
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer"
+          onClick={() => onNavigate('home')}
+        >
           <img
             src="/pydah-logo.png"
             alt="Pydah Logo"
-            className="h-[clamp(32px,4vw,40px)] w-auto cursor-pointer"
-            onClick={() => onNavigate('home')}
+            className="h-[clamp(30px,3.5vw,40px)] w-auto"
           />
+          <span
+            className="font-extrabold text-base sm:text-lg md:text-xl tracking-tight whitespace-nowrap bg-clip-text text-transparent"
+            style={{
+              backgroundImage: 'linear-gradient(110deg, #6366f1 0%, #0ea5e9 35%, #7dd3fc 50%, #0ea5e9 65%, #6366f1 100%)',
+              backgroundSize: '250% 100%',
+              display: 'inline-block',
+              animation: 'text-shine 3.5s linear infinite reverse',
+            }}
+          >
+            Pydah CRM
+          </span>
         </div>
 
         {/* Desktop Menu */}

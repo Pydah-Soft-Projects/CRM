@@ -1,6 +1,37 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const Hero = ({ onNavigate }) => {
+    // Typewriter animation texts
+    const fullLine1 = "The Official";
+    const fullHighlight = "CRM Platform";
+    const fullLine2 = "for Pydah Organization.";
+    const totalChars = fullLine1.length + fullHighlight.length + fullLine2.length;
+
+    const [charIndex, setCharIndex] = useState(0);
+
+    useEffect(() => {
+        let timeoutId;
+        if (charIndex < totalChars) {
+            timeoutId = setTimeout(() => {
+                setCharIndex(prev => prev + 1);
+            }, 45);
+        }
+        return () => clearTimeout(timeoutId);
+    }, [charIndex, totalChars]);
+
+    const displayedLine1 = fullLine1.slice(0, Math.min(charIndex, fullLine1.length));
+    const isHighlightPhase = charIndex > fullLine1.length && charIndex <= fullLine1.length + fullHighlight.length;
+    const isLine2Phase = charIndex > fullLine1.length + fullHighlight.length;
+
+    const displayedHighlight = charIndex > fullLine1.length
+        ? fullHighlight.slice(0, Math.min(charIndex - fullLine1.length, fullHighlight.length))
+        : '';
+
+    const displayedLine2 = charIndex > fullLine1.length + fullHighlight.length
+        ? fullLine2.slice(0, charIndex - fullLine1.length - fullHighlight.length)
+        : '';
+
     return (
         <section
             className="min-h-screen flex flex-col justify-between md:flex-row md:items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.png')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat pt-[98px] md:pt-[100px] pb-0 md:pb-12"
@@ -19,20 +50,44 @@ const Hero = ({ onNavigate }) => {
                     className="order-1 pt-3 sm:pt-4 md:pt-0"
                 >
                     <h1
-                        className="text-[clamp(1.35rem,5.5vw,1.75rem)] md:text-[clamp(2rem,5vw,3.5rem)] leading-[1.15] md:leading-[1.1] font-extrabold tracking-tight text-center md:text-left"
+                        className="text-[clamp(1.6rem,6.2vw,2.15rem)] md:text-[clamp(2.4rem,5.5vw,4.1rem)] leading-[1.15] md:leading-[1.1] font-extrabold tracking-tight text-center md:text-left min-h-[5.5rem] sm:min-h-[6rem] md:min-h-[8.5rem]"
                         style={{
                             color: 'var(--color-text-main)',
                             marginBottom: 'clamp(1rem, 2.5vw, 1.5rem)'
                         }}
                     >
-                        The Official <br className="hidden md:block" />
-                        <span
-                            className="bg-gradient-to-r bg-clip-text text-transparent animate-text-gradient"
-                            style={{ backgroundImage: 'linear-gradient(to right, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-primary) 100%)' }}
-                        >
-                            CRM Platform
-                        </span> <br />
-                        for Pydah Organization.
+                        <span>
+                            {displayedLine1}
+                            {!isHighlightPhase && !isLine2Phase && (
+                                <span className="inline-block w-[2px] md:w-[3px] h-[0.85em] bg-indigo-500 ml-1 align-middle animate-pulse" />
+                            )}
+                        </span>
+                        <br className="hidden md:block" />
+                        {displayedHighlight && (
+                            <>
+                                {' '}
+                                <span
+                                    className="bg-gradient-to-r bg-clip-text text-transparent animate-text-gradient inline-block"
+                                    style={{ backgroundImage: 'linear-gradient(to right, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-primary) 100%)' }}
+                                >
+                                    {displayedHighlight}
+                                </span>
+                                {isHighlightPhase && (
+                                    <span className="inline-block w-[2px] md:w-[3px] h-[0.85em] bg-indigo-500 ml-1 align-middle animate-pulse" />
+                                )}
+                            </>
+                        )}
+                        {(displayedLine2 || isLine2Phase) && (
+                            <>
+                                <br />
+                                <span>
+                                    {displayedLine2}
+                                    {isLine2Phase && (
+                                        <span className="inline-block w-[2px] md:w-[3px] h-[0.85em] bg-indigo-500 ml-1 align-middle animate-pulse" />
+                                    )}
+                                </span>
+                            </>
+                        )}
                     </h1>
                     <p
                         className="hidden md:block text-[clamp(1rem,1.8vw,1.05rem)] max-w-[500px] mx-auto md:mx-0 text-center md:text-left"
@@ -95,7 +150,7 @@ const Hero = ({ onNavigate }) => {
                 </motion.div>
 
                 {/* Mobile Illustration - full width edge-to-edge, anchored at bottom */}
-                <div className="block md:hidden order-2 mt-auto w-screen relative left-1/2 -translate-x-1/2 overflow-hidden -translate-y-14 sm:-translate-y-16">
+                <div className="block md:hidden order-2 mt-auto w-screen relative left-1/2 -translate-x-1/2 overflow-hidden -translate-y-20 sm:-translate-y-24">
                     <img
                         src="/Pastel Productivity Dashboard Hero Scene.png"
                         alt="Pydah CRM Platform Preview"
