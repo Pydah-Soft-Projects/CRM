@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User } from 'lucide-react';
+import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 const solutions = [
@@ -51,6 +51,14 @@ const solutions = [
     icon: CreditCard,
     color: '#5372ffff',
     portalId: 'hrms'
+  },
+  {
+    title: 'Academic Portal',
+    desc: 'Comprehensive curriculum, faculty scheduling, and grading.',
+    url: 'https://acad.pydah.edu.in',
+    icon: BookOpen,
+    color: '#8b5cf6',
+    portalId: 'academic-portal'
   }
 ];
 

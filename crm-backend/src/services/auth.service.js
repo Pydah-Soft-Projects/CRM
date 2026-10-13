@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
+import { findAcademicUser } from '../models/academic.model.js';
 import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail } from './hrms.service.js';
 import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify } from './hostel.service.js';
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
@@ -37,6 +38,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'student_credentials') portals.add('student-portal');
     // rbac_users table in student_database is strictly for the Student Portal only
     if (databaseSource === 'rbac_users') portals.add('student-portal');
+    if (databaseSource === 'academic_portal') portals.add('academic-portal');
 
     const username = (user.username || '').trim();
     const email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
@@ -172,6 +174,27 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             }
           } catch (e) {
             console.error('[discoverUserPortals] Student portal check error:', e.message);
+          }
+        })()
+      );
+    }
+
+    // Check Academic Portal (checks academic_portal database)
+    if (!portals.has('academic-portal')) {
+      checks.push(
+        (async () => {
+          try {
+            const academicUser = await findAcademicUser({
+              email,
+              employeeId: rollOrEmp || user.employeeId || user.emp_no,
+              username: identifier,
+              phone: user.phone || user.mobile
+            });
+            if (academicUser) {
+              portals.add('academic-portal');
+            }
+          } catch (e) {
+            console.warn('[discoverUserPortals] Academic check error:', e.message);
           }
         })()
       );

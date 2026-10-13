@@ -150,7 +150,11 @@ export const PORTAL_IDS = {
   'https://pydah-fee-management.vercel.app': 'fee-management',
   'https://fees.pydah.edu.in': 'fee-management',
   'https://pydah-transport.vercel.app': 'transport-management',
-  'https://transport.pydah.edu.in': 'transport-management'
+  'https://transport.pydah.edu.in': 'transport-management',
+  'https://academic.pydah.edu.in': 'academic-portal',
+  'https://academic.pydah.edu.in/login': 'academic-portal',
+  'https://acad.pydah.edu.in': 'academic-portal',
+  'https://acad.pydah.edu.in/login': 'academic-portal'
 };
 
 /**
