@@ -152,6 +152,51 @@ const Hero = ({ onNavigate }) => {
                             Explore Portals
                         </motion.button>
                     </div>
+
+                    {/* Smarter Management Feature Card */}
+                    <div className="relative mx-auto md:mx-0 max-w-[560px] mt-3 mb-2 sm:mt-4 sm:mb-3">
+                        {/* Top-Left Spark Accents */}
+                        <svg
+                            className="absolute -top-2.5 -left-2 w-5 h-5 text-blue-500 pointer-events-none"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <line x1="14" y1="14" x2="14" y2="4" />
+                            <line x1="12" y1="14" x2="5" y2="7" />
+                            <line x1="12" y1="16" x2="2" y2="14" />
+                        </svg>
+
+                        {/* Top-Right Spark Accents */}
+                        <svg
+                            className="absolute -top-2.5 -right-2 w-5 h-5 text-blue-500 pointer-events-none"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <line x1="10" y1="14" x2="10" y2="4" />
+                            <line x1="12" y1="14" x2="19" y2="7" />
+                            <line x1="12" y1="16" x2="22" y2="14" />
+                        </svg>
+
+                        <div className="bg-[#F0F6FE]/90 backdrop-blur-sm border border-[#DCE8F8] rounded-2xl p-3 sm:p-4 md:p-4.5 shadow-[0_4px_16px_-4px_rgba(59,130,246,0.06)] text-left">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <span className="font-extrabold text-slate-900 text-sm sm:text-base md:text-lg leading-tight tracking-tight">
+                                    Smarter Management.
+                                </span>
+                                <span className="font-extrabold text-blue-600 text-sm sm:text-base md:text-lg leading-tight tracking-tight">
+                                    Better Tomorrow.
+                                </span>
+                            </div>
+                            <p className="text-slate-500 text-xs sm:text-sm leading-relaxed mt-1 sm:mt-1.5">
+                                Pydah CRM helps you connect, organize and grow — all in one place.
+                            </p>
+                        </div>
+                    </div>
                 </motion.div>
 
                 {/* Mobile Illustration - full width edge-to-edge, anchored at bottom */}
