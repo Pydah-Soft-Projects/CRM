@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText } from 'lucide-react';
+import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 const solutions = [
@@ -23,7 +23,7 @@ const solutions = [
   {
     title: 'Fee Management',
     desc: 'Streamline institutional finance and fee collection.',
-    url: 'https://pydah-fee-management.vercel.app/login',
+    url: 'https://fees.pydah.edu.in/login',
     icon: ReceiptText,
     color: '#00a6ffff',
     portalId: 'fee-management'
@@ -62,7 +62,7 @@ const solutions = [
   }
 ];
 
-const Navbar = ({ onNavigate, onPortalClick }) => {
+const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const closeTimeoutRef = useRef(null);
@@ -226,21 +226,62 @@ const Navbar = ({ onNavigate, onPortalClick }) => {
           >
             About Us
           </a>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="text-white rounded-md font-semibold"
-            style={{
-              backgroundColor: 'var(--color-primary)',
-              boxShadow: 'var(--shadow-soft)',
-              paddingLeft: 'clamp(1.5rem, 3.5vw, 1.75rem)',
-              paddingRight: 'clamp(1.5rem, 3.5vw, 1.75rem)',
-              paddingTop: 'clamp(0.75rem, 1.8vw, 0.875rem)',
-              paddingBottom: 'clamp(0.75rem, 1.8vw, 0.875rem)'
-            }}
-          >
-            Get Help
-          </motion.button>
+
+          {user ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => onNavigate('portals')}
+                className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs sm:text-sm hover:bg-indigo-100 transition-colors cursor-pointer"
+              >
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0">
+                  {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                </div>
+                <span className="max-w-[150px] truncate">{user.name || user.username}</span>
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onNavigate('portals')}
+                className="text-white rounded-md font-semibold text-xs sm:text-sm cursor-pointer"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  boxShadow: 'var(--shadow-soft)',
+                  paddingLeft: '1.25rem',
+                  paddingRight: '1.25rem',
+                  paddingTop: '0.625rem',
+                  paddingBottom: '0.625rem'
+                }}
+              >
+                My Portals
+              </motion.button>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  title="Sign Out"
+                  className="p-2 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <LogOut size={18} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onNavigate('login')}
+              className="text-white rounded-md font-bold text-xs sm:text-sm cursor-pointer"
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                boxShadow: 'var(--shadow-soft)',
+                paddingLeft: '1.5rem',
+                paddingRight: '1.5rem',
+                paddingTop: '0.625rem',
+                paddingBottom: '0.625rem'
+              }}
+            >
+              Sign In
+            </motion.button>
+          )}
         </div>
 
         {/* Mobile Toggle Button */}
@@ -398,22 +439,59 @@ const Navbar = ({ onNavigate, onPortalClick }) => {
                 About Us
               </a>
 
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                className="text-white rounded-md font-semibold"
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  boxShadow: 'var(--shadow-soft)',
-                  marginTop: 'clamp(0.5rem, 1.2vw, 0.75rem)',
-                  paddingLeft: 'clamp(1.25rem, 3vw, 1.5rem)',
-                  paddingRight: 'clamp(1.25rem, 3vw, 1.5rem)',
-                  paddingTop: 'clamp(0.75rem, 1.8vw, 0.875rem)',
-                  paddingBottom: 'clamp(0.75rem, 1.8vw, 0.875rem)'
-                }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Get Help
-              </motion.button>
+              {user ? (
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                      {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-800">{user.name || user.username}</span>
+                    </div>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className="text-white rounded-xl font-bold py-3 text-center"
+                    style={{
+                      backgroundColor: 'var(--color-primary)',
+                      boxShadow: 'var(--shadow-soft)',
+                    }}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onNavigate('portals');
+                    }}
+                  >
+                    Go to My Portals
+                  </motion.button>
+                  {onLogout && (
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onLogout();
+                      }}
+                      className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-50"
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  className="text-white rounded-xl font-bold py-3 text-center"
+                  style={{
+                    backgroundColor: 'var(--color-primary)',
+                    boxShadow: 'var(--shadow-soft)',
+                  }}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onNavigate('login');
+                  }}
+                >
+                  Sign In with SSO
+                </motion.button>
+              )}
             </div>
           </motion.div>
         )

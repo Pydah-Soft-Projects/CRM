@@ -126,6 +126,13 @@ export const authAPI = {
       body: JSON.stringify({ encryptedToken }),
     });
   },
+
+  /**
+   * Clear all cached portal tokens
+   */
+  clearAllPortalTokens: () => {
+    clearAllPortalTokens();
+  },
 };
 
 /**
@@ -140,7 +147,9 @@ export const PORTAL_IDS = {
   'https://hrms.pydah.edu.in': 'hrms', // HRMS portal
   'http://localhost:3000': 'hostel-automation', // Hostel software (local dev; HRMS local may use another port)
   'https://pydah-fee-management.vercel.app': 'fee-management',
+  'https://fees.pydah.edu.in': 'fee-management',
   'https://pydah-transport.vercel.app': 'transport-management',
+  'https://transport.pydah.edu.in': 'transport-management',
   'https://pydah-pharmacy-labs.vercel.app': 'pharmacy',
 };
 

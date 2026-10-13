@@ -29,27 +29,26 @@ export const validateCredentials = async (username, password, role = null) => {
     let user = null;
     let databaseSource = null;
 
-    // Unified login: Check in order (rbac_users first, then student_credentials)
-    // This allows both staff and students to login without role selection
-    // 1. rbac_users table (for staff/admin/RBAC) - checked first
+    // Unified login: Check in order across all databases
+    // 1. rbac_users table (for staff/admin/RBAC)
     // 2. admissions_db users table
     // 3. student_credentials table (for students)
     
-    console.log(`[Auth] Unified login - Checking rbac_users table first for username: ${username}`);
+    console.log(`[Auth] Centralized login - Checking rbac_users table for: ${username}`);
     user = await findRBACUserByIdentifier(username);
     if (user) {
       databaseSource = 'rbac_users';
       console.log(`[Auth] RBAC user found: ${user.id}, role: ${user.role}`);
     } else {
       // Try admissions_db
-      console.log(`[Auth] Checking admissions_db for username: ${username}`);
+      console.log(`[Auth] Checking admissions_db for: ${username}`);
       user = await findAdmissionsUserByEmail(username);
       if (user) {
         databaseSource = 'admissions_db';
         console.log(`[Auth] Admissions user found: ${user.id}`);
       } else {
         // Check student_credentials table (for students)
-        console.log(`[Auth] Checking student_credentials table for username: ${username}`);
+        console.log(`[Auth] Checking student_credentials table for: ${username}`);
         user = await findStudentByUsername(username);
         if (user) {
           databaseSource = 'student_credentials';
@@ -58,52 +57,86 @@ export const validateCredentials = async (username, password, role = null) => {
       }
     }
 
-    if (!user) {
-      console.log(`[Auth] User not found in any database for username: ${username}, role: ${role || 'not specified'}`);
-      return null;
+    // If user matched in MySQL, verify password
+    if (user) {
+      console.log(`[Auth] User found: ${user.username || user.admission_number}, database: ${databaseSource}, role: ${user.role}`);
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      
+      if (!isValidPassword) {
+        console.log(`[Auth] Password validation failed for MySQL user: ${user.username || user.admission_number}`);
+        return null;
+      }
+
+      console.log(`[Auth] Password validated successfully for user: ${user.username || user.admission_number}`);
+
+      let portals = [];
+      if (databaseSource === 'rbac_users') {
+        portals = ['admissions-crm', 'hostel-automation', 'hrms', 'student-portal', 'transport-management', 'fee-management', 'pharmacy'];
+      } else if (databaseSource === 'admissions_db') {
+        portals = ['admissions-crm'];
+      } else if (databaseSource === 'student_credentials') {
+        portals = ['student-portal'];
+      }
+
+      const { password: _, ...userWithoutPassword } = user;
+      
+      return {
+        ...userWithoutPassword,
+        role: user.role_name || user.role || 'user',
+        username: user.username || user.email || user.name || user.admission_number,
+        portals: portals,
+        databaseSource: databaseSource
+      };
     }
-    
-    console.log(`[Auth] User found: ${user.username || user.admission_number}, database: ${databaseSource}, role: ${user.role}`);
 
-    // Verify password using bcrypt
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    
-    if (!isValidPassword) {
-      console.log(`[Auth] Password validation failed for user: ${user.username || user.admission_number}`);
-      return null;
+    // User not found in MySQL - check MongoDB databases (HRMS, Hostel, Transport, Fee)
+    console.log(`[Auth] Checking HRMS MongoDB for: ${username}`);
+    const hrmsUser = await validateHRMSCredentials(username, password);
+    if (hrmsUser) {
+      console.log(`[Auth] User authenticated via HRMS MongoDB: ${hrmsUser.id}`);
+      return {
+        ...hrmsUser,
+        username: hrmsUser.email || hrmsUser.name,
+        portals: ['hrms', 'transport-management'],
+        databaseSource: 'hrms'
+      };
     }
 
-    console.log(`[Auth] Password validated successfully for user: ${user.username || user.admission_number}`);
-
-    // Get user's accessible portals
-    let portals = [];
-    if (databaseSource === 'rbac_users') {
-      // RBAC users have access to multiple portals based on their role
-      // For now, grant access to all staff portals
-      portals = ['admissions-crm', 'hostel-automation', 'hrms', 'student-portal'];
-    } else if (databaseSource === 'admissions_db') {
-      // For admissions_db users, grant access to admissions-crm portal by default
-      portals = ['admissions-crm'];
-    } else if (databaseSource === 'student_credentials') {
-      // Students have access to student-portal
-      portals = ['student-portal'];
+    console.log(`[Auth] Checking Hostel MongoDB for: ${username}`);
+    const hostelUser = await validateHostelCredentials(username, password);
+    if (hostelUser) {
+      console.log(`[Auth] User authenticated via Hostel MongoDB: ${hostelUser.id}`);
+      return {
+        ...hostelUser,
+        portals: ['hostel-automation'],
+        databaseSource: 'hostel'
+      };
     }
 
-    // Remove password from returned user object
-    const { password: _, ...userWithoutPassword } = user;
-    
-    // Normalize user object structure
-    const normalizedUser = {
-      ...userWithoutPassword,
-      // Map role_name to role for consistency (for admissions_db)
-      role: user.role_name || user.role || 'user',
-      // Map name to username if needed
-      username: user.username || user.email || user.name || user.admission_number,
-      portals: portals,
-      databaseSource: databaseSource
-    };
+    console.log(`[Auth] Checking Transport MongoDB for: ${username}`);
+    const transportUser = await validateTransportCredentials(username, password);
+    if (transportUser) {
+      console.log(`[Auth] User authenticated via Transport MongoDB: ${transportUser.id}`);
+      return {
+        ...transportUser,
+        portals: transportUser.portals || ['transport-management'],
+        databaseSource: transportUser.databaseSource || 'transport'
+      };
+    }
 
-    return normalizedUser;
+    console.log(`[Auth] Checking Fee MongoDB for: ${username}`);
+    const feeUser = await validateFeeCredentials(username, password);
+    if (feeUser) {
+      console.log(`[Auth] User authenticated via Fee MongoDB: ${feeUser.id}`);
+      return {
+        ...feeUser,
+        portals: feeUser.portals || ['fee-management'],
+        databaseSource: feeUser.databaseSource || 'fee'
+      };
+    }
+
+    console.log(`[Auth] User not found or invalid credentials across all databases for username: ${username}`);
+    return null;
   } catch (error) {
     console.error('Credential validation error:', error);
     throw new Error(ERROR_MESSAGES.INTERNAL_ERROR);
@@ -233,7 +266,7 @@ export const generatePortalToken = async (userId, portalId, role, databaseSource
     // Get portals based on database source
     if (databaseSource === 'rbac_users') {
       // RBAC users have access to multiple portals
-      userPortals = ['admissions-crm', 'hostel-automation', 'hrms', 'student-portal', 'transport-management', 'fee-management'];
+      userPortals = ['admissions-crm', 'hostel-automation', 'hrms', 'student-portal', 'transport-management', 'fee-management', 'pharmacy'];
     } else if (databaseSource === 'admissions_db') {
       // Admissions users have access to admissions-crm portal
       userPortals = ['admissions-crm'];

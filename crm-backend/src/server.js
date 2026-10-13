@@ -40,7 +40,9 @@ const productionOrigins = [
   'http://localhost:5175',               // Local Transport frontend
   'http://localhost:5174',               // Local Fee Management frontend               // Local Fee Management backend
   'https://pydah-fee-management.vercel.app', // Production Fee Management
-  'https://pydah-transport.vercel.app'       // Production Transport
+  'https://fees.pydah.edu.in',               // Production Fee Management Custom Domain
+  'https://pydah-transport.vercel.app',      // Production Transport
+  'https://transport.pydah.edu.in'           // Production Transport Custom Domain
 ];
 
 // Combine and remove duplicates

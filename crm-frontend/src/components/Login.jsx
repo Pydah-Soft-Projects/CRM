@@ -44,8 +44,6 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
     }
 
     setErrors(newErrors);
@@ -63,62 +61,18 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
     setLoginError('');
 
     try {
-      // When HRMS portal: backend validates against HRMS MongoDB only.
-      // When Hostel portal: backend validates against Hostel MongoDB (admins + users) only.
-      const portalId = (portalInfo?.portalId === 'hrms' ||
-        portalInfo?.portalId === 'hostel-automation' ||
-        portalInfo?.portalId === 'transport-management' ||
-        portalInfo?.portalId === 'fee-management')
-        ? portalInfo.portalId
-        : null;
-      const response = await authAPI.login(formData.username, formData.password, null, portalId);
+      // Centralized Login: Unified authentication across all databases
+      const response = await authAPI.login(formData.username, formData.password);
 
       if (response.success) {
-        // Store tokens
+        // Store session tokens & user profile
         localStorage.setItem('accessToken', response.data.tokens.accessToken);
         localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
-        // Generate SSO token for the portal (will cache automatically)
-        if (portalInfo?.portalId) {
-          try {
-            // Force new token generation after login (don't use cache)
-            const tokenResponse = await authAPI.generatePortalToken(portalInfo.portalId, true);
-
-            if (tokenResponse.success) {
-              // For Student Portal, determine redirect URL based on user's databaseSource
-              let redirectUrl = portalInfo.url;
-
-              if (isStudentPortal) {
-                const userDatabaseSource = response.data.user.databaseSource;
-                const baseUrl = new URL(portalInfo.url).origin;
-
-                // If user is from rbac_users, redirect to /login (staff/admin)
-                // If user is from student_credentials, redirect to /student/login (student)
-                if (userDatabaseSource === 'rbac_users') {
-                  redirectUrl = `${baseUrl}/login`;
-                } else {
-                  // student_credentials or other - use /student/login
-                  redirectUrl = `${baseUrl}/student/login`;
-                }
-              }
-
-              // Redirect to portal with encrypted token
-              const portalUrl = new URL(redirectUrl);
-              portalUrl.searchParams.set('token', tokenResponse.data.encryptedToken);
-
-              // Redirect to portal
-              window.location.href = portalUrl.toString();
-            } else {
-              setLoginError('Failed to generate portal access token');
-            }
-          } catch (tokenError) {
-            console.error('Token generation error:', tokenError);
-            setLoginError('Failed to generate portal access token. Please try again.');
-          }
-        } else {
-          // If no portal info, just call success callback
-          onLoginSuccess?.(response.data);
+        // Direct user straight to their authorized portals launchpad
+        if (onLoginSuccess) {
+          onLoginSuccess(response.data.user);
         }
       }
     } catch (error) {
@@ -147,28 +101,31 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
           className="w-full max-w-2xl shrink-0 mb-8 lg:mb-12 text-center"
           style={{ paddingTop: 'clamp(1rem, 2vw, 2rem)', paddingBottom: 'clamp(0.5rem, 1vw, 1rem)' }}
         >
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs sm:text-sm font-semibold mb-4"
+          >
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            Pydah Unified Identity Gateway
+          </motion.div>
           <motion.h1
             initial={{ opacity: 0, scale: 0.9, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             className="text-4xl sm:text-5xl lg:text-[clamp(2.5rem,7vw,4.5rem)] font-extrabold text-slate-900 tracking-tighter leading-[1.1] lg:leading-[0.9] [text-shadow:0_10px_30px_rgba(0,0,0,0.05)]"
           >
-            Portal <span className="text-indigo-600">Access.</span>
+            Central <span className="text-indigo-600">Sign-In.</span>
           </motion.h1>
-          {portalInfo && (
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-              className="mt-4 text-base sm:text-lg lg:text-xl font-medium"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              Sign in to access{' '}
-              <span className="font-bold px-2 py-0.5 rounded-lg bg-slate-100" style={{ color: portalInfo.color }}>
-                {portalInfo.title}
-              </span>
-            </motion.p>
-          )}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="mt-4 text-base sm:text-lg lg:text-xl font-medium"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Sign in once to access all your authorized campus portals and administrative tools.
+          </motion.p>
         </div>
 
         {/* Form section */}
@@ -201,7 +158,7 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   onMouseLeave={(e) => e.target.style.color = 'var(--color-text-muted)'}
                 >
                   <ArrowRight className="rotate-180 group-hover:-translate-x-1 transition-transform duration-200" size={18} />
-                  <span>Back to Portals</span>
+                  <span>Back to Home</span>
                 </motion.button>
               )}
 
