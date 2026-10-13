@@ -16,6 +16,11 @@ const Hero = ({ onNavigate }) => {
             timeoutId = setTimeout(() => {
                 setCharIndex(prev => prev + 1);
             }, 45);
+        } else {
+            // Once all letters are typed, pause for some seconds, then restart typing
+            timeoutId = setTimeout(() => {
+                setCharIndex(0);
+            }, 3500);
         }
         return () => clearTimeout(timeoutId);
     }, [charIndex, totalChars]);
