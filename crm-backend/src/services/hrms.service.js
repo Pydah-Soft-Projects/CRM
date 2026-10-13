@@ -92,6 +92,8 @@ export const validateHRMSCredentials = async (username, password) => {
             email: doc.email || null,
             name: doc.name || doc.username || null,
             role: doc.role || 'user',
+            phone: doc.phone || doc.mobile || doc.contact || doc.phone_number || null,
+            employeeId: doc.employeeId || (doc._id ? doc._id.toString() : null),
             databaseSource: 'hrms'
           };
         } else {
@@ -134,6 +136,8 @@ export const validateHRMSCredentials = async (username, password) => {
             email: doc.email || null,
             name: doc.employee_name || doc.name || null,
             role: doc.role || 'user',
+            phone: doc.phone || doc.mobile || doc.contact || doc.phone_number || null,
+            employeeId: doc.employeeId || doc.emp_no || (doc._id ? doc._id.toString() : null),
             databaseSource: 'hrms'
           };
         } else {

@@ -1,11 +1,116 @@
+import { ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getTransportDb } from '../config/database.js';
 
 /**
  * Transport Service
- * Handles authentication for the Transport Management portal.
- * Use the 'Admin' model/collection as the primary source of truth.
+ * Handles authentication and authorization for the Transport Management portal.
+ * Checks 'userroles' collection (linked by employeeId ObjectId, phone, email)
+ * and 'admins' collection for direct transport administrators.
  */
+
+/**
+ * Find Transport User Role in 'userroles' collection or 'admins' collection.
+ * Transport assigns user permissions via 'userroles' schema:
+ * {
+ *   _id: ObjectId(...),
+ *   employeeId: ObjectId(...), // references HRMS employee
+ *   phone: "9490484418",
+ *   email: "",
+ *   roles: [...],
+ *   permissions: [...],
+ *   campuses: [...],
+ *   colleges: [...],
+ *   courses: [...]
+ * }
+ * @param {Object} user - User query parameters { id, employeeId, email, phone, username, databaseSource }
+ * @returns {Promise<Object|null>} Matching document or null
+ */
+export const findTransportUserRole = async (user) => {
+  if (!user) return null;
+  const db = await getTransportDb();
+  if (!db) {
+    console.log('[Transport] Database not configured');
+    return null;
+  }
+
+  try {
+    const userRolesCol = db.collection('userroles');
+    const adminCol = db.collection('admins');
+
+    const orConditions = [];
+
+    // 1. Match by employeeId ObjectId (from HRMS user.id or employeeId)
+    const empIdCandidates = [user.employeeId, user.empId, user.emp_no];
+    if (user.databaseSource === 'hrms' || !user.databaseSource) {
+      empIdCandidates.push(user.id);
+    }
+
+    for (const candidate of empIdCandidates) {
+      if (candidate) {
+        if (typeof candidate === 'string' && /^[0-9a-fA-F]{24}$/.test(candidate)) {
+          const oid = new ObjectId(candidate);
+          if (!orConditions.some(c => c.employeeId && c.employeeId.equals(oid))) {
+            orConditions.push({ employeeId: oid });
+          }
+        } else if (candidate instanceof ObjectId) {
+          if (!orConditions.some(c => c.employeeId && c.employeeId.equals(candidate))) {
+            orConditions.push({ employeeId: candidate });
+          }
+        }
+      }
+    }
+
+    // 2. Match by phone number
+    const phone = user.phone || user.mobile || user.contact || (/^\d{10}$/.test(user.username) ? user.username : null);
+    if (phone && typeof phone === 'string' && phone.trim()) {
+      orConditions.push({ phone: phone.trim() });
+    }
+
+    // 3. Match by email (only if non-empty string)
+    const email = user.email || (user.username && user.username.includes('@') ? user.username : null);
+    if (email && typeof email === 'string' && email.trim()) {
+      orConditions.push({ email: email.trim().toLowerCase() });
+      orConditions.push({ email: email.trim() });
+    }
+
+    // Query userroles collection
+    if (orConditions.length > 0) {
+      console.log(`[Transport] Checking 'userroles' collection with ${orConditions.length} conditions`);
+      const roleDoc = await userRolesCol.findOne({ $or: orConditions });
+      if (roleDoc) {
+        console.log(`[Transport] Match found in 'userroles': id=${roleDoc._id}, phone=${roleDoc.phone}`);
+        return {
+          ...roleDoc,
+          sourceCollection: 'userroles'
+        };
+      }
+    }
+
+    // 4. Fallback: Check admins collection by username/email
+    const identifier = (user.username || email || '').trim();
+    if (identifier) {
+      const adminDoc = await adminCol.findOne({
+        $or: [
+          { username: identifier },
+          { email: identifier }
+        ]
+      });
+      if (adminDoc) {
+        console.log(`[Transport] Match found in 'admins': id=${adminDoc._id}, username=${adminDoc.username}`);
+        return {
+          ...adminDoc,
+          sourceCollection: 'admins'
+        };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[Transport] findTransportUserRole error:', error.message);
+    return null;
+  }
+};
 
 /**
  * Validate Transport credentials (for login when portalId is transport-management).
@@ -28,28 +133,32 @@ export const validateTransportCredentials = async (username, password) => {
 
   try {
     console.log(`[Auth-Transport] Checking admins collection for username: ${identifier}`);
-    const admin = await adminCol.findOne({ username: identifier });
+    const admin = await adminCol.findOne({
+      $or: [{ username: identifier }, { email: identifier }]
+    });
 
     if (admin) {
       console.log(`[Auth-Transport] Found admin user: ${admin.username}`);
       
-      // The user provided a sample where password matching is done via bcrypt
-      const isMatch = await bcrypt.compare(password, admin.password);
-      
-      if (isMatch) {
-        console.log(`[Auth-Transport] Transport admin validated successfully: ${admin._id}`);
-        return {
-          id: admin._id.toString(),
-          username: admin.username,
-          name: admin.name || admin.username,
-          role: 'admin',
-          databaseSource: 'transport'
-        };
+      if (admin.password) {
+        const isMatch = await bcrypt.compare(password, admin.password);
+        if (isMatch) {
+          console.log(`[Auth-Transport] Transport admin validated successfully: ${admin._id}`);
+          return {
+            id: admin._id.toString(),
+            username: admin.username,
+            name: admin.name || admin.username,
+            role: admin.role || 'admin',
+            databaseSource: 'transport'
+          };
+        } else {
+          console.log(`[Auth-Transport] Password mismatch for admin: ${admin.username}`);
+        }
       } else {
-        console.log(`[Auth-Transport] Password mismatch for admin: ${admin.username}`);
+        console.log(`[Auth-Transport] Admin ${admin.username} has no password set`);
       }
     } else {
-      console.log(`[Auth-Transport] No admin found with username: ${identifier}`);
+      console.log(`[Auth-Transport] No admin found with identifier: ${identifier}`);
     }
 
     return null;
@@ -60,8 +169,8 @@ export const validateTransportCredentials = async (username, password) => {
 };
 
 /**
- * Find Transport Admin by _id (for verify-token lookup).
- * @param {string} userId - Admin _id as string
+ * Find Transport Admin or UserRole by _id (for verify-token lookup).
+ * @param {string} userId - User _id as string
  * @returns {Promise<Object|null>}
  */
 export const getTransportUserById = async (userId) => {
@@ -70,15 +179,35 @@ export const getTransportUserById = async (userId) => {
   if (!db) return null;
 
   try {
-    const { ObjectId } = await import('mongodb');
-    const admin = await db.collection('admins').findOne({ _id: new ObjectId(userId) });
-    if (!admin) return null;
+    if (!/^[0-9a-fA-F]{24}$/.test(userId)) return null;
+    const objId = new ObjectId(userId);
     
-    return {
-      username: admin.username,
-      name: admin.name || admin.username,
-      email: admin.email || null
-    };
+    // Check admins first
+    const admin = await db.collection('admins').findOne({ _id: objId });
+    if (admin) {
+      return {
+        username: admin.username,
+        name: admin.name || admin.username,
+        email: admin.email || null,
+        role: admin.role || 'admin'
+      };
+    }
+    
+    // Check userroles by _id or employeeId
+    const roleDoc = await db.collection('userroles').findOne({
+      $or: [{ _id: objId }, { employeeId: objId }]
+    });
+    if (roleDoc) {
+      return {
+        username: roleDoc.phone || null,
+        name: null,
+        email: roleDoc.email || null,
+        roles: roleDoc.roles || [],
+        permissions: roleDoc.permissions || []
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.error('[Transport] getTransportUserById error:', error.message);
     return null;
@@ -86,6 +215,7 @@ export const getTransportUserById = async (userId) => {
 };
 
 export default {
+  findTransportUserRole,
   validateTransportCredentials,
   getTransportUserById
 };

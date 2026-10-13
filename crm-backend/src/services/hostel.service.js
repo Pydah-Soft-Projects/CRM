@@ -146,7 +146,7 @@ export const findHostelUserForVerify = async (email = null, username = null, rol
       if (or.length) {
         const doc = await adminsCol.findOne({
           $and: [
-            { $or },
+            { $or: or },
             { $or: [{ isActive: true }, { isActive: { $exists: false } }] }
           ]
         });

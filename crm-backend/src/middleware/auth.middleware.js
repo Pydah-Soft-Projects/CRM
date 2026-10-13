@@ -37,7 +37,12 @@ export const authenticateToken = (req, res, next) => {
     req.user = {
       userId: decoded.userId,
       username: decoded.username,
+      email: decoded.email,
+      name: decoded.name,
+      phone: decoded.phone,
+      employeeId: decoded.employeeId,
       role: decoded.role,
+      portals: decoded.portals,
       tokenType: decoded.type,
       databaseSource: decoded.databaseSource || 'student_database' // Track which database user came from
     };

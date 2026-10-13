@@ -61,7 +61,12 @@ export const login = async (req, res, next) => {
       {
         userId: user.id,
         username: user.username || user.email || user.name,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        employeeId: user.employeeId,
         role: user.role,
+        portals: user.portals,
         databaseSource: user.databaseSource // Track which database the user came from
       },
       TOKEN_TYPES.ACCESS
@@ -129,9 +134,20 @@ export const generateTokenForPortal = async (req, res, next) => {
     const userRole = req.user?.role || 'user';
     const databaseSource = req.user?.databaseSource || 'rbac_users';
     const username = req.user?.username;
+    const email = req.user?.email;
+    const portals = req.user?.portals;
+    const phone = req.user?.phone;
+    const employeeId = req.user?.employeeId;
 
     // Generate encrypted SSO token
-    const encryptedToken = await generatePortalToken(userId, portalId, userRole, databaseSource, username);
+    const encryptedToken = await generatePortalToken(
+      userId,
+      portalId,
+      userRole,
+      databaseSource,
+      username,
+      { email, portals, phone, employeeId }
+    );
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
