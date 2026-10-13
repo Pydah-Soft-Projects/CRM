@@ -6,8 +6,8 @@ const tabs = [
     {
         id: 'student',
         name: 'Student Portal',
-        displayUrl: 'https://pydahsdms.vercel.app/',
-        redirectUrl: 'https://pydahsdms.vercel.app/',
+        displayUrl: 'https://sdms.pydah.edu.in/',
+        redirectUrl: 'https://sdms.pydah.edu.in/',
         icon: LayoutDashboard,
         color: '#8B4513',
         bgColor: '#FAF3E0'

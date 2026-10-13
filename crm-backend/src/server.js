@@ -30,6 +30,7 @@ if (process.env.CORS_ORIGIN) {
 // Add production URLs
 const productionOrigins = [
   'https://crm.pydah.edu.in',           // Production CRM frontend
+  'https://sdms.pydah.edu.in',          // Production student portal Custom Domain
   'https://pydahsdms.vercel.app',        // Production student portal
   'https://admissions.pydah.edu.in', // Development portal application
   'https://hrms.pydah.edu.in',          // HRMS portal (SSO redirect target; may call CRM backend from browser)

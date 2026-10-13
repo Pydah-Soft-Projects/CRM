@@ -10,6 +10,11 @@ import {
 import { generateToken, verifyToken as verifyJWTToken } from '../services/token.service.js';
 import { findHRMSUserByEmail } from '../services/hrms.service.js';
 import { findHostelUserForVerify } from '../services/hostel.service.js';
+import { findTransportUserRole } from '../services/transport.service.js';
+import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
+import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
+import { findStudentByUsername, findStudentById } from '../models/student.model.js';
+import { getFeeDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
 import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS } from '../config/constants.js';
 
@@ -256,10 +261,24 @@ export const verifyToken = async (req, res, next) => {
       expiresAt
     };
 
-    // For HRMS portal: return userId (and email) that HRMS can use to find User/Employee in its DB
+    const crmUser = await getCRMUserForVerify(decoded.userId, decoded.databaseSource);
+    const email = crmUser?.email || (decoded.username && decoded.username.includes('@') ? decoded.username : null);
+    const username = crmUser?.username || decoded.username;
+    const identifier = (email || username || '').trim();
+
+    // 1. For HRMS portal: return userId (and email) that HRMS can use to find User/Employee in its DB
     if (decoded.portalId === PORTAL_IDS.HRMS) {
-      const crmUser = await getCRMUserForVerify(decoded.userId, decoded.databaseSource);
-      const email = crmUser?.email || null;
+      if (decoded.databaseSource === 'hrms') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            email: email,
+            ...baseData
+          }
+        });
+      }
 
       if (email) {
         const hrmsIdentity = await findHRMSUserByEmail(email, crmUser?.employeeId);
@@ -275,7 +294,6 @@ export const verifyToken = async (req, res, next) => {
             }
           });
         }
-        // No match in HRMS Mongo: send email as userId so HRMS can resolve by email
         return res.status(HTTP_STATUS.OK).json({
           success: true,
           valid: true,
@@ -286,25 +304,19 @@ export const verifyToken = async (req, res, next) => {
           }
         });
       }
-      // No email in CRM user: return CRM userId (HRMS may resolve by employee number or name)
       return res.status(HTTP_STATUS.OK).json({
         success: true,
         valid: true,
         data: {
           userId: String(decoded.userId),
-          ...(crmUser?.email && { email: crmUser.email }),
+          ...(email && { email }),
           ...baseData
         }
       });
     }
 
-    // For Hostel portal: return userId (and role/email/username) that HMS can use to find User/Admin in its DB
+    // 2. For Hostel portal: return userId (and role/email/username) that HMS can use to find User/Admin in its DB
     if (decoded.portalId === PORTAL_IDS.HOSTEL_AUTOMATION) {
-      const crmUser = await getCRMUserForVerify(decoded.userId, decoded.databaseSource);
-      const email = crmUser?.email || null;
-      const username = crmUser?.username || crmUser?.name || null;
-
-      // If user logged in via hostel, decoded.userId is already hostel _id
       if (decoded.databaseSource === 'hostel') {
         const hostelUser = await getCRMUserForVerify(decoded.userId, 'hostel');
         return res.status(HTTP_STATUS.OK).json({
@@ -320,7 +332,7 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
-      // CRM user (rbac/admissions/student): resolve to hostel identity for HMS
+      // CRM/HRMS user: resolve to hostel identity for HMS
       const hostelIdentity = await findHostelUserForVerify(email, username, null);
       if (hostelIdentity) {
         console.log(`[VerifyToken] Hostel lookup: resolved to userId=${hostelIdentity.userId}`);
@@ -336,7 +348,7 @@ export const verifyToken = async (req, res, next) => {
           }
         });
       }
-      // No match in Hostel Mongo: return CRM userId and email/username so HMS can try to resolve
+
       return res.status(HTTP_STATUS.OK).json({
         success: true,
         valid: true,
@@ -349,46 +361,226 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
-    // For Transport portal: return userId (and username/email) that Transport can use
-    if (decoded.portalId === PORTAL_IDS.TRANSPORT_MANAGEMENT) {
-      const crmUser = await getCRMUserForVerify(decoded.userId, decoded.databaseSource);
+    // 3. For Admissions CRM: resolve to local user in admissions_db
+    if (decoded.portalId === PORTAL_IDS.ADMISSIONS_CRM) {
+      if (decoded.databaseSource === 'admissions_db') {
+        const admSelf = await findAdmissionsUserById(decoded.userId);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: decoded.userId,
+            email: admSelf?.email || email,
+            name: admSelf?.name,
+            role: admSelf?.role_name || decoded.role,
+            ...baseData
+          }
+        });
+      }
+
+      let admUser = null;
+      if (email) admUser = await findAdmissionsUserByEmail(email);
+      if (!admUser && identifier) admUser = await findAdmissionsUserByEmail(identifier);
+      if (admUser) {
+        console.log(`[VerifyToken] Admissions lookup: resolved to userId=${admUser.id}`);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: admUser.id,
+            email: admUser.email,
+            name: admUser.name,
+            role: admUser.role_name || decoded.role,
+            ...baseData
+          }
+        });
+      }
+
       return res.status(HTTP_STATUS.OK).json({
         success: true,
         valid: true,
         data: {
-          userId: String(decoded.userId),
-          ...(crmUser?.email && { email: crmUser.email }),
-          username: crmUser?.username || decoded.username,
+          userId: decoded.userId,
+          ...(email && { email }),
           ...baseData
         }
       });
     }
 
-    // For Fee portal: return userId (and username/email) that Fee can use
-    if (decoded.portalId === PORTAL_IDS.FEE_MANAGEMENT) {
-      const crmUser = await getCRMUserForVerify(decoded.userId, decoded.databaseSource);
+    // 4. For Student Portal (SDMS): resolve to local identity in student_database (rbac_users or student_credentials)
+    if (decoded.portalId === PORTAL_IDS.STUDENT_PORTAL) {
+      if (decoded.databaseSource === 'rbac_users' || decoded.databaseSource === 'student_credentials') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: decoded.userId,
+            email: email,
+            username: username,
+            ...baseData
+          }
+        });
+      }
+
+      let rbacUser = null;
+      if (email) rbacUser = await findRBACUserByIdentifier(email);
+      if (!rbacUser && identifier) rbacUser = await findRBACUserByIdentifier(identifier);
+      if (rbacUser) {
+        console.log(`[VerifyToken] Student portal lookup: resolved to rbac userId=${rbacUser.id}`);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: rbacUser.id,
+            role: rbacUser.role || decoded.role,
+            email: rbacUser.email || email,
+            name: rbacUser.name,
+            ...baseData
+          }
+        });
+      }
+
+      let stuUser = null;
+      if (username) stuUser = await findStudentByUsername(username);
+      if (stuUser) {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: stuUser.id,
+            role: 'student',
+            username: stuUser.username,
+            ...baseData
+          }
+        });
+      }
+
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: decoded.userId,
+          ...(email && { email }),
+          ...baseData
+        }
+      });
+    }
+
+    // 5. For Transport portal: resolve to user in Transport MongoDB (userroles or admins)
+    if (decoded.portalId === PORTAL_IDS.TRANSPORT_MANAGEMENT) {
+      if (decoded.databaseSource === 'transport') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            ...(email && { email }),
+            username: username,
+            ...baseData
+          }
+        });
+      }
+
+      const transportRole = await findTransportUserRole({
+        id: decoded.userId,
+        employeeId: crmUser?.employeeId,
+        email: email,
+        phone: crmUser?.phone,
+        username: username,
+        databaseSource: decoded.databaseSource
+      });
+      if (transportRole) {
+        console.log(`[VerifyToken] Transport lookup: resolved to userId=${transportRole._id}`);
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: transportRole._id.toString(),
+            employeeId: transportRole.employeeId ? transportRole.employeeId.toString() : (crmUser?.employeeId || null),
+            phone: transportRole.phone || crmUser?.phone || null,
+            username: transportRole.phone || transportRole.username || username,
+            role: (transportRole.roles && transportRole.roles[0]) || transportRole.role || decoded.role,
+            email: transportRole.email || email,
+            ...baseData
+          }
+        });
+      }
+
       return res.status(HTTP_STATUS.OK).json({
         success: true,
         valid: true,
         data: {
           userId: String(decoded.userId),
-          ...(crmUser?.email && { email: crmUser.email }),
-          username: crmUser?.username || decoded.username,
+          ...(email && { email }),
+          username: username,
+          ...baseData
+        }
+      });
+    }
+
+    // 6. For Fee portal: resolve to user in Fee MongoDB (users collection)
+    if (decoded.portalId === PORTAL_IDS.FEE_MANAGEMENT) {
+      if (decoded.databaseSource === 'fee') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            ...(email && { email }),
+            username: username,
+            ...(crmUser?.role && { role: crmUser.role }),
+            ...baseData
+          }
+        });
+      }
+
+      const feeDb = await getFeeDb();
+      if (feeDb && identifier) {
+        const orConditions = [];
+        if (identifier) orConditions.push({ username: identifier });
+        if (email) {
+          orConditions.push({ email: email });
+          orConditions.push({ username: email });
+        }
+        const feeUser = await feeDb.collection('users').findOne({ $or: orConditions });
+        if (feeUser) {
+          console.log(`[VerifyToken] Fee lookup: resolved to userId=${feeUser._id}`);
+          return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            valid: true,
+            data: {
+              userId: feeUser._id.toString(),
+              username: feeUser.username,
+              name: feeUser.name || feeUser.username,
+              role: feeUser.role || decoded.role,
+              email: feeUser.email || email,
+              ...baseData
+            }
+          });
+        }
+      }
+
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: String(decoded.userId),
+          ...(email && { email }),
+          username: username,
           ...(crmUser?.role && { role: crmUser.role }),
           ...baseData
         }
       });
     }
 
-    // Non-HRMS/Hostel portals: return CRM userId and optional email when available
-    const crmUser = await getCRMUserForVerify(decoded.userId, decoded.databaseSource);
-    console.log(`[VerifyToken] Token verification successful. Returning response.`);
+    // 7. General fallback
+    console.log(`[VerifyToken] Token verification successful for portal: ${decoded.portalId}`);
     res.status(HTTP_STATUS.OK).json({
       success: true,
       valid: true,
       data: {
         userId: decoded.userId,
-        ...(crmUser?.email && { email: crmUser.email }),
+        ...(email && { email }),
         ...baseData
       }
     });

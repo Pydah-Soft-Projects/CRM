@@ -141,6 +141,7 @@ export const authAPI = {
  */
 export const PORTAL_IDS = {
   'https://admissions.pydah.edu.in': 'admissions-crm',
+  'https://sdms.pydah.edu.in': 'student-portal',
   'https://pydahsdms.vercel.app': 'student-portal',
   'https://hms.pydahsoft.in': 'hostel-automation',
   'https://hrms.pydahsoft.in': 'hrms',
