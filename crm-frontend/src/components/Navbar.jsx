@@ -244,9 +244,25 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => onNavigate('portals')}
-                className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs sm:text-sm hover:bg-indigo-100 transition-colors cursor-pointer"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs sm:text-sm hover:bg-indigo-100 transition-colors cursor-pointer"
               >
-                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0">
+                {user.profilePhoto ? (
+                  <img
+                    src={user.profilePhoto}
+                    alt={user.name || user.username || 'User'}
+                    className="w-7 h-7 rounded-full object-cover shrink-0 border border-indigo-300 shadow-xs"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.nextSibling) {
+                        e.currentTarget.nextSibling.style.display = 'flex';
+                      }
+                    }}
+                  />
+                ) : null}
+                <div
+                  className={`w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}
+                >
                   {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                 </div>
                 <span className="max-w-[150px] truncate">{user.name || user.username}</span>
@@ -455,7 +471,23 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
               {user ? (
                 <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                   <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                    {user.profilePhoto ? (
+                      <img
+                        src={user.profilePhoto}
+                        alt={user.name || user.username || 'User'}
+                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-indigo-300 shadow-xs"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextSibling) {
+                            e.currentTarget.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}
+                    >
                       {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">

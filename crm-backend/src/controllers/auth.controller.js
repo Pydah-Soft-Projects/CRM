@@ -96,7 +96,8 @@ export const login = async (req, res, next) => {
         employeeId: user.employeeId,
         role: user.role,
         portals: user.portals,
-        databaseSource: user.databaseSource // Track which database the user came from
+        databaseSource: user.databaseSource, // Track which database the user came from
+        profilePhoto: user.profilePhoto || null
       },
       TOKEN_TYPES.ACCESS
     );
@@ -123,7 +124,8 @@ export const login = async (req, res, next) => {
           role: user.role,
           role_name: user.role_name,
           portals: user.portals,
-          databaseSource: user.databaseSource
+          databaseSource: user.databaseSource,
+          profilePhoto: user.profilePhoto || null
         },
         tokens: {
           accessToken,

@@ -117,7 +117,21 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                         {/* Profile Bar */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
                             <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-500/20 shrink-0">
+                                {user.profilePhoto ? (
+                                    <img
+                                        src={user.profilePhoto}
+                                        alt={user.name || user.username || 'User'}
+                                        className="w-14 h-14 rounded-2xl object-cover shrink-0 border-2 border-indigo-200 shadow-lg shadow-indigo-500/10"
+                                        referrerPolicy="no-referrer"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            if (e.currentTarget.nextSibling) {
+                                                e.currentTarget.nextSibling.style.display = 'flex';
+                                            }
+                                        }}
+                                    />
+                                ) : null}
+                                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-500/20 shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}>
                                     {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
