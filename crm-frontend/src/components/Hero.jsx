@@ -52,7 +52,7 @@ const Hero = ({ onNavigate }) => {
                     initial={{ opacity: 0, x: -50 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                    className="order-1 pt-3 sm:pt-4 md:pt-0"
+                    className="order-1 pt-3 sm:pt-4 md:pt-0 relative z-10"
                 >
                     <h1
                         className="text-[clamp(1.6rem,6.2vw,2.15rem)] md:text-[clamp(2.4rem,5.5vw,4.1rem)] leading-[1.15] md:leading-[1.1] font-extrabold tracking-tight text-center md:text-left min-h-[5.5rem] sm:min-h-[6rem] md:min-h-[8.5rem]"
@@ -152,15 +152,16 @@ const Hero = ({ onNavigate }) => {
                     </div>
 
                     <div
-                        className="flex flex-row items-center justify-center md:justify-start gap-3.5 sm:gap-4 flex-nowrap mt-2 md:mt-0"
+                        className="flex flex-row items-center justify-center md:justify-start gap-3.5 sm:gap-4 flex-nowrap mt-2 md:mt-0 relative z-30"
                         style={{
                             marginBottom: 'clamp(1rem, 2.5vw, 1.5rem)'
                         }}
                     >
                         <motion.button
+                            type="button"
                             whileHover={{ scale: 1.02, y: -2 }}
                             whileTap={{ scale: 0.98 }}
-                            className="text-white rounded-md font-bold whitespace-nowrap transition-all duration-200 px-4 py-2.5 sm:px-6 sm:py-3 md:px-8 md:py-3.5 text-xs sm:text-sm md:text-base"
+                            className="text-white rounded-md font-bold whitespace-nowrap transition-all duration-200 px-4 py-2.5 sm:px-6 sm:py-3 md:px-8 md:py-3.5 text-xs sm:text-sm md:text-base cursor-pointer relative z-30"
                             style={{
                                 backgroundColor: 'var(--color-primary)',
                                 boxShadow: 'var(--shadow-soft)',
@@ -172,14 +173,19 @@ const Hero = ({ onNavigate }) => {
                             onMouseLeave={(e) => {
                                 e.target.style.boxShadow = 'var(--shadow-soft)';
                             }}
-                            onClick={() => onNavigate('portals')}
+                            onClick={() => {
+                                if (typeof onNavigate === 'function') {
+                                    onNavigate('portals');
+                                }
+                            }}
                         >
                             Get Started
                         </motion.button>
                         <motion.button
+                            type="button"
                             whileHover={{ scale: 1.02, y: -2 }}
                             whileTap={{ scale: 0.98 }}
-                            className="rounded-md font-semibold bg-white whitespace-nowrap transition-all duration-200 px-4 py-2.5 sm:px-6 sm:py-3 md:px-8 md:py-3.5 text-xs sm:text-sm md:text-base"
+                            className="rounded-md font-semibold bg-white whitespace-nowrap transition-all duration-200 px-4 py-2.5 sm:px-6 sm:py-3 md:px-8 md:py-3.5 text-xs sm:text-sm md:text-base cursor-pointer relative z-30"
                             style={{
                                 border: '1px solid var(--color-border-soft)',
                                 color: 'var(--color-text-main)',
@@ -193,7 +199,11 @@ const Hero = ({ onNavigate }) => {
                                 e.target.style.backgroundColor = 'white';
                                 e.target.style.borderColor = 'var(--color-border-soft)';
                             }}
-                            onClick={() => onNavigate('portals')}
+                            onClick={() => {
+                                if (typeof onNavigate === 'function') {
+                                    onNavigate('portals');
+                                }
+                            }}
                         >
                             Explore Portals
                         </motion.button>
@@ -201,11 +211,11 @@ const Hero = ({ onNavigate }) => {
                 </motion.div>
 
                 {/* Mobile Illustration - full width edge-to-edge, anchored at bottom */}
-                <div className="block md:hidden order-2 mt-auto w-screen relative left-1/2 -translate-x-1/2 overflow-hidden -translate-y-20 sm:-translate-y-24">
+                <div className="block md:hidden order-2 mt-auto w-screen relative left-1/2 -translate-x-1/2 overflow-hidden -translate-y-20 sm:-translate-y-24 pointer-events-none z-0">
                     <img
                         src="/Pastel Productivity Dashboard Hero Scene.png"
                         alt="Pydah CRM Platform Preview"
-                        className="w-full h-auto block"
+                        className="w-full h-auto block select-none pointer-events-none"
                     />
                 </div>
             </div>
