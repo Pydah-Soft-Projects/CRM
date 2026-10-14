@@ -440,11 +440,13 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                 <p
                   style={{
                     fontFamily: "'Dancing Script', 'Caveat', cursive",
-                    fontSize: 'clamp(1.2rem, 3vw, 1.45rem)',
+                    fontSize: 'clamp(1.55rem, 4.2vw, 2.05rem)',
                     fontWeight: 700,
                     color: 'var(--color-primary)',
-                    letterSpacing: '0.01em',
-                    lineHeight: 1.2
+                    letterSpacing: '0.02em',
+                    lineHeight: 1.25,
+                    marginTop: 'clamp(0.75rem, 2vw, 1.2rem)',
+                    textShadow: '0 2px 10px rgba(99, 102, 241, 0.18)'
                   }}
                 >
                   Proud to be a Pydian
