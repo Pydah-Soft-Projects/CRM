@@ -5,6 +5,18 @@ import { getExaminationPool } from '../config/database.js';
  * Queries the 'ems_users' table directly in the examination_portal database on MySQL RDS.
  */
 
+let emsColumnsCache = null;
+async function getEmsColumns(pool) {
+  if (emsColumnsCache) return emsColumnsCache;
+  try {
+    const [cols] = await pool.query('SHOW COLUMNS FROM `ems_users`');
+    emsColumnsCache = cols.map(c => c.Field.toLowerCase());
+    return emsColumnsCache;
+  } catch (e) {
+    return ['email', 'employee_id', 'phone', 'mobile'];
+  }
+}
+
 /**
  * Find active user in examination_portal.ems_users by email, username, employeeId, or phone.
  * @param {Object} query - { email, employeeId, username, phone }
@@ -14,6 +26,7 @@ export const findExaminationUser = async ({ email, employeeId, username, phone }
   try {
     const pool = getExaminationPool();
     if (!pool) return null;
+    const cols = await getEmsColumns(pool);
 
     const conditions = [];
     const params = [];
@@ -23,24 +36,40 @@ export const findExaminationUser = async ({ email, employeeId, username, phone }
     const normEmpId = employeeId && typeof employeeId === 'string' ? employeeId.trim() : null;
     const normPhone = phone && typeof phone === 'string' ? phone.trim() : null;
 
-    if (normEmail) {
+    if (normEmail && cols.includes('email')) {
       conditions.push('email = ?');
       params.push(normEmail);
     }
 
-    if (normUsername) {
+    if (normUsername && cols.includes('username')) {
       conditions.push('username = ?');
       params.push(normUsername);
     }
 
-    if (normEmpId && normEmpId !== normUsername) {
-      conditions.push('username = ?');
-      params.push(normEmpId);
+    if (normEmpId) {
+      if (cols.includes('employee_id')) {
+        conditions.push('employee_id = ?');
+        params.push(normEmpId);
+      } else if (cols.includes('emp_id')) {
+        conditions.push('emp_id = ?');
+        params.push(normEmpId);
+      } else if (cols.includes('emp_no')) {
+        conditions.push('emp_no = ?');
+        params.push(normEmpId);
+      } else if (cols.includes('username') && !params.includes(normEmpId)) {
+        conditions.push('username = ?');
+        params.push(normEmpId);
+      }
     }
 
     if (normPhone) {
-      conditions.push('phone = ?');
-      params.push(normPhone);
+      if (cols.includes('phone')) {
+        conditions.push('phone = ?');
+        params.push(normPhone);
+      } else if (cols.includes('mobile')) {
+        conditions.push('mobile = ?');
+        params.push(normPhone);
+      }
     }
 
     if (conditions.length === 0) return null;

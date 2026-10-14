@@ -11,7 +11,7 @@ import { generateToken, verifyToken as verifyJWTToken } from '../services/token.
 import { findHRMSUserByEmail } from '../services/hrms.service.js';
 import { findHostelUserForVerify } from '../services/hostel.service.js';
 import { findTransportUserRole } from '../services/transport.service.js';
-import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
+import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
 import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
@@ -390,45 +390,85 @@ export const verifyToken = async (req, res, next) => {
 
     // 3. For Admissions CRM: resolve to local user in admissions_db
     if (decoded.portalId === PORTAL_IDS.ADMISSIONS_CRM) {
+      let admUser = null;
+
+      // 1. If databaseSource was admissions_db, try finding by ID first
       if (decoded.databaseSource === 'admissions_db') {
-        const admSelf = await findAdmissionsUserById(decoded.userId);
-        return res.status(HTTP_STATUS.OK).json({
-          success: true,
-          valid: true,
-          data: {
-            userId: decoded.userId,
-            email: admSelf?.email || email,
-            name: admSelf?.name,
-            role: admSelf?.role_name || decoded.role,
-            ...baseData
-          }
-        });
+        admUser = await findAdmissionsUserById(decoded.userId);
       }
 
-      let admUser = null;
-      if (email) admUser = await findAdmissionsUserByEmail(email);
-      if (!admUser && identifier) admUser = await findAdmissionsUserByEmail(identifier);
-      if (admUser) {
-        console.log(`[VerifyToken] Admissions lookup: resolved to userId=${admUser.id}`);
-        return res.status(HTTP_STATUS.OK).json({
-          success: true,
-          valid: true,
-          data: {
-            userId: admUser.id,
-            email: admUser.email,
-            name: admUser.name,
-            role: admUser.role_name || decoded.role,
-            ...baseData
+      // 2. If not found or came from another database source, search by identity candidates
+      if (!admUser) {
+        const candidates = [email, identifier, username, decoded.userId, crmUser?.phone].filter(Boolean);
+        for (const candidate of candidates) {
+          admUser = await findAdmissionsUserByIdentifier(candidate, {
+            email,
+            phone: crmUser?.phone,
+            name: crmUser?.name
+          });
+          if (admUser) {
+            console.log(`[VerifyToken] Admissions lookup: resolved candidate "${candidate}" to userId=${admUser.id}`);
+            break;
           }
-        });
+        }
       }
+
+      // Parse permissions object
+      let permissions = {};
+      if (admUser?.permissions) {
+        if (typeof admUser.permissions === 'string') {
+          try {
+            permissions = JSON.parse(admUser.permissions);
+          } catch (e) {
+            permissions = {};
+          }
+        } else if (typeof admUser.permissions === 'object') {
+          permissions = admUser.permissions;
+        }
+      }
+
+      // Format roleName specifically for Admissions Next.js route guards:
+      // ('Super Admin', 'Sub Super Admin', 'Manager', 'Counsellor', etc.)
+      const rawRole = String(decoded.role || '').trim().toLowerCase();
+      const isAdminRole = ['admin', 'superadmin', 'super_admin', 'super admin'].includes(rawRole);
+      let roleName = admUser?.role_name;
+
+      if (!roleName) {
+        if (isAdminRole) {
+          roleName = 'Super Admin';
+        } else if (rawRole === 'manager') {
+          roleName = 'Manager';
+        } else {
+          roleName = decoded.role || 'Counsellor';
+        }
+      } else if (isAdminRole && roleName.toLowerCase() === 'admin') {
+        roleName = 'Super Admin';
+      }
+
+      const isManager = admUser ? (admUser.is_manager === 1 || admUser.is_manager === true) : (roleName === 'Manager');
+      const isActive = admUser ? (admUser.is_active === 1 || admUser.is_active === true || admUser.is_active === null) : true;
+      const finalUserId = admUser?.id || decoded.userId;
+      const finalEmail = admUser?.email || email;
+      const finalName = admUser?.name || crmUser?.name || username;
 
       return res.status(HTTP_STATUS.OK).json({
         success: true,
         valid: true,
         data: {
-          userId: decoded.userId,
-          ...(email && { email }),
+          userId: finalUserId,
+          id: finalUserId,
+          _id: finalUserId,
+          email: finalEmail,
+          name: finalName,
+          role: roleName,
+          roleName: roleName,
+          isManager: isManager,
+          managedBy: admUser?.managed_by || null,
+          designation: admUser?.designation || null,
+          permissions: permissions,
+          isActive: isActive,
+          ...(admUser?.created_at && { createdAt: admUser.created_at }),
+          ...(admUser?.updated_at && { updatedAt: admUser.updated_at }),
           ...baseData
         }
       });

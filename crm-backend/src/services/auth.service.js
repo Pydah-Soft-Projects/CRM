@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
-import { findAdmissionsUserByEmail, findAdmissionsUserById } from '../models/admissions.model.js';
+import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser, findExaminationUserById } from '../models/examination.model.js';
@@ -143,10 +143,27 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
-            const target = email || identifier;
-            if (target) {
-              const admUser = await findAdmissionsUserByEmail(target);
-              if (admUser) portals.add('admissions-crm');
+            const targets = [
+              email, 
+              user.name, 
+              username, 
+              identifier, 
+              rollOrEmp,
+              user.phone,
+              user.mobile
+            ].filter(Boolean);
+
+            for (const t of targets) {
+              const admUser = await findAdmissionsUserByIdentifier(t, {
+                email,
+                name: user.name,
+                phone: user.phone || user.mobile
+              });
+              if (admUser) {
+                console.log(`[discoverUserPortals] Admissions match found: userId=${admUser.id}, roleName=${admUser.role_name}`);
+                portals.add('admissions-crm');
+                break;
+              }
             }
           } catch (e) {
             console.error('[discoverUserPortals] Admissions check error:', e.message);
@@ -258,6 +275,29 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
 };
 
 /**
+ * Safely compare plain password against hash, handling Buffer, null, objects, and plain-text fallback
+ */
+const safeBcryptCompare = async (plainPassword, hash) => {
+  if (!plainPassword || hash === null || hash === undefined) return false;
+  try {
+    const cleanPlain = String(plainPassword);
+    const cleanHash = Buffer.isBuffer(hash)
+      ? hash.toString('utf8').trim()
+      : (typeof hash === 'string' ? hash.trim() : String(hash).trim());
+    if (!cleanHash) return false;
+
+    // Check plain text equality fallback
+    if (cleanPlain === cleanHash) return true;
+
+    // Bcrypt comparison
+    return await bcrypt.compare(cleanPlain, cleanHash);
+  } catch (err) {
+    console.error('[Auth] safeBcryptCompare error:', err.message);
+    return false;
+  }
+};
+
+/**
  * Validate user credentials
  * Checks student_credentials, rbac_users, and admissions_db
  * @param {string} username - Username, admission number, or email
@@ -270,51 +310,64 @@ export const validateCredentials = async (username, password, role = null) => {
     let user = null;
     let databaseSource = null;
 
-    // Unified login: Check in order across all databases
-    // 1. rbac_users table (for staff/admin/RBAC)
-    // 2. admissions_db users table
-    // 3. student_credentials table (for students)
-    
-    console.log(`[Auth] Centralized login - Checking rbac_users table for: ${username}`);
-    user = await findRBACUserByIdentifier(username);
-    if (user) {
-      databaseSource = 'rbac_users';
-      console.log(`[Auth] RBAC user found: ${user.id}, role: ${user.role}`);
-    } else {
-      // Try admissions_db
-      console.log(`[Auth] Checking admissions_db for: ${username}`);
-      user = await findAdmissionsUserByEmail(username);
-      if (user) {
-        databaseSource = 'admissions_db';
-        console.log(`[Auth] Admissions user found: ${user.id}`);
+    // Unified login: Check in order across all databases without early-aborting on password mismatch
+    // 1. rbac_users table (for staff/admin/RBAC in student_database)
+    console.log(`[Auth] Checking rbac_users table for: ${username}`);
+    const rbacCandidate = await findRBACUserByIdentifier(username);
+    if (rbacCandidate) {
+      const isValid = await safeBcryptCompare(password, rbacCandidate.password);
+      if (isValid) {
+        user = rbacCandidate;
+        databaseSource = 'rbac_users';
+        console.log(`[Auth] Authenticated via rbac_users: ${user.id}, role: ${user.role}`);
       } else {
-        // Check student_credentials table (for students)
-        console.log(`[Auth] Checking student_credentials table for: ${username}`);
-        user = await findStudentByUsername(username);
-        if (user) {
-          databaseSource = 'student_credentials';
-          console.log(`[Auth] Student found in student_credentials table: ${user.id}`);
+        console.log(`[Auth] Password mismatch in rbac_users for: ${username}, checking other databases...`);
+      }
+    }
+
+    // 2. admissions_db users table (for Admissions CRM counsellors, managers, super admins)
+    if (!user) {
+      console.log(`[Auth] Checking admissions_db for: ${username}`);
+      const admCandidate = await findAdmissionsUserByIdentifier(username);
+      if (admCandidate) {
+        const isValid = await safeBcryptCompare(password, admCandidate.password);
+        if (isValid) {
+          user = admCandidate;
+          databaseSource = 'admissions_db';
+          console.log(`[Auth] Authenticated via admissions_db: ${user.id}, role: ${user.role_name}`);
+        } else {
+          console.log(`[Auth] Password mismatch in admissions_db for: ${username}, checking other databases...`);
         }
       }
     }
 
-    // If user matched in MySQL, verify password
-    if (user) {
-      console.log(`[Auth] User found: ${user.username || user.admission_number}, database: ${databaseSource}, role: ${user.role}`);
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      
-      if (!isValidPassword) {
-        console.log(`[Auth] Password validation failed for MySQL user: ${user.username || user.admission_number}`);
-        return null;
+    // 3. student_credentials table (for students)
+    if (!user) {
+      console.log(`[Auth] Checking student_credentials table for: ${username}`);
+      const studentCandidate = await findStudentByUsername(username);
+      if (studentCandidate) {
+        const isValid = await safeBcryptCompare(password, studentCandidate.password);
+        if (isValid) {
+          user = studentCandidate;
+          databaseSource = 'student_credentials';
+          console.log(`[Auth] Authenticated via student_credentials: ${user.id}`);
+        } else {
+          console.log(`[Auth] Password mismatch in student_credentials for: ${username}`);
+        }
       }
+    }
 
-      console.log(`[Auth] Password validated successfully for user: ${user.username || user.admission_number}`);
+    // If user matched and authenticated in MySQL
+    if (user) {
+      console.log(`[Auth] User authenticated in MySQL: ${user.username || user.email || user.name || user.admission_number}, database: ${databaseSource}, role: ${user.role_name || user.role}`);
 
-      const { password: _, ...userWithoutPassword } = user;
+      const empId = user.employee_id || user.employeeId || user.emp_no || user.emp_id || user.empid || (databaseSource === 'admissions_db' && /^\d+$/.test(username) ? username : null);
       const normalizedUser = {
         ...userWithoutPassword,
         role: user.role_name || user.role || 'user',
-        username: user.username || user.email || user.name || user.admission_number,
+        username: user.username || user.email || user.name || user.admission_number || username,
+        employeeId: empId,
+        emp_no: empId,
         databaseSource: databaseSource
       };
 
