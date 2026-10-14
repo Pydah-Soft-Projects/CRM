@@ -39,7 +39,7 @@ const Hero = ({ onNavigate }) => {
 
     return (
         <section
-            className="min-h-screen flex flex-col justify-between md:flex-row md:items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.png')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat pt-[98px] md:pt-[100px] pb-0 md:pb-12"
+            className="min-h-screen flex flex-col justify-between md:flex-row md:items-center relative overflow-x-hidden bg-[#F8FAFD] md:bg-[url('/Modern_CRM_Platform_Background.webp')] md:bg-cover md:bg-[position:right_center] md:bg-no-repeat pt-[98px] md:pt-[100px] pb-0 md:pb-12"
         >
             <div
                 className="section-container flex-1 flex flex-col justify-between md:grid md:grid-cols-[1fr_1.3fr] items-center w-full pt-2 md:pt-8 pb-0 md:pb-8"
@@ -213,7 +213,7 @@ const Hero = ({ onNavigate }) => {
                 {/* Mobile Illustration - full width edge-to-edge, anchored at bottom */}
                 <div className="block md:hidden order-2 mt-auto w-screen relative left-1/2 -translate-x-1/2 overflow-hidden -translate-y-20 sm:-translate-y-24 pointer-events-none z-0">
                     <img
-                        src="/Pastel Productivity Dashboard Hero Scene.png"
+                        src="/Pastel Productivity Dashboard Hero Scene.webp"
                         alt="Pydah CRM Platform Preview"
                         className="w-full h-auto block select-none pointer-events-none"
                     />

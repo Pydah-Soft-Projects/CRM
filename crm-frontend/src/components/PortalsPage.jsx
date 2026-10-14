@@ -38,7 +38,7 @@ const portalDetails = [
         category: 'Logistics Hub',
         description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',
         color: '#d97706',
-        image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.png',
+        image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.webp',
         url: 'https://transport.pydah.edu.in/login',
         portalId: 'transport-management'
     },

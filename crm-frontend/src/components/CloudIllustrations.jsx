@@ -40,7 +40,7 @@ const EcosystemDiagram = () => {
                 <div className="flex justify-center mb-6">
                     <div className="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center p-4 border border-indigo-50 relative">
                         <img
-                            src="/pydah-logo.png"
+                            src="/pydah-logo.webp"
                             alt="Pydah Logo"
                             className="w-full h-full object-contain drop-shadow"
                         />
@@ -147,7 +147,7 @@ const EcosystemDiagram = () => {
                     {/* Logo / Central Identity */}
                     <div className="flex flex-col items-center justify-center p-6">
                         <img
-                            src="/pydah-logo.png"
+                            src="/pydah-logo.webp"
                             alt="Pydah Logo"
                             className="w-full h-full object-contain drop-shadow-md"
                         />

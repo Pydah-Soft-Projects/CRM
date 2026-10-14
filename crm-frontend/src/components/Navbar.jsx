@@ -99,7 +99,7 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
           onClick={() => onNavigate('home')}
         >
           <img
-            src="/pydah-logo.png"
+            src="/pydah-logo.webp"
             alt="Pydah Logo"
             className="h-[clamp(30px,3.5vw,40px)] w-auto"
           />
@@ -544,7 +544,7 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
                     onNavigate('login');
                   }}
                 >
-                  Sign In with SSO
+                  Sign In
                 </motion.button>
               )}
             </div>
