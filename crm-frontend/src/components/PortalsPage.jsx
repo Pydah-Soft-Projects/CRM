@@ -7,6 +7,15 @@ import {
 
 const portalDetails = [
     {
+        title: 'Academic Portal',
+        category: 'Academics & Faculty',
+        description: 'Course curriculum delivery, syllabus schedules, faculty workloads, and timetable.',
+        color: '#0d9488',
+        image: '/academic-card.jpg',
+        url: 'https://acad.pydah.edu.in/login',
+        portalId: 'academic-portal'
+    },
+    {
         title: 'Admission Portal',
         category: 'Enrollment Management',
         description: 'Student inquiry pipeline, counselor workflows, and institutional admissions.',
@@ -16,13 +25,13 @@ const portalDetails = [
         portalId: 'admissions-crm'
     },
     {
-        title: 'Student Portal',
-        category: 'Learning & Academics',
-        description: 'Central student profile, academic records, digital schedules, and updates.',
-        color: '#2563eb',
-        image: '/5a2e2b1a96243304c98937fb2b0444d5.jpg',
-        url: 'https://sdms.pydah.edu.in/student/login',
-        portalId: 'student-portal'
+        title: 'Examination Management System',
+        category: 'Exams & Assessment',
+        description: 'Examination scheduling, hall tickets, marks evaluation, and result processing.',
+        color: '#ea580c',
+        image: '/ems-card.jpg',
+        url: 'https://ems.pydah.edu.in/login',
+        portalId: 'examination-portal'
     },
     {
         title: 'Fee Management',
@@ -32,15 +41,6 @@ const portalDetails = [
         image: '/931962fb2d5f2bf75f94b526891c3f43.jpg',
         url: 'https://fees.pydah.edu.in/login',
         portalId: 'fee-management'
-    },
-    {
-        title: 'Transport Management',
-        category: 'Logistics Hub',
-        description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',
-        color: '#d97706',
-        image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.webp',
-        url: 'https://transport.pydah.edu.in/login',
-        portalId: 'transport-management'
     },
     {
         title: 'Hostel Automation',
@@ -61,22 +61,22 @@ const portalDetails = [
         portalId: 'hrms'
     },
     {
-        title: 'Academic Portal',
-        category: 'Academics & Faculty',
-        description: 'Course curriculum delivery, syllabus schedules, faculty workloads, and timetable.',
-        color: '#0d9488',
-        image: '/academic-card.jpg',
-        url: 'https://acad.pydah.edu.in/login',
-        portalId: 'academic-portal'
+        title: 'Student Portal',
+        category: 'Learning & Academics',
+        description: 'Central student profile, academic records, digital schedules, and updates.',
+        color: '#2563eb',
+        image: '/5a2e2b1a96243304c98937fb2b0444d5.jpg',
+        url: 'https://sdms.pydah.edu.in/student/login',
+        portalId: 'student-portal'
     },
     {
-        title: 'Examination Management System',
-        category: 'Exams & Assessment',
-        description: 'Examination scheduling, hall tickets, marks evaluation, and result processing.',
-        color: '#ea580c',
-        image: '/ems-card.jpg',
-        url: 'https://ems.pydah.edu.in/login',
-        portalId: 'examination-portal'
+        title: 'Transport Management',
+        category: 'Logistics Hub',
+        description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',
+        color: '#d97706',
+        image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.webp',
+        url: 'https://transport.pydah.edu.in/login',
+        portalId: 'transport-management'
     }
 ];
 
