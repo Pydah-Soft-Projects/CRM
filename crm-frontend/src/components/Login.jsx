@@ -191,6 +191,8 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   .login-page-container {
                     background-image: none !important;
                     background-color: #f8fafc !important;
+                    padding-top: clamp(105px, 15vw, 125px) !important;
+                    padding-bottom: 2rem !important;
                   }
                   .login-mobile-bg {
                     top: clamp(64px, 9vw, 72px) !important;
