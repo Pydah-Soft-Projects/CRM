@@ -71,7 +71,7 @@ const solutions = [
   }
 ];
 
-const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
+const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) => {
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -249,6 +249,14 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
           >
             About Us
           </a>
+          <button
+            onClick={onOpenInstall}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-indigo-50/60 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 transition-all font-semibold text-xs cursor-pointer shadow-xs"
+            title="Download & Install Pydah CRM App"
+          >
+            <img src="/CRM-APP-logo.png" alt="App Logo" className="w-4 h-4 rounded-xs object-contain" />
+            <span>Download App</span>
+          </button>
 
           {user ? (
             <div className="flex items-center gap-3">
@@ -477,6 +485,16 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
               >
                 About Us
               </a>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onOpenInstall?.();
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-indigo-50/70 border border-indigo-200/80 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 text-indigo-700 font-bold text-xs cursor-pointer mb-2 shadow-xs"
+              >
+                <img src="/CRM-APP-logo.png" alt="App Logo" className="w-5 h-5 rounded-xs object-contain" />
+                <span>Download & Install App</span>
+              </button>
 
               {user ? (
                 <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">

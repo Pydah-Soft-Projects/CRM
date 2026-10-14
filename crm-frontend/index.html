@@ -2,9 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/webp" href="/pydah-logo.webp" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json?v=7" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pydah CRM" />
+    <meta name="description" content="Pydah Central CRM - Unified Campus Applications & Portals Ecosystem" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pydah CRM</title>
+    <title>Pydah CRM - Central Campus Ecosystem</title>
+    <script>
+      window.deferredInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredInstallPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-prompt-available', { detail: e }));
+        console.log('[PWA] beforeinstallprompt captured globally');
+      });
+      window.addEventListener('appinstalled', function() {
+        window.deferredInstallPrompt = null;
+        console.log('[PWA] Application successfully installed');
+      });
+
+      // Register Service Worker immediately so beforeinstallprompt fires reliably
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(reg) {
+            console.log('[PWA] Service Worker registered immediately:', reg.scope);
+          })
+          .catch(function(err) {
+            console.error('[PWA] Service Worker registration failed:', err);
+          });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
