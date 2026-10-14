@@ -246,7 +246,7 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                         )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4.5 items-stretch">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4.5 items-stretch">
                         {filteredPortals.map((portal, index) => {
                             const isLaunching = launchingPortalId === portal.portalId;
 
@@ -380,7 +380,7 @@ const PortalAppCard = ({
             className="group bg-white rounded-xl sm:rounded-2xl border-2 cursor-pointer flex flex-col h-full w-full overflow-hidden transition-all duration-300"
         >
             {/* Optimized Compact Thumbnail */}
-            <div className="relative h-28 sm:h-32 md:h-36 w-full overflow-hidden bg-slate-100 shrink-0">
+            <div className="relative h-24 sm:h-32 md:h-36 w-full overflow-hidden bg-slate-100 shrink-0">
                 <img
                     src={portal.image}
                     alt={portal.title}
@@ -390,7 +390,7 @@ const PortalAppCard = ({
             </div>
 
             {/* Structured Content & Launch Button */}
-            <div className="p-3 sm:p-3.5 flex flex-col flex-1">
+            <div className="p-2.5 sm:p-3.5 flex flex-col flex-1">
                 <div>
                     {/* Desktop Category: Hidden on mobile */}
                     <span
@@ -400,16 +400,16 @@ const PortalAppCard = ({
                         {portal.category}
                     </span>
 
-                    {/* Mobile-Only Row: Colored Portal Name on left, Launch button on right */}
-                    <div className="flex sm:hidden items-center justify-between gap-2">
+                    {/* Mobile-Only Row: Colored Portal Name & Launch button stacked cleanly for 2-column grid */}
+                    <div className="flex sm:hidden flex-col gap-2">
                         <span
                             style={{ color: portal.color }}
-                            className="font-bold text-sm tracking-tight truncate flex-1"
+                            className="font-bold text-xs sm:text-sm tracking-tight line-clamp-1"
                         >
                             {portal.title}
                         </span>
 
-                        <div className="shrink-0">
+                        <div className="w-full">
                             {isLaunching ? (
                                 <div
                                     style={{
@@ -417,7 +417,7 @@ const PortalAppCard = ({
                                         borderColor: `${portal.color}40`,
                                         color: portal.color
                                     }}
-                                    className="py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center gap-1 border shadow-inner"
+                                    className="w-full py-1.5 px-2 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 border shadow-inner"
                                 >
                                     <Loader2 size={11} className="animate-spin" />
                                     <span>Launching...</span>
@@ -430,7 +430,7 @@ const PortalAppCard = ({
                                         boxShadow: `0 2px 10px -1px ${portal.color}50`,
                                         color: '#ffffff'
                                     }}
-                                    className="relative overflow-hidden py-1 px-3 rounded-lg font-extrabold text-[10px] flex items-center justify-center border shadow-xs transition-all active:scale-95"
+                                    className="relative overflow-hidden w-full py-1.5 px-2 rounded-lg font-extrabold text-[11px] flex items-center justify-center border shadow-xs transition-all active:scale-95"
                                 >
                                     {/* Strictly one-after-one sequential shine sweep */}
                                     <motion.span
