@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pydah-crm-v2';
+const CACHE_NAME = 'pydah-crm-v3';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -6,6 +6,10 @@ const PRECACHE_ASSETS = [
   '/CRM-APP-logo.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
+  '/maskable-icon-192x192.png',
+  '/maskable-icon-512x512.png',
+  '/apple-touch-icon.png',
+  '/favicon-32x32.png',
   '/pydah-logo.webp'
 ];
 
