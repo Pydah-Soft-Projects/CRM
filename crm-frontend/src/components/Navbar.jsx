@@ -251,11 +251,23 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
           </a>
           <button
             onClick={onOpenInstall}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-indigo-50/60 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 transition-all font-semibold text-xs cursor-pointer shadow-xs"
+            style={{
+              border: '2px solid #2563eb',
+              backgroundColor: '#ffffff'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#1d4ed8';
+              e.currentTarget.style.backgroundColor = '#eff6ff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#2563eb';
+              e.currentTarget.style.backgroundColor = '#ffffff';
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-blue-600 transition-all font-bold text-xs cursor-pointer shadow-xs"
             title="Download & Install Pydah CRM App"
           >
             <img src="/CRM-APP-logo.png" alt="App Logo" className="w-4 h-4 rounded-xs object-contain" />
-            <span>Download App</span>
+            <span className="font-bold tracking-tight text-blue-600">Download App</span>
           </button>
 
           {user ? (
@@ -333,15 +345,46 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
 
         {/* Mobile Toggle Button */}
         <button
-          className="mobile-toggle bg-transparent border-none cursor-pointer"
+          className="mobile-toggle bg-transparent border-none cursor-pointer flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none"
           style={{
             color: 'var(--color-text-main)',
-            padding: 'clamp(0.5rem, 1.2vw, 0.625rem)'
+            padding: '2px',
+            outline: 'none',
+            border: 'none',
+            boxShadow: 'none'
           }}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle mobile menu"
         >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {isMobileMenuOpen ? (
+            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 border border-slate-200 shadow-xs">
+              <X size={20} />
+            </div>
+          ) : user ? (
+            <div className="relative">
+              {user.profilePhoto ? (
+                <img
+                  src={user.profilePhoto}
+                  alt={user.name || user.username || 'User'}
+                  className="w-9 h-9 rounded-full object-cover border-2 border-indigo-400 shadow-sm"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextSibling) {
+                      e.currentTarget.nextSibling.style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
+              <div
+                className={`w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 text-white font-black text-xs flex items-center justify-center shadow-sm ${user.profilePhoto ? 'hidden' : ''}`}
+              >
+                {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+              </div>
+            </div>
+          ) : (
+            <Menu size={24} />
+          )}
         </button>
       </div>
 
@@ -353,217 +396,254 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed left-0 right-0 bg-white border-t shadow-[0_10px_30px_rgba(0,0,0,0.1)] z-[999]"
+            className="fixed bg-white border rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-[999]"
             style={{
               borderColor: 'var(--color-border-soft)',
               top: 'clamp(70px, 12vw, 80px)',
-              maxHeight: 'calc(100vh - clamp(70px, 12vw, 80px))',
+              right: 'clamp(0.75rem, 2.5vw, 1rem)',
+              width: 'clamp(285px, 85vw, 325px)',
+              maxHeight: 'calc(100vh - clamp(85px, 14vw, 95px))',
               overflowY: 'auto',
               overflowX: 'hidden',
               WebkitOverflowScrolling: 'touch',
-              paddingTop: 'clamp(1.25rem, 3vw, 1.5rem)',
-              paddingBottom: 'clamp(1.25rem, 3vw, 1.5rem)',
-              paddingLeft: 'clamp(1rem, 2.5vw, 1.25rem)',
-              paddingRight: 'clamp(1rem, 2.5vw, 1.25rem)'
+              paddingTop: 'clamp(0.875rem, 2vw, 1.125rem)',
+              paddingBottom: 'clamp(0.875rem, 2vw, 1.125rem)',
+              paddingLeft: 'clamp(0.875rem, 2.5vw, 1rem)',
+              paddingRight: 'clamp(0.875rem, 2.5vw, 1rem)'
             }}
           >
-            <div className="flex flex-col" style={{ gap: 'clamp(0.75rem, 2vw, 1rem)', minHeight: 'min-content' }}>
-              <a
-                href="#home"
-                className="font-medium"
-                style={{
-                  color: 'var(--color-text-muted)',
-                  paddingTop: 'clamp(0.625rem, 1.5vw, 0.75rem)',
-                  paddingBottom: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsMobileMenuOpen(false);
-                  onNavigate('home');
-                }}
-              >
-                Home
-              </a>
-
-              <div>
-                <button
-                  onClick={() => setIsMegaMenuOpen(!isMegaMenuOpen)}
-                  className="font-medium flex items-center justify-between w-full bg-transparent border-none cursor-pointer"
-                  style={{
-                    color: isMegaMenuOpen ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    paddingTop: 'clamp(0.625rem, 1.5vw, 0.75rem)',
-                    paddingBottom: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-                  }}
-                >
-                  Our Portals <ChevronDown
-                    size={16}
-                    className={`transition-transform duration-200 ${isMegaMenuOpen ? 'rotate-180' : 'rotate-0'
-                      }`}
-                  />
-                </button>
-
-                <AnimatePresence>
-                  {isMegaMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      style={{ marginTop: 'clamp(0.5rem, 1.2vw, 0.75rem)' }}
-                    >
-                      <div className="flex flex-col" style={{
-                        gap: 'clamp(0.625rem, 1.5vw, 0.75rem)',
-                        paddingLeft: 'clamp(0.75rem, 2vw, 1rem)',
-                        maxHeight: 'none'
-                      }}>
-                        {solutions.map((item, idx) => (
-                          <motion.a
-                            key={idx}
-                            href={item.url}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setIsMobileMenuOpen(false);
-                              if (onPortalClick) onPortalClick(item);
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                            className="flex rounded-xl transition-all duration-200 group"
-                            style={{
-                              gap: 'clamp(0.75rem, 1.8vw, 0.875rem)',
-                              padding: 'clamp(0.75rem, 1.8vw, 0.875rem)',
-                              backgroundColor: `${item.color}05`,
-                              border: `1px solid ${item.color}10`
-                            }}
-                          >
-                            <div
-                              className="rounded-[10px] flex justify-center items-center flex-shrink-0 transition-colors duration-300"
-                              style={{
-                                width: 'clamp(2.25rem, 3.5vw, 2.5rem)',
-                                height: 'clamp(2.25rem, 3.5vw, 2.5rem)',
-                                backgroundColor: `${item.color}15`,
-                                color: item.color
-                              }}
-                            >
-                              <item.icon size={18} />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <div className="font-bold" style={{
-                                color: item.color,
-                                fontSize: 'clamp(0.8125rem, 1.6vw, 0.875rem)',
-                                marginBottom: 'clamp(0.25rem, 0.6vw, 0.375rem)',
-                                lineHeight: '1.3'
-                              }}>
-                                {item.title}
-                              </div>
-                              <div className="leading-snug" style={{
-                                color: 'var(--color-text-muted)',
-                                fontSize: 'clamp(0.6875rem, 1.3vw, 0.75rem)',
-                                lineHeight: '1.4'
-                              }}>
-                                {item.desc}
-                              </div>
-                            </div>
-                          </motion.a>
-                        ))}
+            <div className="flex flex-col w-full" style={{ gap: 'clamp(0.5rem, 1.5vw, 0.625rem)', minHeight: 'min-content', width: '100%' }}>
+              {/* Top Row: Left Side (Profile Image & Go to My Portals) + Right Side (Home, Our Portals, About Us) */}
+              <div className="flex justify-between items-start gap-2.5 w-full">
+                {/* Left Side: Profile Image & Go to My Portals */}
+                {user ? (
+                  <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-1">
+                    <div className="flex items-center gap-1.5 p-1 bg-slate-50/80 rounded-lg">
+                      {user.profilePhoto ? (
+                        <img
+                          src={user.profilePhoto}
+                          alt={user.name || user.username || 'User'}
+                          className="w-7 h-7 rounded-full object-cover shrink-0 border border-indigo-300 shadow-xs"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextSibling) {
+                              e.currentTarget.nextSibling.style.display = 'flex';
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}
+                      >
+                        {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <a
-                href="#about"
-                className="font-medium"
-                style={{
-                  color: 'var(--color-text-muted)',
-                  paddingTop: 'clamp(0.625rem, 1.5vw, 0.75rem)',
-                  paddingBottom: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-                }}
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onNavigate('home');
-                }}
-              >
-                About Us
-              </a>
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onOpenInstall?.();
-                }}
-                className="w-full py-2.5 px-3 rounded-xl bg-indigo-50/70 border border-indigo-200/80 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 text-indigo-700 font-bold text-xs cursor-pointer mb-2 shadow-xs"
-              >
-                <img src="/CRM-APP-logo.png" alt="App Logo" className="w-5 h-5 rounded-xs object-contain" />
-                <span>Download & Install App</span>
-              </button>
-
-              {user ? (
-                <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
-                  <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
-                    {user.profilePhoto ? (
-                      <img
-                        src={user.profilePhoto}
-                        alt={user.name || user.username || 'User'}
-                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-indigo-300 shadow-xs"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          if (e.currentTarget.nextSibling) {
-                            e.currentTarget.nextSibling.style.display = 'flex';
-                          }
-                        }}
-                      />
-                    ) : null}
-                    <div
-                      className={`w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[11px] font-bold text-slate-800 truncate">{user.name || user.username}</span>
+                      </div>
+                    </div>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      className="text-white rounded-lg font-bold py-1.5 px-2 text-center text-[10px] w-full"
+                      style={{
+                        backgroundColor: 'var(--color-primary)',
+                        boxShadow: 'var(--shadow-soft)',
+                      }}
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onNavigate('portals');
+                      }}
                     >
-                      {(user.name || user.username || 'U').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-slate-800">{user.name || user.username}</span>
-                    </div>
+                      Go to My Portals
+                    </motion.button>
                   </div>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    className="text-white rounded-xl font-bold py-3 text-center"
+                ) : (
+                  <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-1">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      className="text-white rounded-lg font-bold py-1.5 px-2 text-center text-[11px] w-full"
+                      style={{
+                        backgroundColor: 'var(--color-primary)',
+                        boxShadow: 'var(--shadow-soft)',
+                      }}
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onNavigate('login');
+                      }}
+                    >
+                      Sign In
+                    </motion.button>
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onOpenInstall?.();
+                      }}
+                      style={{
+                        border: '1.5px solid #2563eb',
+                        backgroundColor: 'rgba(239, 246, 255, 0.7)'
+                      }}
+                      className="w-full py-1.5 px-1.5 rounded-lg hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5 text-blue-600 font-bold text-[10px] cursor-pointer shadow-xs"
+                    >
+                      <img src="/CRM-APP-logo.png" alt="App Logo" className="w-3.5 h-3.5 rounded-xs object-contain" />
+                      <span className="truncate">Download & Install App</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Right Side: Home, Our Portals, About Us */}
+                <div className="flex flex-col items-start shrink-0 pl-1" style={{ gap: '0.2rem' }}>
+                  <a
+                    href="#home"
+                    className="font-medium text-sm text-left"
                     style={{
-                      backgroundColor: 'var(--color-primary)',
-                      boxShadow: 'var(--shadow-soft)',
+                      color: 'var(--color-text-muted)',
+                      fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+                      paddingTop: '0.15rem',
+                      paddingBottom: '0.15rem'
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMobileMenuOpen(false);
+                      onNavigate('home');
+                    }}
+                  >
+                    Home
+                  </a>
+
+                  <button
+                    onClick={() => setIsMegaMenuOpen(!isMegaMenuOpen)}
+                    className="font-medium text-sm flex items-center justify-start gap-1 bg-transparent border-none cursor-pointer text-left"
+                    style={{
+                      color: isMegaMenuOpen ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+                      paddingTop: '0.15rem',
+                      paddingBottom: '0.15rem'
+                    }}
+                  >
+                    Our Portals <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-200 ${isMegaMenuOpen ? 'rotate-180' : 'rotate-0'
+                        }`}
+                    />
+                  </button>
+
+                  <a
+                    href="#about"
+                    className="font-medium text-sm text-left"
+                    style={{
+                      color: 'var(--color-text-muted)',
+                      fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+                      paddingTop: '0.15rem',
+                      paddingBottom: '0.15rem'
                     }}
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      onNavigate('portals');
+                      onNavigate('home');
                     }}
                   >
-                    Go to My Portals
-                  </motion.button>
+                    About Us
+                  </a>
+                </div>
+              </div>
+
+              {/* Our Portals Dropdown if open */}
+              <AnimatePresence>
+                {isMegaMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full"
+                    style={{ marginTop: '0.35rem' }}
+                  >
+                    <div className="flex flex-col" style={{
+                      gap: 'clamp(0.5rem, 1.5vw, 0.625rem)',
+                      paddingLeft: '0.5rem',
+                      maxHeight: 'none'
+                    }}>
+                      {solutions.map((item, idx) => (
+                        <motion.a
+                          key={idx}
+                          href={item.url}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setIsMobileMenuOpen(false);
+                            if (onPortalClick) onPortalClick(item);
+                          }}
+                          whileTap={{ scale: 0.98 }}
+                          className="flex rounded-xl transition-all duration-200 group"
+                          style={{
+                            gap: 'clamp(0.5rem, 1.5vw, 0.75rem)',
+                            padding: 'clamp(0.5rem, 1.5vw, 0.75rem)',
+                            backgroundColor: `${item.color}05`,
+                            border: `1px solid ${item.color}10`
+                          }}
+                        >
+                          <div
+                            className="rounded-[10px] flex justify-center items-center flex-shrink-0 transition-colors duration-300"
+                            style={{
+                              width: '2rem',
+                              height: '2rem',
+                              backgroundColor: `${item.color}15`,
+                              color: item.color
+                            }}
+                          >
+                            <item.icon size={16} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="font-bold text-xs" style={{
+                              color: item.color,
+                              marginBottom: '0.2rem',
+                              lineHeight: '1.2'
+                            }}>
+                              {item.title}
+                            </div>
+                            <div className="leading-snug text-[10px]" style={{
+                              color: 'var(--color-text-muted)',
+                              lineHeight: '1.3'
+                            }}>
+                              {item.desc}
+                            </div>
+                          </div>
+                        </motion.a>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Download App & Sign Out Section - Only rendered when logged in */}
+              {user && (
+                <div className="flex flex-col gap-1.5 w-full pt-1.5 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onOpenInstall?.();
+                    }}
+                    style={{
+                      border: '1.5px solid #2563eb',
+                      backgroundColor: 'rgba(239, 246, 255, 0.7)'
+                    }}
+                    className="w-full py-1.5 px-2.5 rounded-lg hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5 text-blue-600 font-bold text-[11px] cursor-pointer shadow-xs"
+                  >
+                    <img src="/CRM-APP-logo.png" alt="App Logo" className="w-4 h-4 rounded-xs object-contain" />
+                    <span>Download & Install App</span>
+                  </button>
+
                   {onLogout && (
                     <button
                       onClick={() => {
                         setIsMobileMenuOpen(false);
                         setShowLogoutModal(true);
                       }}
-                      className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-50 cursor-pointer"
+                      className="w-full py-1.5 rounded-lg border border-red-200 text-red-600 font-bold text-[11px] flex items-center justify-center gap-1.5 hover:bg-red-50 cursor-pointer"
                     >
-                      <LogOut size={14} />
+                      <LogOut size={12} />
                       <span>Sign Out</span>
                     </button>
                   )}
                 </div>
-              ) : (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  className="text-white rounded-xl font-bold py-3 text-center"
-                  style={{
-                    backgroundColor: 'var(--color-primary)',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onNavigate('login');
-                  }}
-                >
-                  Sign In
-                </motion.button>
               )}
             </div>
           </motion.div>

@@ -2,39 +2,80 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const Hero = ({ onNavigate }) => {
-    // Typewriter animation texts
-    const fullLine1 = "The Official";
-    const fullHighlight = "CRM Platform";
-    const fullLine2 = "for Pydah Organization.";
-    const totalChars = fullLine1.length + fullHighlight.length + fullLine2.length;
+    // Typewriter animation rotating texts
+    const textSets = [
+        {
+            line1: "The Official",
+            highlight: "CRM Platform",
+            line2: "for Pydah Organization."
+        },
+        {
+            line1: "The Unified",
+            highlight: "Academic Portal",
+            line2: "for Pydah Organization."
+        },
+        {
+            line1: "The Smart",
+            highlight: "Student Portal",
+            line2: "for Pydah Organization."
+        },
+        {
+            line1: "The Complete",
+            highlight: "Automation System",
+            line2: "for Pydah Organization."
+        }
+    ];
 
+    const [setIndex, setSetIndex] = useState(0);
     const [charIndex, setCharIndex] = useState(0);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const currentSet = textSets[setIndex];
+    const totalChars = currentSet.line1.length + currentSet.highlight.length + currentSet.line2.length;
 
     useEffect(() => {
         let timeoutId;
-        if (charIndex < totalChars) {
-            timeoutId = setTimeout(() => {
-                setCharIndex(prev => prev + 1);
-            }, 45);
+
+        if (!isDeleting) {
+            // Typing forward
+            if (charIndex < totalChars) {
+                timeoutId = setTimeout(() => {
+                    setCharIndex(prev => prev + 1);
+                }, 40);
+            } else {
+                // Pause after completing sentence so user can read
+                timeoutId = setTimeout(() => {
+                    setIsDeleting(true);
+                }, 2400);
+            }
         } else {
-            // Once all letters are typed, pause for some seconds, then restart typing
-            timeoutId = setTimeout(() => {
-                setCharIndex(0);
-            }, 3500);
+            // Backspacing backward
+            if (charIndex > 0) {
+                timeoutId = setTimeout(() => {
+                    setCharIndex(prev => prev - 1);
+                }, 20);
+            } else {
+                // Brief pause before typing next text set
+                timeoutId = setTimeout(() => {
+                    setIsDeleting(false);
+                    setSetIndex(prev => (prev + 1) % textSets.length);
+                }, 350);
+            }
         }
+
         return () => clearTimeout(timeoutId);
-    }, [charIndex, totalChars]);
+    }, [charIndex, isDeleting, totalChars, textSets.length]);
 
-    const displayedLine1 = fullLine1.slice(0, Math.min(charIndex, fullLine1.length));
-    const isHighlightPhase = charIndex > fullLine1.length && charIndex <= fullLine1.length + fullHighlight.length;
-    const isLine2Phase = charIndex > fullLine1.length + fullHighlight.length;
+    const isLine1Phase = charIndex <= currentSet.line1.length;
+    const isHighlightPhase = charIndex > currentSet.line1.length && charIndex <= currentSet.line1.length + currentSet.highlight.length;
+    const isLine2Phase = charIndex > currentSet.line1.length + currentSet.highlight.length;
 
-    const displayedHighlight = charIndex > fullLine1.length
-        ? fullHighlight.slice(0, Math.min(charIndex - fullLine1.length, fullHighlight.length))
+    const displayedLine1 = currentSet.line1.slice(0, Math.min(charIndex, currentSet.line1.length));
+    const displayedHighlight = charIndex > currentSet.line1.length
+        ? currentSet.highlight.slice(0, Math.min(charIndex - currentSet.line1.length, currentSet.highlight.length))
         : '';
-
-    const displayedLine2 = charIndex > fullLine1.length + fullHighlight.length
-        ? fullLine2.slice(0, charIndex - fullLine1.length - fullHighlight.length)
+    const displayedLine2 = charIndex > currentSet.line1.length + currentSet.highlight.length
+        ? currentSet.line2.slice(0, Math.min(charIndex - currentSet.line1.length - currentSet.highlight.length, currentSet.line2.length))
         : '';
 
     return (
@@ -63,12 +104,12 @@ const Hero = ({ onNavigate }) => {
                     >
                         <span>
                             {displayedLine1}
-                            {!isHighlightPhase && !isLine2Phase && (
+                            {isLine1Phase && (
                                 <span className="inline-block w-[2px] md:w-[3px] h-[0.85em] bg-indigo-500 ml-1 align-middle animate-pulse" />
                             )}
                         </span>
                         <br className="hidden md:block" />
-                        {displayedHighlight && (
+                        {(displayedHighlight || isHighlightPhase) && (
                             <>
                                 {' '}
                                 <span

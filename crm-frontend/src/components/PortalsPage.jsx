@@ -145,29 +145,35 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                         {/* Profile Bar */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-slate-200/80">
                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                                {user.profilePhoto ? (
-                                    <img
-                                        src={user.profilePhoto}
-                                        alt={user.name || user.username || 'User'}
-                                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover shrink-0 border-2 border-indigo-200/80 shadow-sm"
-                                        referrerPolicy="no-referrer"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            if (e.currentTarget.nextSibling) {
-                                                e.currentTarget.nextSibling.style.display = 'flex';
-                                            }
-                                        }}
-                                    />
-                                ) : null}
-                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-md shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}>
-                                    {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                                {/* Profile Photo: replaced to navbar menu button on mobile, shown on sm: and up */}
+                                <div className="hidden sm:block shrink-0">
+                                    {user.profilePhoto ? (
+                                        <img
+                                            src={user.profilePhoto}
+                                            alt={user.name || user.username || 'User'}
+                                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-indigo-200/80 shadow-sm"
+                                            referrerPolicy="no-referrer"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                if (e.currentTarget.nextSibling) {
+                                                    e.currentTarget.nextSibling.style.display = 'flex';
+                                                }
+                                            }}
+                                        />
+                                    ) : null}
+                                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-md ${user.profilePhoto ? 'hidden' : ''}`}>
+                                        {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                                    </div>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight truncate">
+                                    <p className="text-lg sm:text-sm font-black text-indigo-600 tracking-tight leading-tight mb-0.5">
+                                        Welcome,
+                                    </p>
+                                    <h1 className="text-[13px] sm:text-xl md:text-2xl font-bold sm:font-black text-slate-800 sm:text-slate-900 tracking-tight leading-tight truncate">
                                         {user.name || user.username || 'Pydah Member'}
                                     </h1>
-                                    <p className="flex text-slate-500 text-xs sm:text-sm mt-0.5 font-medium items-center gap-1.5 truncate">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                    <p className="flex text-slate-500 text-[11px] sm:text-sm mt-0.5 font-medium items-center gap-1.5 truncate">
+                                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                                         <span className="truncate">
                                             <span className="hidden sm:inline">Authenticated Session · </span>
                                             {user.email || user.username}

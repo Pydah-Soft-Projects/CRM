@@ -102,6 +102,13 @@ button {
   display: block;
 }
 
+.mobile-toggle:focus,
+.mobile-toggle:focus-visible,
+.mobile-toggle:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 @media (min-width: 768px) {
   .mobile-toggle {
     display: none;
