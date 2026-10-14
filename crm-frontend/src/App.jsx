@@ -10,11 +10,6 @@ import Login from './components/Login';
 import { authAPI } from './services/api';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [selectedPortal, setSelectedPortal] = useState(null);
-  const [launchingPortalId, setLaunchingPortalId] = useState(null);
-  const [launchError, setLaunchError] = useState(null);
-
   // Initialize user from existing session
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem('accessToken');
@@ -29,6 +24,20 @@ function App() {
     }
     return null;
   });
+
+  // If a user is already logged in, show 'portals' directly on site open; otherwise show 'home'
+  const [currentPage, setCurrentPage] = useState(() => {
+    const token = localStorage.getItem('accessToken');
+    const storedUser = localStorage.getItem('user');
+    if (token && storedUser) {
+      return 'portals';
+    }
+    return 'home';
+  });
+
+  const [selectedPortal, setSelectedPortal] = useState(null);
+  const [launchingPortalId, setLaunchingPortalId] = useState(null);
+  const [launchError, setLaunchError] = useState(null);
 
   const handleNavigate = (page) => {
     setCurrentPage(page);
