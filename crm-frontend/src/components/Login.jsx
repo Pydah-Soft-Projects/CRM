@@ -117,9 +117,11 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
     }}>
       {/* Mobile Screen Background: strictly for mobile view */}
       <div
-        className="block md:hidden absolute inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
+        className="block md:hidden absolute inset-0 pointer-events-none z-0 bg-no-repeat"
         style={{
-          backgroundImage: "url('/CRM-login%20card.png')",
+          backgroundImage: "url('/CRM-login-mobile.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
         }}
       />
 
@@ -186,9 +188,9 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                 }
                 @media (max-width: 767px) {
                   .login-page-container {
-                    background-image: url('/CRM-login%20card.png') !important;
+                    background-image: url('/CRM-login-mobile.png') !important;
                     background-size: cover !important;
-                    background-position: center !important;
+                    background-position: center top !important;
                     background-repeat: no-repeat !important;
                   }
                   .login-card-container {

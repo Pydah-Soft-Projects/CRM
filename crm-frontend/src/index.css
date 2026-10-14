@@ -232,9 +232,9 @@ a:focus-visible {
 
 @media (max-width: 767px) {
   .login-page-container {
-    background-image: url('/CRM-login%20card.png') !important;
+    background-image: url('/CRM-login-mobile.png') !important;
     background-size: cover !important;
-    background-position: center !important;
+    background-position: center top !important;
     background-repeat: no-repeat !important;
   }
   .login-card-container {
