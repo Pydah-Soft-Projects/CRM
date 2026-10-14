@@ -115,10 +115,11 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
       paddingTop: 'clamp(80px, 12vw, 100px)',
       paddingBottom: 'clamp(4rem, 10vw, 8rem)'
     }}>
-      {/* Mobile Screen Background: strictly for mobile view */}
+      {/* Mobile Screen Background: strictly for mobile view, starts after navbar */}
       <div
-        className="block md:hidden absolute inset-0 pointer-events-none z-0 bg-no-repeat"
+        className="login-mobile-bg block md:hidden absolute left-0 right-0 bottom-0 pointer-events-none z-0 bg-no-repeat"
         style={{
+          top: 'clamp(64px, 9vw, 72px)',
           backgroundImage: "url('/CRM-login-mobile.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
@@ -188,6 +189,11 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                 }
                 @media (max-width: 767px) {
                   .login-page-container {
+                    background-image: none !important;
+                    background-color: #f8fafc !important;
+                  }
+                  .login-mobile-bg {
+                    top: clamp(64px, 9vw, 72px) !important;
                     background-image: url('/CRM-login-mobile.png') !important;
                     background-size: cover !important;
                     background-position: center top !important;

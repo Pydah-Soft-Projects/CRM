@@ -232,6 +232,11 @@ a:focus-visible {
 
 @media (max-width: 767px) {
   .login-page-container {
+    background-image: none !important;
+    background-color: #f8fafc !important;
+  }
+  .login-mobile-bg {
+    top: clamp(64px, 9vw, 72px) !important;
     background-image: url('/CRM-login-mobile.png') !important;
     background-size: cover !important;
     background-position: center top !important;
