@@ -89,8 +89,16 @@ const InstallAppModal = ({ isOpen, onClose }) => {
         setInstalling(false);
       }
     } else {
-      // Browser already displays the install icon in address bar or prompt is initializing
-      setFeedbackMsg('Please refresh the page (Ctrl + F5) to activate 1-click install, or click the Install icon (🖥️ / ⬇️) in your browser address bar.');
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isAndroid = /Android/.test(navigator.userAgent);
+
+      if (isIOS) {
+        setFeedbackMsg('On iOS Safari: Tap Share (⎋), then choose "Add to Home Screen".');
+      } else if (isAndroid) {
+        setFeedbackMsg('On Android Chrome: Tap menu (⋮), then tap "Install app" or "Add to Home screen".');
+      } else {
+        setFeedbackMsg('Please refresh (Ctrl + F5) or click the Install icon in your browser address bar.');
+      }
       setTimeout(() => setFeedbackMsg(null), 6000);
     }
   };
@@ -100,7 +108,7 @@ const InstallAppModal = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6"
         style={{ boxSizing: 'border-box' }}
       >
         {/* Soft Backdrop */}
@@ -112,16 +120,15 @@ const InstallAppModal = ({ isOpen, onClose }) => {
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
         />
 
-        {/* Modal Window - Responsive Light Theme with Generous Spacing */}
+        {/* Modal Window - Responsive Light Theme with Adaptive Mobile Layout */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full bg-white rounded-3xl shadow-[0_25px_70px_-15px_rgba(0,0,0,0.22)] border border-slate-200/90 text-slate-800 overflow-hidden z-10"
+          className="relative w-full max-w-[420px] bg-white rounded-3xl shadow-[0_25px_70px_-15px_rgba(0,0,0,0.22)] border border-slate-200/90 text-slate-800 overflow-hidden z-10"
           style={{
-            maxWidth: '430px',
-            padding: 'clamp(2rem, 5vw, 2.5rem) clamp(1.5rem, 4.5vw, 2.25rem)',
+            padding: 'clamp(1.5rem, 4vw, 2.25rem) clamp(1rem, 3.5vw, 1.75rem)',
             boxSizing: 'border-box'
           }}
         >
@@ -134,19 +141,19 @@ const InstallAppModal = ({ isOpen, onClose }) => {
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 sm:top-5 sm:right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer z-20"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer z-20"
             aria-label="Close modal"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
 
           {/* App Header & Logo */}
           <div className="flex flex-col items-center text-center">
             {/* App Logo */}
-            <div className="relative" style={{ marginBottom: '1.25rem' }}>
+            <div className="relative" style={{ marginBottom: '1rem' }}>
               <div
                 className="rounded-3xl bg-slate-50 shadow-sm border border-slate-200/90 flex items-center justify-center"
-                style={{ width: '92px', height: '92px', padding: '10px' }}
+                style={{ width: '82px', height: '82px', padding: '9px' }}
               >
                 <img
                   src="/CRM-APP-logo.png"
@@ -155,7 +162,7 @@ const InstallAppModal = ({ isOpen, onClose }) => {
                 />
               </div>
               <div
-                className="absolute -bottom-1 -right-1 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-wider"
+                className="absolute -bottom-1 -right-1 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider"
                 style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #0284c7 100%)' }}
               >
                 APP
@@ -166,38 +173,38 @@ const InstallAppModal = ({ isOpen, onClose }) => {
             <h3
               className="font-extrabold text-slate-900 tracking-tight text-center"
               style={{
-                fontSize: 'clamp(1.25rem, 3.5vw, 1.5rem)',
+                fontSize: 'clamp(1.2rem, 3.2vw, 1.45rem)',
                 lineHeight: '1.25',
-                marginBottom: '1rem'
+                marginBottom: '0.875rem'
               }}
             >
               Install Pydah CRM
             </h3>
 
-            {/* Feature Pills - Clean Single Row with Good Gap */}
+            {/* Feature Pills - Auto-adapting, cleanly wraps if needed on narrow mobile screens */}
             <div
-              className="flex items-center justify-center w-full flex-nowrap"
-              style={{ gap: '0.5rem', marginBottom: '1.75rem' }}
+              className="flex flex-wrap items-center justify-center w-full"
+              style={{ gap: '0.375rem', marginBottom: '1.5rem', maxWidth: '100%' }}
             >
               <span
-                className="rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center font-semibold whitespace-nowrap"
-                style={{ padding: '0.35rem 0.65rem', fontSize: 'clamp(10px, 2.2vw, 12px)', gap: '0.3rem' }}
+                className="rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center font-semibold shrink-0"
+                style={{ padding: '0.3rem 0.55rem', fontSize: '11px', gap: '0.25rem' }}
               >
-                <Sparkles size={13} className="text-indigo-600 shrink-0" />
+                <Sparkles size={12} className="text-indigo-600 shrink-0" />
                 <span>Offline Ready</span>
               </span>
               <span
-                className="rounded-full bg-sky-50 border border-sky-200 text-sky-700 flex items-center font-semibold whitespace-nowrap"
-                style={{ padding: '0.35rem 0.65rem', fontSize: 'clamp(10px, 2.2vw, 12px)', gap: '0.3rem' }}
+                className="rounded-full bg-sky-50 border border-sky-200 text-sky-700 flex items-center font-semibold shrink-0"
+                style={{ padding: '0.3rem 0.55rem', fontSize: '11px', gap: '0.25rem' }}
               >
-                <Monitor size={13} className="text-sky-600 shrink-0" />
+                <Monitor size={12} className="text-sky-600 shrink-0" />
                 <span>Desktop & Mobile</span>
               </span>
               <span
-                className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center font-semibold whitespace-nowrap"
-                style={{ padding: '0.35rem 0.65rem', fontSize: 'clamp(10px, 2.2vw, 12px)', gap: '0.3rem' }}
+                className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center font-semibold shrink-0"
+                style={{ padding: '0.3rem 0.55rem', fontSize: '11px', gap: '0.25rem' }}
               >
-                <CheckCircle size={13} className="text-emerald-600 shrink-0" />
+                <CheckCircle size={12} className="text-emerald-600 shrink-0" />
                 <span>Instant SSO</span>
               </span>
             </div>
@@ -210,7 +217,7 @@ const InstallAppModal = ({ isOpen, onClose }) => {
                 className="rounded-2xl bg-emerald-50 border border-emerald-200 text-center"
                 style={{ padding: '1rem 1.25rem' }}
               >
-                <CheckCircle size={26} className="text-emerald-600 mx-auto" style={{ marginBottom: '0.5rem' }} />
+                <CheckCircle size={24} className="text-emerald-600 mx-auto" style={{ marginBottom: '0.4rem' }} />
                 <p className="font-bold text-emerald-800 text-sm">Pydah CRM Is Already Installed!</p>
                 <p className="text-emerald-600 text-xs" style={{ marginTop: '0.25rem' }}>
                   Launch it anytime directly from your desktop or home screen.
@@ -224,20 +231,20 @@ const InstallAppModal = ({ isOpen, onClose }) => {
                 style={{
                   background: 'linear-gradient(135deg, #4f46e5 0%, #0284c7 100%)',
                   color: '#ffffff',
-                  padding: '0.95rem 1.5rem',
-                  fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
-                  gap: '0.625rem',
+                  padding: '0.875rem 1.25rem',
+                  fontSize: 'clamp(0.875rem, 2.5vw, 0.95rem)',
+                  gap: '0.5rem',
                   boxShadow: '0 12px 28px -6px rgba(79, 70, 229, 0.45)'
                 }}
               >
                 {installing ? (
                   <>
-                    <Loader2 size={19} className="animate-spin text-white" />
+                    <Loader2 size={18} className="animate-spin text-white" />
                     <span className="text-white">Installing Pydah CRM...</span>
                   </>
                 ) : (
                   <>
-                    <Download size={19} className="text-white" />
+                    <Download size={18} className="text-white" />
                     <span className="text-white">Install Pydah CRM App</span>
                   </>
                 )}
