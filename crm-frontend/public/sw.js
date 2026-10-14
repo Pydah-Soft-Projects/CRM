@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pydah-crm-v6';
+const CACHE_NAME = 'pydah-crm-v7';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
