@@ -30,11 +30,11 @@ const Footer = () => {
     ];
 
     return (
-        <footer className="w-full relative bg-[#07090E] text-white pt-20 pb-10 border-t-[4px] border-indigo-500 overflow-hidden">
+        <footer className="w-full relative bg-[#07090E] text-white pt-8 sm:pt-20 pb-10 border-t-[4px] border-indigo-500 overflow-hidden">
             <div className="w-full px-6 sm:px-12 lg:px-20 flex flex-col justify-between">
                 
                 {/* Top Section: 4 Columns (2 cols on mobile for Quick Links & Cloud Portals side-by-side) */}
-                <div className="w-full grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-6 sm:gap-x-8 gap-y-10 lg:gap-14 pt-4 pb-12">
+                <div className="w-full grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-6 sm:gap-x-8 gap-y-10 lg:gap-14 pt-0 sm:pt-4 pb-12">
 
                     {/* Brand Column */}
                     <div className="col-span-2 md:col-span-1 lg:col-span-1 space-y-5">

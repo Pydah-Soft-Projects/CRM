@@ -244,13 +244,15 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4.5 items-stretch">
-                        {filteredPortals.map((portal) => {
+                        {filteredPortals.map((portal, index) => {
                             const isLaunching = launchingPortalId === portal.portalId;
 
                             return (
                                 <PortalAppCard
                                     key={portal.portalId}
                                     portal={portal}
+                                    index={index}
+                                    totalCount={filteredPortals.length}
                                     user={user}
                                     isLaunching={isLaunching}
                                     onPortalClick={onPortalClick}
@@ -337,6 +339,8 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
 
 const PortalAppCard = ({
     portal,
+    index = 0,
+    totalCount = 6,
     user,
     isLaunching,
     onPortalClick,
@@ -420,12 +424,26 @@ const PortalAppCard = ({
                                     style={{
                                         backgroundColor: portal.color,
                                         borderColor: portal.color,
-                                        boxShadow: `0 2px 8px -1px ${portal.color}40`,
+                                        boxShadow: `0 2px 10px -1px ${portal.color}50`,
                                         color: '#ffffff'
                                     }}
-                                    className="py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center justify-center border shadow-xs transition-all active:scale-95"
+                                    className="relative overflow-hidden py-1 px-3 rounded-lg font-extrabold text-[10px] flex items-center justify-center border shadow-xs transition-all active:scale-95"
                                 >
-                                    <span style={{ color: '#ffffff' }} className="tracking-wide">
+                                    {/* Strictly one-after-one sequential shine sweep */}
+                                    <motion.span
+                                        initial={{ x: '-150%' }}
+                                        animate={{ x: '250%' }}
+                                        transition={{
+                                            duration: 2.2,
+                                            repeat: Infinity,
+                                            repeatDelay: Math.max(0, (totalCount - 1) * 2.2),
+                                            delay: index * 2.2,
+                                            ease: "easeInOut"
+                                        }}
+                                        className="absolute inset-0 w-3/4 h-full bg-gradient-to-r from-transparent via-white/80 to-transparent skew-x-[-25deg] pointer-events-none"
+                                    />
+
+                                    <span style={{ color: '#ffffff' }} className="tracking-wide relative z-10 whitespace-nowrap">
                                         {user ? 'Launch' : 'Sign In'}
                                     </span>
                                 </div>

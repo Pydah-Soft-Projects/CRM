@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 const solutions = [
 
@@ -73,6 +74,7 @@ const solutions = [
 const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const closeTimeoutRef = useRef(null);
 
   const handleMmEnter = () => {
@@ -293,7 +295,7 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
               </motion.button>
               {onLogout && (
                 <button
-                  onClick={onLogout}
+                  onClick={() => setShowLogoutModal(true)}
                   title="Sign Out"
                   className="p-2 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                 >
@@ -520,9 +522,9 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
                     <button
                       onClick={() => {
                         setIsMobileMenuOpen(false);
-                        onLogout();
+                        setShowLogoutModal(true);
                       }}
-                      className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-50"
+                      className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-50 cursor-pointer"
                     >
                       <LogOut size={14} />
                       <span>Sign Out</span>
@@ -549,6 +551,79 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
           </motion.div>
         )
       }
+
+      {/* Sign Out Confirmation Modal - Rendered at document.body level for perfect centering across all views */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showLogoutModal && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLogoutModal(false)}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
+              />
+
+              {/* Modal Dialog */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.2 }}
+                className="relative bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 max-w-sm sm:max-w-md w-full shadow-2xl border border-slate-200/90 z-10 overflow-hidden my-auto"
+              >
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="flex items-center sm:items-start gap-3.5 sm:gap-4">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-red-50 border border-red-100 text-red-600 flex items-center justify-center shrink-0">
+                    <LogOut size={20} className="translate-x-0.5" />
+                  </div>
+                  <div className="pr-5 flex-1">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
+                      Sign Out Confirmation
+                    </h3>
+                    <p className="hidden sm:block text-slate-500 text-xs sm:text-sm mt-1 sm:mt-1.5 leading-relaxed">
+                      Are you sure you want to sign out of your Pydah CRM session?
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 sm:mt-6 flex items-center gap-2.5 sm:gap-3 pt-3.5 sm:pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutModal(false)}
+                    style={{ backgroundColor: '#f1f5f9', color: '#334155' }}
+                    className="hidden sm:inline-flex sm:flex-1 items-center justify-center px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer border border-slate-200 hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLogoutModal(false);
+                      if (onLogout) onLogout();
+                    }}
+                    style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+                    className="w-full sm:flex-1 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-red-600/25 transition-all cursor-pointer flex items-center justify-center gap-2 hover:bg-red-700"
+                  >
+                    <LogOut size={15} style={{ color: '#ffffff' }} />
+                    <span style={{ color: '#ffffff' }}>Yes, Sign Out</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </nav >
   );
 };
