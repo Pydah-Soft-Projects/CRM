@@ -105,8 +105,54 @@ const Hero = ({ onNavigate }) => {
                         Experience the smoothness of high-performance management.
                         Automate student portals, hostels, HRMS, fees, and transport in one elegant interface.
                     </p>
+                    {/* Smarter Management Feature Card (Mobile screens only - shifted above buttons on mobile) */}
                     <div
-                        className="flex flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-4 flex-nowrap"
+                        className="block md:hidden relative mx-auto max-w-[560px]"
+                        style={{
+                            marginBottom: 'clamp(2.5rem, 8vw, 3.5rem)'
+                        }}
+                    >
+                        {/* Top-Left Corner Accent Line */}
+                        <svg
+                            className="absolute -top-2 -left-2 w-7 h-7 text-blue-500 pointer-events-none"
+                            viewBox="0 0 28 28"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <path d="M 4 18 L 4 9 C 4 6 6 4 9 4 L 18 4" />
+                        </svg>
+
+                        {/* Bottom-Right Corner Accent Line (Opposite Corner) */}
+                        <svg
+                            className="absolute -bottom-2 -right-2 w-7 h-7 text-blue-500 pointer-events-none"
+                            viewBox="0 0 28 28"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <path d="M 10 24 L 19 24 C 22 24 24 22 24 19 L 24 10" />
+                        </svg>
+
+                        <div className="bg-[#F0F6FE]/90 backdrop-blur-sm border border-[#DCE8F8] rounded-2xl p-3 sm:p-4 md:p-4.5 shadow-[0_4px_16px_-4px_rgba(59,130,246,0.06)] text-left">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <span className="font-extrabold text-slate-900 text-sm sm:text-base md:text-lg leading-tight tracking-tight">
+                                    Smarter Management.
+                                </span>
+                                <span className="font-extrabold text-blue-600 text-sm sm:text-base md:text-lg leading-tight tracking-tight">
+                                    Better Tomorrow.
+                                </span>
+                            </div>
+                            <p className="text-slate-500 text-xs sm:text-sm leading-relaxed mt-1 sm:mt-1.5">
+                                Pydah CRM helps you connect, organize and grow — all in one place.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                        className="flex flex-row items-center justify-center md:justify-start gap-3.5 sm:gap-4 flex-nowrap mt-2 md:mt-0"
                         style={{
                             marginBottom: 'clamp(1rem, 2.5vw, 1.5rem)'
                         }}
@@ -151,47 +197,6 @@ const Hero = ({ onNavigate }) => {
                         >
                             Explore Portals
                         </motion.button>
-                    </div>
-
-                    {/* Smarter Management Feature Card (Mobile screens only) */}
-                    <div className="block md:hidden relative mx-auto max-w-[560px] mt-3 mb-2 sm:mt-4 sm:mb-3">
-                        {/* Top-Left Corner Accent Line */}
-                        <svg
-                            className="absolute -top-2 -left-2 w-7 h-7 text-blue-500 pointer-events-none"
-                            viewBox="0 0 28 28"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                        >
-                            <path d="M 4 18 L 4 9 C 4 6 6 4 9 4 L 18 4" />
-                        </svg>
-
-                        {/* Bottom-Right Corner Accent Line (Opposite Corner) */}
-                        <svg
-                            className="absolute -bottom-2 -right-2 w-7 h-7 text-blue-500 pointer-events-none"
-                            viewBox="0 0 28 28"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                        >
-                            <path d="M 10 24 L 19 24 C 22 24 24 22 24 19 L 24 10" />
-                        </svg>
-
-                        <div className="bg-[#F0F6FE]/90 backdrop-blur-sm border border-[#DCE8F8] rounded-2xl p-3 sm:p-4 md:p-4.5 shadow-[0_4px_16px_-4px_rgba(59,130,246,0.06)] text-left">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                <span className="font-extrabold text-slate-900 text-sm sm:text-base md:text-lg leading-tight tracking-tight">
-                                    Smarter Management.
-                                </span>
-                                <span className="font-extrabold text-blue-600 text-sm sm:text-base md:text-lg leading-tight tracking-tight">
-                                    Better Tomorrow.
-                                </span>
-                            </div>
-                            <p className="text-slate-500 text-xs sm:text-sm leading-relaxed mt-1 sm:mt-1.5">
-                                Pydah CRM helps you connect, organize and grow — all in one place.
-                            </p>
-                        </div>
                     </div>
                 </motion.div>
 
