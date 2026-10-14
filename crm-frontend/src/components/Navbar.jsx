@@ -96,7 +96,7 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
       <div className="section-container flex justify-between items-center">
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer"
-          onClick={() => onNavigate('home')}
+          onClick={() => onNavigate(user ? 'portals' : 'home')}
         >
           <img
             src="/pydah-logo.webp"

@@ -217,11 +217,11 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               return;
             }
 
-            // 2. Super administrator bypass
-            if (email === 'ravi@pydahsoft.in' || user.role === 'super_admin') {
-              portals.add('examination-portal');
-              return;
-            }
+            // // 2. Super administrator bypass
+            // if (email === 'ravi@pydahsoft.in' || user.role === 'super_admin') {
+            //   portals.add('examination-portal');
+            //   return;
+            // }
 
             // 3. For all employees / staff: strictly verify presence and assigned role in ems_users
             const examUser = await findExaminationUser({
