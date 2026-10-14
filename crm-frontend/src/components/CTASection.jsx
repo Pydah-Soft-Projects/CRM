@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import { useState } from 'react';
 
 const CTASection = ({ onNavigate }) => {
     return (

@@ -8,10 +8,38 @@ import Footer from './components/Footer';
 import PortalsPage from './components/PortalsPage';
 import Login from './components/Login';
 import { authAPI } from './services/api';
+import { getRandomPortal } from './data/portalsData';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [selectedPortal, setSelectedPortal] = useState(null);
+  // Resolve starting page from URL hash, path, or session storage
+  const getInitialPage = () => {
+    if (typeof window === 'undefined') return 'home';
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (hash === 'login' || hash === 'signin') return 'login';
+    if (hash === 'portals') return 'portals';
+
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/login' || path === '/signin') return 'login';
+    if (path === '/portals') return 'portals';
+
+    const saved = sessionStorage.getItem('crm_current_page');
+    if (saved === 'login' || saved === 'portals') return saved;
+    return 'home';
+  };
+
+  const [currentPage, setCurrentPage] = useState(getInitialPage);
+  const [selectedPortal, setSelectedPortal] = useState(() => {
+    if (getInitialPage() === 'login') {
+      const lastId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('last_random_portal_id') : null;
+      const random = getRandomPortal(lastId);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('last_random_portal_id', random.portalId);
+      }
+      return random;
+    }
+    return null;
+  });
+
   const [launchingPortalId, setLaunchingPortalId] = useState(null);
   const [launchError, setLaunchError] = useState(null);
 
@@ -30,17 +58,80 @@ function App() {
     return null;
   });
 
+  // Sync with browser back/forward and hash changes like a real website
+  useEffect(() => {
+    const handleHashOrPop = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash === 'login' || hash === 'signin') {
+        setCurrentPage('login');
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('crm_current_page', 'login');
+        }
+        setSelectedPortal((prev) => {
+          const lastId = prev?.portalId || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('last_random_portal_id') : null);
+          const random = getRandomPortal(lastId);
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('last_random_portal_id', random.portalId);
+          }
+          return random;
+        });
+      } else if (hash === 'portals') {
+        setCurrentPage('portals');
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('crm_current_page', 'portals');
+        }
+      } else {
+        setCurrentPage('home');
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('crm_current_page', 'home');
+        }
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashOrPop);
+    window.addEventListener('popstate', handleHashOrPop);
+    return () => {
+      window.removeEventListener('hashchange', handleHashOrPop);
+      window.removeEventListener('popstate', handleHashOrPop);
+    };
+  }, []);
+
   const handleNavigate = (page) => {
     setCurrentPage(page);
     setLaunchError(null);
-    window.scrollTo(0, 0);
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('crm_current_page', page);
+
+      if (page === 'login') {
+        window.location.hash = 'login';
+        // On explicit navigation to login, randomly select a portal UI different from previous
+        const lastId = sessionStorage.getItem('last_random_portal_id');
+        const random = getRandomPortal(lastId);
+        sessionStorage.setItem('last_random_portal_id', random.portalId);
+        setSelectedPortal(random);
+      } else if (page === 'portals') {
+        window.location.hash = 'portals';
+      } else {
+        // Home
+        if (window.location.hash) {
+          window.history.pushState(null, '', window.location.pathname);
+        }
+      }
+      window.scrollTo(0, 0);
+    }
   };
 
   const handlePortalClick = async (portalInfo) => {
-    // 1. If not authenticated, take user to central login
+    // 1. If not authenticated, take user to central login with this portal selected
     if (!user) {
       setSelectedPortal(portalInfo);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('last_random_portal_id', portalInfo.portalId);
+        sessionStorage.setItem('crm_current_page', 'login');
+      }
       setCurrentPage('login');
+      window.location.hash = 'login';
       window.scrollTo(0, 0);
       return;
     }
@@ -95,8 +186,7 @@ function App() {
     setSelectedPortal(null);
     setLaunchError(null);
     // After login, show the list of all websites the user has!
-    setCurrentPage('portals');
-    window.scrollTo(0, 0);
+    handleNavigate('portals');
   };
 
   const handleLogout = () => {
@@ -112,14 +202,13 @@ function App() {
     localStorage.removeItem('user');
     try {
       sessionStorage.clear();
-    } catch (e) {
+    } catch {
       // ignore
     }
     setUser(null);
     setSelectedPortal(null);
     setLaunchError(null);
-    setCurrentPage('home');
-    window.scrollTo(0, 0);
+    handleNavigate('home');
   };
 
   return (
@@ -145,6 +234,7 @@ function App() {
             portalInfo={selectedPortal}
             onLoginSuccess={handleLoginSuccess}
             onBack={() => handleNavigate(user ? 'portals' : 'home')}
+            onPortalChange={(newPortal) => setSelectedPortal(newPortal)}
           />
         ) : currentPage === 'portals' ? (
           <PortalsPage

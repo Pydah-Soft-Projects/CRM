@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Users, BookOpen, CreditCard, ClipboardCheck,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 const EcosystemDiagram = () => {
+    const [_activeNode, setActiveNode] = useState(null);
     // Modules data matching the reference image concept but using project's specific modules
     const modules = [
         // Left Side Nodes
@@ -21,9 +22,6 @@ const EcosystemDiagram = () => {
         { id: 'finance', label: 'Fee Payments', icon: CreditCard, emoji: '💳', color: '#10b981', x: 350, y: 120 },
         { id: 'exams', label: 'Examinations', icon: ClipboardCheck, emoji: '✍️', color: '#f97316', x: 280, y: 280 } // Bottom Right
     ];
-
-    const [activeNode, setActiveNode] = useState(null);
-    // Remove JS state for responsiveness to ensure robust CSS switching
 
     // Helper to generate path d attribute
     const generatePath = (startX, startY, endX, endY) => {

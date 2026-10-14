@@ -2,155 +2,82 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowRight, Lock, LogOut, Sparkles, Loader2,
-    AlertCircle, ArrowUpRight, Search, ShieldCheck, X
+    AlertCircle, ArrowUpRight, ShieldCheck, X
 } from 'lucide-react';
 
-const portalDetails = [
-    {
-        title: 'Admission Portal',
-        category: 'Enrollment Management',
-        description: 'Student inquiry pipeline, counselor workflows, and institutional admissions.',
-        color: '#0284c7',
-        image: '/4e04c9e0dd9b0a5360fe5c9a5784b862.jpg',
-        url: 'https://admissions.pydah.edu.in/auth/login',
-        portalId: 'admissions-crm'
-    },
-    {
-        title: 'Student Portal',
-        category: 'Learning & Academics',
-        description: 'Central student profile, academic records, digital schedules, and updates.',
-        color: '#2563eb',
-        image: '/5a2e2b1a96243304c98937fb2b0444d5.jpg',
-        url: 'https://sdms.pydah.edu.in/student/login',
-        portalId: 'student-portal'
-    },
-    {
-        title: 'Fee Management',
-        category: 'Financial Operations',
-        description: 'Tuition collection, pending balances, invoice records, and reconciliation.',
-        color: '#059669',
-        image: '/931962fb2d5f2bf75f94b526891c3f43.jpg',
-        url: 'https://fees.pydah.edu.in/login',
-        portalId: 'fee-management'
-    },
-    {
-        title: 'Transport Management',
-        category: 'Logistics Hub',
-        description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',
-        color: '#d97706',
-        image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.png',
-        url: 'https://transport.pydah.edu.in/login',
-        portalId: 'transport-management'
-    },
-    {
-        title: 'Hostel Automation',
-        category: 'Facility Management',
-        description: 'Campus room allotments, warden logs, hostel passes, and mess management.',
-        color: '#db2777',
-        image: '/be5b597fc3fce8fb5502c228cafa87f1.jpg',
-        url: 'https://hms.pydahsoft.in/login',
-        portalId: 'hostel-automation'
-    },
-    {
-        title: 'HRMS & Payroll',
-        category: 'Staff Operations',
-        description: 'Staff directory, biometric attendance, salary payroll, and leave management.',
-        color: '#7c3aed',
-        image: '/7a41f43d70ae2960e8bead5fa240591f.jpg',
-        url: 'https://hrms.pydah.edu.in/login',
-        portalId: 'hrms'
-    },
-    {
-        title: 'Academic Portal',
-        category: 'Academics & Faculty',
-        description: 'Course curriculum delivery, syllabus schedules, faculty workloads, and timetable.',
-        color: '#0d9488',
-        image: '/academic-card.jpg',
-        url: 'https://acad.pydah.edu.in/login',
-        portalId: 'academic-portal'
-    },
-    {
-        title: 'Examination Management System',
-        category: 'Exams & Assessment',
-        description: 'Examination scheduling, hall tickets, marks evaluation, and result processing.',
-        color: '#ea580c',
-        image: '/ems-card.jpg',
-        url: 'https://ems.pydah.edu.in/login',
-        portalId: 'examination-portal'
-    }
-];
+import { PORTALS_DATA as portalDetails } from '../data/portalsData';
 
-const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, launchingPortalId, launchError }) => {
-    const [searchQuery, setSearchQuery] = useState('');
+const PortalsPage = ({
+    user,
+    _onBack,
+    onPortalClick,
+    onLoginClick,
+    onLogout,
+    launchingPortalId,
+    launchError
+}) => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-    // Check authorization for a portal - strictly driven by discovered user.portals
-    const isPortalAuthorized = (portalId) => {
-        if (!user) return true; // when viewing public catalog without logging in
-        return Array.isArray(user.portals) && user.portals.includes(portalId);
-    };
-
-    // Strictly resolve portals accessible to this user
+    // Resolve accessible portals based on authentication
     const accessiblePortals = useMemo(() => {
         if (!user) return portalDetails;
-        return portalDetails.filter((portal) => isPortalAuthorized(portal.portalId));
+        if (user.role === 'super_admin' || user.role === 'admin') return portalDetails;
+        if (Array.isArray(user.portals)) {
+            return portalDetails.filter((p) => user.portals.includes(p.portalId));
+        }
+        return portalDetails;
     }, [user]);
 
-    // Apply search filter if query is typed
-    const filteredPortals = useMemo(() => {
-        if (!searchQuery.trim()) return accessiblePortals;
-        return accessiblePortals.filter((portal) =>
-            portal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            portal.category.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [accessiblePortals, searchQuery]);
+    const handleSignOutClick = () => {
+        setShowLogoutModal(true);
+    };
+
+    const confirmSignOut = () => {
+        setShowLogoutModal(false);
+        if (onLogout) onLogout();
+    };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] relative overflow-hidden" style={{
-            paddingTop: 'clamp(75px, 10vw, 95px)',
-            paddingBottom: 'clamp(3rem, 6vw, 5rem)'
-        }}>
-            {/* Professional Corporate Background Grid & Ambiance */}
-            <div
-                className="absolute inset-0 pointer-events-none opacity-50"
-                style={{
-                    backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.3) 1.2px, transparent 1.2px)',
-                    backgroundSize: '24px 24px'
-                }}
-            />
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+            className="w-full min-h-screen bg-slate-50/70 flex flex-col justify-start relative"
+            style={{
+                paddingTop: '98px', // Clear fixed navbar completely with comfortable breathing room
+                paddingBottom: '3rem',
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+            }}
+        >
+            {/* 1. SEAMLESS CLEAN CENTERED HEADER */}
+            <header
+                className="w-full bg-white border-b border-slate-200/80 shadow-2xs relative z-10"
+                style={{ width: '100%' }}
+            >
                 <div
-                    className="absolute -top-[15%] left-[10%] w-[550px] h-[450px] rounded-full blur-[140px] opacity-[0.08]"
-                    style={{ backgroundColor: '#4f46e5' }}
-                />
-                <div
-                    className="absolute top-[25%] -right-[5%] w-[500px] h-[500px] rounded-full blur-[150px] opacity-[0.07]"
-                    style={{ backgroundColor: '#0284c7' }}
-                />
-                <div
-                    className="absolute bottom-[5%] left-[5%] w-[450px] h-[450px] rounded-full blur-[130px] opacity-[0.06]"
-                    style={{ backgroundColor: '#7c3aed' }}
-                />
-            </div>
-
-            <div className="section-container px-4 sm:px-8 lg:px-12 relative z-10 max-w-7xl mx-auto">
-                {/* Authenticated Dashboard Header - Neatly aligned, non-card layout */}
-                {user ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="mb-8 sm:mb-10"
-                    >
-                        {/* Profile Bar */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-slate-200/80">
-                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6"
+                    style={{
+                        maxWidth: '1360px',
+                        margin: '0 auto',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    {user ? (
+                        /* Authenticated Profile Header */
+                        <div
+                            className="w-full flex flex-col sm:flex-row items-center justify-between gap-4"
+                            style={{ width: '100%', maxWidth: '1240px', margin: '0 auto' }}
+                        >
+                            <div className="flex items-center gap-3.5">
                                 {user.profilePhoto ? (
                                     <img
                                         src={user.profilePhoto}
                                         alt={user.name || user.username || 'User'}
-                                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover shrink-0 border-2 border-indigo-200/80 shadow-sm"
-                                        referrerPolicy="no-referrer"
+                                        className="w-12 h-12 rounded-2xl object-cover shrink-0 border-2 border-indigo-200/80 shadow-xs"
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';
                                             if (e.currentTarget.nextSibling) {
@@ -159,108 +86,166 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                                         }}
                                     />
                                 ) : null}
-                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-md shrink-0 ${user.profilePhoto ? 'hidden' : ''}`}>
+                                <div
+                                    className={`w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-500 flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0 ${
+                                        user.profilePhoto ? 'hidden' : ''
+                                    }`}
+                                >
                                     {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight truncate">
-                                        {user.name || user.username || 'Pydah Member'}
-                                    </h1>
-                                    <p className="text-slate-500 text-xs sm:text-sm mt-0.5 font-medium flex items-center gap-1.5 truncate">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                        <span className="truncate">Authenticated Session · {user.email || user.username}</span>
+                                <div className="text-left">
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="text-base sm:text-lg font-extrabold text-slate-900 leading-tight">
+                                            {user.name || user.username || 'Pydah Member'}
+                                        </h1>
+                                        <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-100 uppercase">
+                                            {user.role || 'Member'}
+                                        </span>
+                                    </div>
+                                    <p className="text-slate-500 text-xs font-medium flex items-center gap-1.5 mt-0.5">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span>Authenticated SSO · {user.email || user.username}</span>
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Session stats */}
-                            <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-start sm:justify-end flex-wrap">
-                                <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xs">
-                                    <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
-                                    <span>{accessiblePortals.length} Your Authorized Applications</span>
-                                </div>
+                            <div className="flex items-center gap-3">
+                                <span className="px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
+                                    <ShieldCheck size={15} className="text-emerald-600" />
+                                    <span>{accessiblePortals.length} Authorized Applications</span>
+                                </span>
+                                {onLogout && (
+                                    <button
+                                        onClick={handleSignOutClick}
+                                        className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                    >
+                                        <LogOut size={14} />
+                                        <span>Sign Out</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
+                    ) : (
+                        /* Logged-Out Centered Header */
+                        <div
+                            className="flex flex-col items-center justify-center text-center"
+                            style={{
+                                width: '100%',
+                                maxWidth: '680px',
+                                margin: '0 auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-100/90 text-indigo-700 text-xs font-bold mb-2 shadow-2xs">
+                                <Sparkles size={13} className="text-amber-500" />
+                                <span>Pydah Educational Group · Central SSO Gateway</span>
+                            </div>
 
-                        {/* Category Subtitle */}
-                        <div className="pt-4 sm:pt-5 flex items-center justify-between">
-                            <div className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-2">
-                               
-                           
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight text-center">
+                                Campus Applications & Portals
+                            </h1>
+
+                            <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-lg mx-auto leading-relaxed text-center">
+                                Single sign-on entry for student academics, digital fee receipts, hostel living, and institutional operations.
+                            </p>
+
+                            <div className="mt-3.5 flex items-center justify-center">
+                                <button
+                                    type="button"
+                                    onClick={onLoginClick}
+                                    className="px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-sm inline-flex items-center gap-2 cursor-pointer transition-all hover:brightness-110 active:scale-98 text-white"
+                                    style={{
+                                        backgroundColor: '#4f46e5',
+                                        boxShadow: '0 4px 14px rgba(79, 70, 229, 0.3)'
+                                    }}
+                                >
+                                    <span>Sign In to Access Portals</span>
+                                    <ArrowRight size={14} />
+                                </button>
                             </div>
                         </div>
-                    </motion.div>
-                ) : (
-                    /* Logged-Out Header - Clean heading and search */
-                    <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-slate-200/80">
-                        <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight text-center sm:text-left">
-                            Campus Applications & Portals
-                        </h1>
+                    )}
+                </div>
+            </header>
 
-                        {/* Search Bar - Full width on mobile */}
-                        <div className="relative w-full sm:w-72">
-                            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search portals..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200/90 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm font-medium outline-none transition-all bg-white shadow-xs"
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Error Banner */}
-                {launchError && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-3 shadow-sm text-sm font-semibold"
-                    >
-                        <AlertCircle size={18} className="text-red-600 shrink-0" />
+            {/* Error Banner */}
+            {launchError && (
+                <div
+                    className="w-full px-4 sm:px-6 lg:px-8 mt-3"
+                    style={{ maxWidth: '1280px', margin: '12px auto 0 auto' }}
+                >
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-2 text-xs font-semibold">
+                        <AlertCircle size={15} className="text-red-600 shrink-0" />
                         <span>{launchError}</span>
-                    </motion.div>
-                )}
+                    </div>
+                </div>
+            )}
 
-                {/* Applications Grid: Strictly the user's accessible portals */}
-                {filteredPortals.length === 0 ? (
-                    <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
-                        <Lock size={40} className="mx-auto text-slate-300 mb-3" />
-                        <h3 className="text-base font-bold text-slate-800">No applications found</h3>
-                        <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-sm mx-auto">
-                            {user
-                                ? 'No assigned portals matched your search query.'
-                                : 'No portals available at this time.'}
+            {/* 2. CENTERED SECTION (Larger, High-Impact Cards, Perfectly Centered in the Middle) */}
+            <main
+                className="w-full px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 flex-1"
+                style={{
+                    width: '100%',
+                    maxWidth: '1360px',
+                    margin: '0 auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
+                {accessiblePortals.length === 0 ? (
+                    <div
+                        className="text-center py-12 px-6 bg-white rounded-3xl border border-slate-200 shadow-sm w-full max-w-md"
+                        style={{ margin: 'auto' }}
+                    >
+                        <Lock size={28} className="mx-auto text-slate-300 mb-2" />
+                        <h3 className="text-base font-bold text-slate-800">No applications accessible</h3>
+                        <p className="text-slate-500 text-xs mt-1.5">
+                            Your account currently has no assigned portal permissions.
                         </p>
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="mt-3 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
-                            >
-                                Clear search
-                            </button>
-                        )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4.5 items-stretch">
-                        {filteredPortals.map((portal) => {
+                    /* Symmetrical, strictly centered layout: Row 1 = 4 cards, Row 2 = remaining cards centered in the middle */
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            justifyContent: 'center',
+                            alignItems: 'stretch',
+                            gap: '20px',
+                            width: '100%',
+                            maxWidth: '1280px',
+                            margin: '0 auto'
+                        }}
+                    >
+                        {accessiblePortals.map((portal) => {
                             const isLaunching = launchingPortalId === portal.portalId;
-
                             return (
-                                <PortalAppCard
+                                <div
                                     key={portal.portalId}
-                                    portal={portal}
-                                    user={user}
-                                    isLaunching={isLaunching}
-                                    onPortalClick={onPortalClick}
-                                    onLoginClick={onLoginClick}
-                                />
+                                    style={{
+                                        display: 'flex',
+                                        width: 'min(295px, 100%)',
+                                        flex: '0 1 295px',
+                                        maxWidth: '295px'
+                                    }}
+                                >
+                                    <ModernPortalCard
+                                        portal={portal}
+                                        user={user}
+                                        isLaunching={isLaunching}
+                                        onPortalClick={onPortalClick}
+                                        onLoginClick={onLoginClick}
+                                    />
+                                </div>
                             );
                         })}
                     </div>
                 )}
-            </div>
+            </main>
 
             {/* Sign Out Confirmation Modal */}
             <AnimatePresence>
@@ -281,7 +266,7 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
                             transition={{ duration: 0.2 }}
-                            className="relative bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200/90 z-10 overflow-hidden"
+                            className="relative bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200/90 z-10 overflow-hidden text-left"
                         >
                             <button
                                 onClick={() => setShowLogoutModal(false)}
@@ -316,10 +301,7 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setShowLogoutModal(false);
-                                        if (onLogout) onLogout();
-                                    }}
+                                    onClick={confirmSignOut}
                                     style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
                                     className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-red-600/25 transition-all cursor-pointer flex items-center justify-center gap-2"
                                 >
@@ -335,7 +317,8 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
     );
 };
 
-const PortalAppCard = ({
+// Larger, Premium Portal Card with Beautiful Visuals and Perfectly Centered Content
+const ModernPortalCard = ({
     portal,
     user,
     isLaunching,
@@ -355,135 +338,149 @@ const PortalAppCard = ({
 
     return (
         <motion.div
-            whileHover={{ y: -3 }}
-            transition={{ duration: 0.2 }}
             onClick={handleCardClick}
+            whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
+            className="w-full group bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] cursor-pointer flex flex-col justify-between overflow-hidden transition-all duration-300 text-center relative"
             style={{
-                borderColor: `${portal.color}55`,
-                boxShadow: `0 4px 16px -4px ${portal.color}18, 0 2px 4px -1px rgba(0,0,0,0.03)`
+                width: '100%',
+                boxShadow: '0 4px 18px -2px rgba(0, 0, 0, 0.04)'
             }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = portal.color;
-                e.currentTarget.style.boxShadow = `0 12px 26px -6px ${portal.color}30, 0 3px 8px -2px rgba(0,0,0,0.05)`;
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = `${portal.color}55`;
-                e.currentTarget.style.boxShadow = `0 4px 16px -4px ${portal.color}18, 0 2px 4px -1px rgba(0,0,0,0.03)`;
-            }}
-            className="group bg-white rounded-xl sm:rounded-2xl border-2 cursor-pointer flex flex-col h-full w-full overflow-hidden transition-all duration-300"
         >
-            {/* Optimized Compact Thumbnail */}
-            <div className="relative h-28 sm:h-32 md:h-36 w-full overflow-hidden bg-slate-100 shrink-0">
-                <img
-                    src={portal.image}
-                    alt={portal.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
+            {/* Top Stage: Larger Floating 3D Emoji Avatar & Ambient Glow */}
+            <div
+                className={`relative w-full py-5 px-4 bg-gradient-to-br ${portal.gradient || 'from-slate-100 to-slate-50'} overflow-hidden flex flex-col items-center justify-center border-b border-slate-100`}
+            >
+                {/* Ambient Soft Glow Sphere */}
+                <div
+                    className="absolute w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-40 group-hover:opacity-75 transition-opacity"
+                    style={{ backgroundColor: portal.color }}
                 />
+
+                {/* Top Status Badge */}
+                <div className="absolute top-2.5 left-2.5 z-10">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-white/95 text-slate-700 shadow-2xs border border-white/80">
+                        <span
+                            className="w-1.5 h-1.5 rounded-full animate-pulse"
+                            style={{ backgroundColor: portal.color }}
+                        />
+                        <span>{user ? 'Active' : 'SSO'}</span>
+                    </span>
+                </div>
+
+                {/* Top-Right Indicator */}
+                <div className="absolute top-2.5 right-2.5 z-10 text-slate-400 group-hover:text-slate-800 transition-colors">
+                    <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </div>
+
+                {/* Central Floating 3D Emoji Avatar */}
+                <div className="relative my-1 flex items-center justify-center">
+                    {/* Pulsing orbital halo */}
+                    <div
+                        className="absolute w-16 h-16 rounded-full border border-white/80 shadow-xs pointer-events-none"
+                        style={{
+                            borderColor: `${portal.color}35`,
+                            boxShadow: `0 0 16px ${portal.color}20`
+                        }}
+                    />
+
+                    {/* Floating Main Emoji */}
+                    <motion.div
+                        className="text-5xl select-none filter drop-shadow-md z-10"
+                        animate={{
+                            y: [-3, 3.5, -3],
+                            rotate: [-1.5, 1.5, -1.5]
+                        }}
+                        transition={{
+                            duration: 3.2,
+                            repeat: Infinity,
+                            ease: 'easeInOut'
+                        }}
+                        whileHover={{
+                            scale: 1.18,
+                            rotate: [0, -6, 6, 0],
+                            transition: { duration: 0.3 }
+                        }}
+                    >
+                        {portal.emoji || '🚀'}
+                    </motion.div>
+
+                    {/* Floating Mini-Emoji Accent */}
+                    <motion.div
+                        className="absolute -top-1 -right-2 text-lg filter drop-shadow-xs z-10 pointer-events-none"
+                        animate={{
+                            y: [2, -2.5, 2],
+                            scale: [1, 1.15, 1]
+                        }}
+                        transition={{
+                            duration: 2.6,
+                            repeat: Infinity,
+                            ease: 'easeInOut',
+                            delay: 0.2
+                        }}
+                    >
+                        {portal.subEmoji || '✨'}
+                    </motion.div>
+                </div>
             </div>
 
-            {/* Structured Content & Launch Button */}
-            <div className="p-3 sm:p-3.5 flex flex-col flex-1">
-                <div>
-                    {/* Desktop Category: Hidden on mobile */}
+            {/* Centered Details & Content Area */}
+            <div className="p-4 sm:p-4.5 flex flex-col flex-1 justify-between items-center text-center gap-3">
+                <div className="flex flex-col items-center w-full">
+                    {/* Centered Category Pill Badge */}
                     <span
-                        style={{ color: portal.color }}
-                        className="hidden sm:block text-[10px] font-extrabold uppercase tracking-wider mb-1"
+                        className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-1"
+                        style={{
+                            color: portal.color,
+                            backgroundColor: `${portal.color}15`,
+                            border: `1px solid ${portal.color}25`
+                        }}
                     >
-                        {portal.category}
+                        {portal.badgeText || portal.category}
                     </span>
 
-                    {/* Mobile-Only Row: Colored Portal Name on left, Launch button on right */}
-                    <div className="flex sm:hidden items-center justify-between gap-2">
-                        <span
-                            style={{ color: portal.color }}
-                            className="font-bold text-sm tracking-tight truncate flex-1"
-                        >
-                            {portal.title}
-                        </span>
-
-                        <div className="shrink-0">
-                            {isLaunching ? (
-                                <div
-                                    style={{
-                                        backgroundColor: `${portal.color}15`,
-                                        borderColor: `${portal.color}40`,
-                                        color: portal.color
-                                    }}
-                                    className="py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center gap-1 border shadow-inner"
-                                >
-                                    <Loader2 size={11} className="animate-spin" />
-                                    <span>Launching...</span>
-                                </div>
-                            ) : (
-                                <div
-                                    style={{
-                                        backgroundColor: portal.color,
-                                        borderColor: portal.color,
-                                        boxShadow: `0 2px 8px -1px ${portal.color}40`,
-                                        color: '#ffffff'
-                                    }}
-                                    className="py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center justify-center border shadow-xs transition-all active:scale-95"
-                                >
-                                    <span style={{ color: '#ffffff' }} className="tracking-wide">
-                                        {user ? 'Launch' : 'Sign In'}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Desktop-Only Title: Hidden on mobile */}
-                    <h3 className="hidden sm:flex text-[15px] font-bold text-slate-900 tracking-tight group-hover:text-slate-950 transition-colors leading-snug min-h-[2.2rem] items-start">
+                    {/* Centered Title */}
+                    <h3 className="text-base font-bold text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors leading-snug">
                         {portal.title}
                     </h3>
 
-                    {/* Desktop-Only Description: Hidden on mobile */}
-                    <p className="hidden sm:block text-[11px] sm:text-xs text-slate-500 font-medium leading-relaxed mt-0.5 line-clamp-2 min-h-0 sm:min-h-[1.75rem]">
-                        {portal.description}
+                    {/* Centered Description */}
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2 max-w-[250px]">
+                        {portal.desc}
                     </p>
+
+                    {/* Feature Micro-Badges */}
+                    {portal.metrics && portal.metrics.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5 w-full">
+                            {portal.metrics.slice(0, 2).map((metric, i) => (
+                                <span
+                                    key={i}
+                                    className="text-[9.5px] font-medium text-slate-600 bg-slate-100/90 px-2 py-0.5 rounded-md"
+                                >
+                                    {metric}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                {/* Desktop 1-Click Launch Button - filled with distinct portal color by default */}
-                <div className="hidden sm:block mt-auto pt-2 border-t border-slate-100">
+                {/* Centered 1-Click Launch Button */}
+                <div className="w-full pt-2 border-t border-slate-100 flex justify-center">
                     {isLaunching ? (
-                        <div
-                            style={{
-                                backgroundColor: `${portal.color}15`,
-                                borderColor: `${portal.color}40`,
-                                color: portal.color
-                            }}
-                            className="w-full py-1.5 sm:py-2 px-3 rounded-lg sm:rounded-xl font-bold text-xs flex items-center justify-center gap-2 border shadow-inner"
-                        >
-                            <Loader2 size={13} className="animate-spin" />
-                            <span>Launching SSO...</span>
+                        <div className="w-full py-2 px-3 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center gap-2">
+                            <Loader2 size={14} className="animate-spin text-indigo-600" />
+                            <span>Launching...</span>
+                        </div>
+                    ) : user ? (
+                        <div className="w-full py-2 px-3 rounded-xl bg-slate-100 group-hover:bg-slate-900 text-slate-800 group-hover:text-white font-bold text-xs flex items-center justify-between transition-colors">
+                            <span>Launch Application</span>
+                            <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                         </div>
                     ) : (
                         <div
-                            style={{
-                                backgroundColor: portal.color,
-                                borderColor: portal.color,
-                                boxShadow: `0 3px 10px -2px ${portal.color}40`,
-                                color: '#ffffff'
-                            }}
-                            className="w-full py-1.5 sm:py-2 px-3 rounded-lg sm:rounded-xl font-bold text-xs flex items-center justify-between border shadow-xs transition-all duration-200 group-hover:brightness-110 group-hover:shadow-md cursor-pointer"
+                            className="w-full py-2 px-3 rounded-xl bg-slate-100 group-hover:bg-indigo-600 text-slate-700 group-hover:text-white font-bold text-xs flex items-center justify-between transition-colors"
                         >
-                            <span style={{ color: '#ffffff' }} className="tracking-wide">
-                                {user ? 'Launch Application' : 'Sign In to Launch'}
-                            </span>
-                            {user ? (
-                                <ArrowUpRight
-                                    size={14}
-                                    style={{ color: '#ffffff' }}
-                                    className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0"
-                                />
-                            ) : (
-                                <ArrowRight
-                                    size={14}
-                                    style={{ color: '#ffffff' }}
-                                    className="group-hover:translate-x-0.5 transition-transform shrink-0"
-                                />
-                            )}
+                            <span>Sign In to Launch</span>
+                            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                         </div>
                     )}
                 </div>

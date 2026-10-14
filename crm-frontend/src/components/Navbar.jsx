@@ -1,63 +1,62 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen } from 'lucide-react';
+import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen, Briefcase } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 const solutions = [
-
   {
     title: 'Admission Portal',
-    desc: 'Next-generation enrollment and lead management.',
+    desc: 'Applicant inquiries, document verification, and seat allocation.',
     url: 'https://admissions.pydah.edu.in',
     icon: Users,
-    color: '#0ea5e9',
+    color: '#0284c7',
     portalId: 'admissions-crm'
   },
   {
     title: 'Student Portal',
-    desc: 'Unified dashboard for student academics and life.',
+    desc: 'Semester attendance, timetables, internal marks, and hall tickets.',
     url: 'https://sdms.pydah.edu.in',
     icon: UserCircle,
-    color: '#f59e0b',
+    color: '#d97706',
     portalId: 'student-portal'
   },
   {
     title: 'Fee Management',
-    desc: 'Streamline institutional finance and fee collection.',
+    desc: 'Online tuition payments, receipt records, and no-dues clearance.',
     url: 'https://fees.pydah.edu.in/login',
     icon: ReceiptText,
-    color: '#00a6ffff',
+    color: '#0891b2',
     portalId: 'fee-management'
   },
   {
     title: 'Transport Management',
-    desc: 'Optimize campus logistics and fleet tracking.',
+    desc: 'Fleet route directory, bus pass renewal, and live trip status.',
     url: 'https://pydah-transport.vercel.app/login',
     icon: Bus,
-    color: '#0f73ffff',
+    color: '#2563eb',
     portalId: 'transport-management'
   },
   {
     title: 'Hostel Automation',
-    desc: 'Smart and secure student residency management.',
+    desc: 'Student room allotment, mess passes, and warden gate approvals.',
     url: 'https://hms.pydahsoft.in',
     icon: Home,
-    color: '#6366f1',
+    color: '#059669',
     portalId: 'hostel-automation'
   },
   {
     title: 'HRMS & Payroll',
-    desc: 'Comprehensive HR management for institutions.',
+    desc: 'Faculty service profiles, biometric attendance, and salary slips.',
     url: 'https://hrms.pydah.edu.in',
     icon: CreditCard,
-    color: '#5372ffff',
+    color: '#4f46e5',
     portalId: 'hrms'
   },
   {
     title: 'Academic Portal',
-    desc: 'Comprehensive curriculum, faculty scheduling, and grading.',
+    desc: 'Curriculum syllabus, lecture planning, and exam marks entry.',
     url: 'https://acad.pydah.edu.in',
     icon: BookOpen,
-    color: '#8b5cf6',
+    color: '#7c3aed',
     portalId: 'academic-portal'
   },
   {

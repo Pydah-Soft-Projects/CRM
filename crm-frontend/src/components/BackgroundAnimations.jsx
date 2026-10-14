@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Users, BookOpen, CreditCard, Bus,
+    BookOpen, Bus,
     Home, UserRound, Box, GraduationCap,
-    Brain, Activity, Landmark
+    Brain, Activity, Landmark, Award, Library
 } from 'lucide-react';
 
 const BackgroundAnimations = ({ portalId, color }) => {
@@ -311,6 +311,47 @@ const BackgroundAnimations = ({ portalId, color }) => {
         </div>
     );
 
+    // 8. ACADEMIC PORTAL: Scholarly constellations, diplomas, graduation caps, library
+    const AcademicAnimation = () => {
+        const academicIcons = [GraduationCap, BookOpen, Award, Library];
+        return (
+            <div className={containerClasses}>
+                {[...Array(18)].map((_, i) => {
+                    const x = Math.random() * 100;
+                    const y = Math.random() * 100;
+                    const v = getVisibilityFactor(x, y);
+                    const Icon = academicIcons[i % academicIcons.length];
+                    return (
+                        <motion.div
+                            key={i}
+                            className="absolute"
+                            style={{
+                                left: `${x}%`,
+                                top: `${y}%`,
+                                color: color,
+                                filter: `drop-shadow(0 0 12px ${color}80)`
+                            }}
+                            animate={{
+                                y: [0, -35, 0],
+                                rotate: [0, 15, -15, 0],
+                                opacity: [0.25 * v, 0.85 * v, 0.25 * v],
+                                scale: [1, 1.25, 1]
+                            }}
+                            transition={{
+                                duration: Math.random() * 8 + 6,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                delay: i * 0.3
+                            }}
+                        >
+                            <Icon size={Math.random() * 45 + 32} strokeWidth={1.2} />
+                        </motion.div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     // Default Fallback
     const DefaultAnimation = () => (
         <div className={containerClasses}>
@@ -334,7 +375,7 @@ const BackgroundAnimations = ({ portalId, color }) => {
             case 'transport-management': return <TransportAnimation />;
             case 'hostel-automation': return <HostelAnimation />;
             case 'hrms': return <HRMSAnimation />;
-            case 'academic-portal': return <StudentAnimation />;
+            case 'academic-portal': return <AcademicAnimation />;
             case 'examination-portal': return <StudentAnimation />;
             default: return <DefaultAnimation />;
         }
