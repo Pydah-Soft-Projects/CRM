@@ -245,21 +245,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               return;
             }
 
-            // 3. Faculty & Staff: grant EMS portal access
-            const isStaffOrFaculty =
-              user.role === 'faculty' ||
-              user.role === 'staff' ||
-              user.role === 'employee' ||
-              user.role === 'teacher' ||
-              databaseSource === 'rbac_users' ||
-              databaseSource === 'hrms';
-
-            if (isStaffOrFaculty) {
-              portals.add('examination-portal');
-              return;
-            }
-
-            // 4. For any other user: check examination_portal database
+            // 3. Staff & Faculty: Must exist in examination_portal database with an assigned role
             const examUser = await findExaminationUser({
               email,
               employeeId: rollOrEmp || user.employeeId || user.emp_no,
@@ -267,7 +253,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               phone: user.phone || user.mobile
             });
 
-            if (examUser) {
+            if (examUser && examUser.role && examUser.role !== 'none' && examUser.role !== 'null') {
               portals.add('examination-portal');
               return;
             }

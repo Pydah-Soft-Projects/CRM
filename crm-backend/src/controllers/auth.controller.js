@@ -801,29 +801,12 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
-      // D. Fallback for HRMS / CRM staff
-      let hrmsUserId = decoded.userId;
-      let hrmsEmpId = crmUser?.employeeId || decoded.employeeId || null;
-      if (email) {
-        const hrmsIdentity = await findHRMSUserByEmail(email, hrmsEmpId);
-        if (hrmsIdentity?.userId) {
-          hrmsUserId = hrmsIdentity.userId;
-        }
-      }
-
-      console.log(`[VerifyToken] Examination Portal resolved Staff: userId=${hrmsUserId}, employeeId=${hrmsEmpId}`);
-      return res.status(HTTP_STATUS.OK).json({
-        success: true,
-        valid: true,
-        data: {
-          userId: String(hrmsUserId),
-          portalId: 'examination-portal',
-          role: decoded.role || 'staff',
-          email: email || '',
-          employeeId: String(hrmsEmpId || hrmsUserId),
-          username: username || email || String(hrmsUserId),
-          expiresAt
-        }
+      // D. Deny access if user does not have an assigned role in Examination Management System
+      console.warn(`[VerifyToken] Forbidden: User ${decoded.userId} (${email || username}) has no assigned role in Examination Portal`);
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        valid: false,
+        message: 'User does not have an assigned role in Examination Management System'
       });
     }
 
