@@ -420,17 +420,32 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
               </form>
 
               {/* Footer */}
-              <div className="border-t text-center" style={{
+              <div className="border-t text-center flex flex-col items-center justify-center" style={{
                 borderColor: 'var(--color-border-soft)',
                 marginTop: 'clamp(1.75rem, 3.5vw, 2.25rem)',
-                paddingTop: 'clamp(1.25rem, 2.5vw, 1.75rem)'
+                paddingTop: 'clamp(1.25rem, 2.5vw, 1.75rem)',
+                gap: '0.4rem'
               }}>
                 <p style={{
                   color: 'var(--color-text-muted)',
                   fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)'
                 }}>
-                  Secure authentication powered by{' '}
-                  <span className="font-semibold" style={{ color: 'var(--color-text-main)' }}>PydahSoft</span>
+                  Secure authentication powered by
+                </p>
+                <p className="font-extrabold text-slate-800 tracking-tight" style={{ fontSize: 'clamp(0.9rem, 2vw, 1.05rem)' }}>
+                  PydahSoft
+                </p>
+                <p
+                  style={{
+                    fontFamily: "'Dancing Script', 'Caveat', cursive",
+                    fontSize: 'clamp(1.2rem, 3vw, 1.45rem)',
+                    fontWeight: 700,
+                    color: 'var(--color-primary)',
+                    letterSpacing: '0.01em',
+                    lineHeight: 1.2
+                  }}
+                >
+                  Proud to be a Pydian
                 </p>
               </div>
             </div>
