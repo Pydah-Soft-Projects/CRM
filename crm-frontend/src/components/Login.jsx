@@ -111,10 +111,18 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 relative overflow-hidden flex flex-col" style={{
+    <div className="login-page-container w-full min-h-screen bg-slate-50 relative overflow-hidden flex flex-col" style={{
       paddingTop: 'clamp(80px, 12vw, 100px)',
       paddingBottom: 'clamp(4rem, 10vw, 8rem)'
     }}>
+      {/* Mobile Screen Background: strictly for mobile view */}
+      <div
+        className="block md:hidden absolute inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/CRM-login%20card.png')",
+        }}
+      />
+
       {/* Dynamic Background Animations: Hidden on mobile view, visible on tab, laptop, laptopL, and 4k */}
       <div className="hidden md:block absolute inset-0 pointer-events-none z-0">
         <BackgroundAnimations
@@ -125,9 +133,9 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
 
       {/* Content wrapper for centering */}
       <div className="w-full flex-1 relative z-10 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-12">
-        {/* Header */}
+        {/* Header (Desktop only - hidden on mobile view) */}
         <div
-          className="w-full max-w-2xl shrink-0 mb-6 lg:mb-8 text-center"
+          className="hidden md:block w-full max-w-2xl shrink-0 mb-6 lg:mb-8 text-center"
           style={{ paddingTop: 'clamp(0.5rem, 1.5vw, 1rem)', paddingBottom: 'clamp(0.25rem, 0.8vw, 0.5rem)' }}
         >
           <motion.div
@@ -177,21 +185,32 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   background-color: #ffffff;
                 }
                 @media (max-width: 767px) {
-                  .login-card-container {
+                  .login-page-container {
                     background-image: url('/CRM-login%20card.png') !important;
                     background-size: cover !important;
                     background-position: center !important;
                     background-repeat: no-repeat !important;
                   }
+                  .login-card-container {
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    background-image: none !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    border-radius: 0 !important;
+                    padding: 0 !important;
+                  }
                 }
               `}</style>
-              {/* Back button */}
+              {/* Desktop Back button */}
               {onBack && (
                 <motion.button
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   onClick={onBack}
-                  className="mb-3 md:mb-6 flex items-center gap-2 transition-all duration-200 font-medium group"
+                  className="hidden md:flex mb-3 md:mb-6 items-center gap-2 transition-all duration-200 font-medium group"
                   style={{
                     color: 'var(--color-text-muted)',
                     fontSize: 'clamp(0.875rem, 2vw, 1rem)',
@@ -206,8 +225,11 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                 </motion.button>
               )}
 
-              {/* Mobile View Sign-In Title: Shifted inside card below Back to Home button */}
+              {/* Mobile View Header: Welcome Back & Sign-In */}
               <div className="block md:hidden mb-7 text-left">
+                <p className="text-sm font-semibold text-indigo-600 mb-1">
+                  Welcome back
+                </p>
                 <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
                   Sign-In
                 </h2>
@@ -400,7 +422,7 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)'
                 }}>
                   Secure authentication powered by{' '}
-                  <span className="font-semibold" style={{ color: 'var(--color-text-main)' }}>CRM Gateway</span>
+                  <span className="font-semibold" style={{ color: 'var(--color-text-main)' }}>PydahSoft</span>
                 </p>
               </div>
             </div>
