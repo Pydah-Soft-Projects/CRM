@@ -345,10 +345,12 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
 
         {/* Mobile Toggle Button */}
         <button
-          className="mobile-toggle bg-transparent border-none cursor-pointer flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none"
+          className="mobile-toggle bg-transparent border-none cursor-pointer flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none w-9 h-9 p-0"
           style={{
             color: 'var(--color-text-main)',
-            padding: '2px',
+            width: '36px',
+            height: '36px',
+            padding: '0',
             outline: 'none',
             border: 'none',
             boxShadow: 'none'
@@ -358,10 +360,10 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
         >
           {isMobileMenuOpen ? (
             <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 border border-slate-200 shadow-xs">
-              <X size={20} />
+              <X size={18} />
             </div>
           ) : user ? (
-            <div className="relative">
+            <div className="relative w-9 h-9">
               {user.profilePhoto ? (
                 <img
                   src={user.profilePhoto}
@@ -383,7 +385,9 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
               </div>
             </div>
           ) : (
-            <Menu size={24} />
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors">
+              <Menu size={22} />
+            </div>
           )}
         </button>
       </div>
@@ -511,20 +515,19 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
                   </a>
 
                   <button
-                    onClick={() => setIsMegaMenuOpen(!isMegaMenuOpen)}
-                    className="font-medium text-sm flex items-center justify-start gap-1 bg-transparent border-none cursor-pointer text-left"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onNavigate('portals');
+                    }}
+                    className="font-medium text-sm flex items-center justify-start bg-transparent border-none cursor-pointer text-left"
                     style={{
-                      color: isMegaMenuOpen ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      color: 'var(--color-text-muted)',
                       fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
                       paddingTop: '0.15rem',
                       paddingBottom: '0.15rem'
                     }}
                   >
-                    Our Portals <ChevronDown
-                      size={14}
-                      className={`transition-transform duration-200 ${isMegaMenuOpen ? 'rotate-180' : 'rotate-0'
-                        }`}
-                    />
+                    Our Portals
                   </button>
 
                   <a
@@ -545,73 +548,6 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
                   </a>
                 </div>
               </div>
-
-              {/* Our Portals Dropdown if open */}
-              <AnimatePresence>
-                {isMegaMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-full"
-                    style={{ marginTop: '0.35rem' }}
-                  >
-                    <div className="flex flex-col" style={{
-                      gap: 'clamp(0.5rem, 1.5vw, 0.625rem)',
-                      paddingLeft: '0.5rem',
-                      maxHeight: 'none'
-                    }}>
-                      {solutions.map((item, idx) => (
-                        <motion.a
-                          key={idx}
-                          href={item.url}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setIsMobileMenuOpen(false);
-                            if (onPortalClick) onPortalClick(item);
-                          }}
-                          whileTap={{ scale: 0.98 }}
-                          className="flex rounded-xl transition-all duration-200 group"
-                          style={{
-                            gap: 'clamp(0.5rem, 1.5vw, 0.75rem)',
-                            padding: 'clamp(0.5rem, 1.5vw, 0.75rem)',
-                            backgroundColor: `${item.color}05`,
-                            border: `1px solid ${item.color}10`
-                          }}
-                        >
-                          <div
-                            className="rounded-[10px] flex justify-center items-center flex-shrink-0 transition-colors duration-300"
-                            style={{
-                              width: '2rem',
-                              height: '2rem',
-                              backgroundColor: `${item.color}15`,
-                              color: item.color
-                            }}
-                          >
-                            <item.icon size={16} />
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div className="font-bold text-xs" style={{
-                              color: item.color,
-                              marginBottom: '0.2rem',
-                              lineHeight: '1.2'
-                            }}>
-                              {item.title}
-                            </div>
-                            <div className="leading-snug text-[10px]" style={{
-                              color: 'var(--color-text-muted)',
-                              lineHeight: '1.3'
-                            }}>
-                              {item.desc}
-                            </div>
-                          </div>
-                        </motion.a>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Download App & Sign Out Section - Only rendered when logged in */}
               {user && (
