@@ -218,16 +218,27 @@ a:focus-visible {
   animation: text-shine 4s linear infinite;
 }
 
-/* Sign-in card background strictly for mobile view */
+/* Sign-in screen background strictly for mobile view */
 .login-card-container {
   background-color: #ffffff;
 }
 
 @media (max-width: 767px) {
-  .login-card-container {
+  .login-page-container {
     background-image: url('/CRM-login%20card.png') !important;
     background-size: cover !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
+  }
+  .login-card-container {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
   }
 }

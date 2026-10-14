@@ -111,10 +111,18 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 relative overflow-hidden flex flex-col" style={{
+    <div className="login-page-container w-full min-h-screen bg-slate-50 relative overflow-hidden flex flex-col" style={{
       paddingTop: 'clamp(80px, 12vw, 100px)',
       paddingBottom: 'clamp(4rem, 10vw, 8rem)'
     }}>
+      {/* Mobile Screen Background: strictly for mobile view */}
+      <div
+        className="block md:hidden absolute inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/CRM-login%20card.png')",
+        }}
+      />
+
       {/* Dynamic Background Animations: Hidden on mobile view, visible on tab, laptop, laptopL, and 4k */}
       <div className="hidden md:block absolute inset-0 pointer-events-none z-0">
         <BackgroundAnimations
@@ -177,11 +185,22 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   background-color: #ffffff;
                 }
                 @media (max-width: 767px) {
-                  .login-card-container {
+                  .login-page-container {
                     background-image: url('/CRM-login%20card.png') !important;
                     background-size: cover !important;
                     background-position: center !important;
                     background-repeat: no-repeat !important;
+                  }
+                  .login-card-container {
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    background-image: none !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    border-radius: 0 !important;
+                    padding: 0 !important;
                   }
                 }
               `}</style>
