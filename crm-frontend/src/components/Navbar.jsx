@@ -104,7 +104,7 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout }) => {
           <span
             className="font-extrabold text-base sm:text-lg md:text-xl tracking-tight whitespace-nowrap bg-clip-text text-transparent"
             style={{
-              backgroundImage: 'linear-gradient(110deg, #6366f1 0%, #0ea5e9 35%, #7dd3fc 50%, #0ea5e9 65%, #6366f1 100%)',
+              backgroundImage: 'linear-gradient(110deg, #0f172a 0%, #1e293b 30%, #38bdf8 45%, #ffffff 50%, #38bdf8 55%, #1e293b 70%, #0f172a 100%)',
               backgroundSize: '250% 100%',
               display: 'inline-block',
               animation: 'text-shine 3.5s linear infinite reverse',

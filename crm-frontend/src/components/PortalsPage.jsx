@@ -173,42 +173,20 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                                 </div>
                             </div>
 
-                            {/* Session stats & Sign out */}
-                            <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-between sm:justify-end flex-wrap">
+                            {/* Session stats */}
+                            <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-start sm:justify-end flex-wrap">
                                 <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xs">
                                     <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
-                                    <span>{accessiblePortals.length} Authorized Applications</span>
+                                    <span>{accessiblePortals.length} Your Authorized Applications</span>
                                 </div>
-                                {onLogout && (
-                                    <button
-                                        onClick={() => setShowLogoutModal(true)}
-                                        style={{ backgroundColor: '#ffffff', color: '#475569' }}
-                                        className="px-3.5 py-1.5 sm:py-2 rounded-xl hover:bg-red-50 hover:text-red-600 border border-slate-200 hover:border-red-200 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-sm"
-                                    >
-                                        <LogOut size={14} className="shrink-0" />
-                                        <span>Sign Out</span>
-                                    </button>
-                                )}
                             </div>
                         </div>
 
-                        {/* Search and Category Subtitle */}
-                        <div className="pt-4 sm:pt-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                        {/* Category Subtitle */}
+                        <div className="pt-4 sm:pt-5 flex items-center justify-between">
                             <div className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 ring-4 ring-indigo-100" />
-                                <span>Your Portals ({filteredPortals.length})</span>
-                            </div>
-
-                            {/* Search Bar - Full width on mobile */}
-                            <div className="relative w-full sm:w-72">
-                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search your portals..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 sm:py-2 rounded-xl border border-slate-200/90 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm font-medium outline-none transition-all bg-white shadow-xs"
-                                />
+                               
+                           
                             </div>
                         </div>
                     </motion.div>
@@ -265,7 +243,7 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                         )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 items-stretch">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4.5 items-stretch">
                         {filteredPortals.map((portal) => {
                             const isLaunching = launchingPortalId === portal.portalId;
 
@@ -377,25 +355,25 @@ const PortalAppCard = ({
 
     return (
         <motion.div
-            whileHover={{ y: -5 }}
+            whileHover={{ y: -3 }}
             transition={{ duration: 0.2 }}
             onClick={handleCardClick}
             style={{
                 borderColor: `${portal.color}55`,
-                boxShadow: `0 4px 20px -4px ${portal.color}22, 0 2px 6px -1px rgba(0,0,0,0.04)`
+                boxShadow: `0 4px 16px -4px ${portal.color}18, 0 2px 4px -1px rgba(0,0,0,0.03)`
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = portal.color;
-                e.currentTarget.style.boxShadow = `0 16px 36px -6px ${portal.color}35, 0 4px 12px -2px rgba(0,0,0,0.06)`;
+                e.currentTarget.style.boxShadow = `0 12px 26px -6px ${portal.color}30, 0 3px 8px -2px rgba(0,0,0,0.05)`;
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = `${portal.color}55`;
-                e.currentTarget.style.boxShadow = `0 4px 20px -4px ${portal.color}22, 0 2px 6px -1px rgba(0,0,0,0.04)`;
+                e.currentTarget.style.boxShadow = `0 4px 16px -4px ${portal.color}18, 0 2px 4px -1px rgba(0,0,0,0.03)`;
             }}
-            className="group bg-white rounded-2xl border-2 cursor-pointer flex flex-col h-full w-full overflow-hidden transition-all duration-300"
+            className="group bg-white rounded-xl sm:rounded-2xl border-2 cursor-pointer flex flex-col h-full w-full overflow-hidden transition-all duration-300"
         >
             {/* Optimized Compact Thumbnail */}
-            <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 shrink-0">
+            <div className="relative h-28 sm:h-32 md:h-36 w-full overflow-hidden bg-slate-100 shrink-0">
                 <img
                     src={portal.image}
                     alt={portal.title}
@@ -405,24 +383,69 @@ const PortalAppCard = ({
             </div>
 
             {/* Structured Content & Launch Button */}
-            <div className="p-4 sm:p-5 flex flex-col flex-1">
+            <div className="p-3 sm:p-3.5 flex flex-col flex-1">
                 <div>
+                    {/* Desktop Category: Hidden on mobile */}
                     <span
                         style={{ color: portal.color }}
-                        className="text-[11px] font-extrabold uppercase tracking-wider block mb-1"
+                        className="hidden sm:block text-[10px] font-extrabold uppercase tracking-wider mb-1"
                     >
                         {portal.category}
                     </span>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight group-hover:text-slate-950 transition-colors leading-snug min-h-[2.8rem] sm:min-h-[3.25rem] flex items-start">
+
+                    {/* Mobile-Only Row: Colored Portal Name on left, Launch button on right */}
+                    <div className="flex sm:hidden items-center justify-between gap-2">
+                        <span
+                            style={{ color: portal.color }}
+                            className="font-bold text-sm tracking-tight truncate flex-1"
+                        >
+                            {portal.title}
+                        </span>
+
+                        <div className="shrink-0">
+                            {isLaunching ? (
+                                <div
+                                    style={{
+                                        backgroundColor: `${portal.color}15`,
+                                        borderColor: `${portal.color}40`,
+                                        color: portal.color
+                                    }}
+                                    className="py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center gap-1 border shadow-inner"
+                                >
+                                    <Loader2 size={11} className="animate-spin" />
+                                    <span>Launching...</span>
+                                </div>
+                            ) : (
+                                <div
+                                    style={{
+                                        backgroundColor: portal.color,
+                                        borderColor: portal.color,
+                                        boxShadow: `0 2px 8px -1px ${portal.color}40`,
+                                        color: '#ffffff'
+                                    }}
+                                    className="py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center justify-center border shadow-xs transition-all active:scale-95"
+                                >
+                                    <span style={{ color: '#ffffff' }} className="tracking-wide">
+                                        {user ? 'Launch' : 'Sign In'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Desktop-Only Title: Hidden on mobile */}
+                    <h3 className="hidden sm:flex text-[15px] font-bold text-slate-900 tracking-tight group-hover:text-slate-950 transition-colors leading-snug min-h-[2.2rem] items-start">
                         {portal.title}
                     </h3>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1 line-clamp-2 min-h-[2.5rem]">
+
+                    {/* Desktop-Only Description: Hidden on mobile */}
+                    <p className="hidden sm:block text-[11px] sm:text-xs text-slate-500 font-medium leading-relaxed mt-0.5 line-clamp-2 min-h-0 sm:min-h-[1.75rem]">
                         {portal.description}
                     </p>
                 </div>
 
-                {/* 1-Click Launch Button - filled with distinct portal color by default */}
-                <div className="mt-auto pt-3 border-t border-slate-100">
+                {/* Desktop 1-Click Launch Button - filled with distinct portal color by default */}
+                <div className="hidden sm:block mt-auto pt-2 border-t border-slate-100">
                     {isLaunching ? (
                         <div
                             style={{
@@ -430,9 +453,9 @@ const PortalAppCard = ({
                                 borderColor: `${portal.color}40`,
                                 color: portal.color
                             }}
-                            className="w-full py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border shadow-inner"
+                            className="w-full py-1.5 sm:py-2 px-3 rounded-lg sm:rounded-xl font-bold text-xs flex items-center justify-center gap-2 border shadow-inner"
                         >
-                            <Loader2 size={14} className="animate-spin" />
+                            <Loader2 size={13} className="animate-spin" />
                             <span>Launching SSO...</span>
                         </div>
                     ) : (
@@ -440,23 +463,23 @@ const PortalAppCard = ({
                             style={{
                                 backgroundColor: portal.color,
                                 borderColor: portal.color,
-                                boxShadow: `0 4px 14px -2px ${portal.color}50`,
+                                boxShadow: `0 3px 10px -2px ${portal.color}40`,
                                 color: '#ffffff'
                             }}
-                            className="w-full py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-between border shadow-sm transition-all duration-200 group-hover:brightness-110 group-hover:shadow-md cursor-pointer"
+                            className="w-full py-1.5 sm:py-2 px-3 rounded-lg sm:rounded-xl font-bold text-xs flex items-center justify-between border shadow-xs transition-all duration-200 group-hover:brightness-110 group-hover:shadow-md cursor-pointer"
                         >
                             <span style={{ color: '#ffffff' }} className="tracking-wide">
                                 {user ? 'Launch Application' : 'Sign In to Launch'}
                             </span>
                             {user ? (
                                 <ArrowUpRight
-                                    size={15}
+                                    size={14}
                                     style={{ color: '#ffffff' }}
                                     className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0"
                                 />
                             ) : (
                                 <ArrowRight
-                                    size={15}
+                                    size={14}
                                     style={{ color: '#ffffff' }}
                                     className="group-hover:translate-x-0.5 transition-transform shrink-0"
                                 />
