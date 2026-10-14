@@ -361,6 +361,7 @@ export const validateCredentials = async (username, password, role = null) => {
     if (user) {
       console.log(`[Auth] User authenticated in MySQL: ${user.username || user.email || user.name || user.admission_number}, database: ${databaseSource}, role: ${user.role_name || user.role}`);
 
+      const { password: _, ...userWithoutPassword } = user;
       const empId = user.employee_id || user.employeeId || user.emp_no || user.emp_id || user.empid || (databaseSource === 'admissions_db' && /^\d+$/.test(username) ? username : null);
       const normalizedUser = {
         ...userWithoutPassword,
