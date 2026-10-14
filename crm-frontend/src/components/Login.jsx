@@ -133,9 +133,9 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
 
       {/* Content wrapper for centering */}
       <div className="w-full flex-1 relative z-10 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-12">
-        {/* Header */}
+        {/* Header (Desktop only - hidden on mobile view) */}
         <div
-          className="w-full max-w-2xl shrink-0 mb-6 lg:mb-8 text-center"
+          className="hidden md:block w-full max-w-2xl shrink-0 mb-6 lg:mb-8 text-center"
           style={{ paddingTop: 'clamp(0.5rem, 1.5vw, 1rem)', paddingBottom: 'clamp(0.25rem, 0.8vw, 0.5rem)' }}
         >
           <motion.div
@@ -204,13 +204,13 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   }
                 }
               `}</style>
-              {/* Back button */}
+              {/* Desktop Back button */}
               {onBack && (
                 <motion.button
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   onClick={onBack}
-                  className="mb-3 md:mb-6 flex items-center gap-2 transition-all duration-200 font-medium group"
+                  className="hidden md:flex mb-3 md:mb-6 items-center gap-2 transition-all duration-200 font-medium group"
                   style={{
                     color: 'var(--color-text-muted)',
                     fontSize: 'clamp(0.875rem, 2vw, 1rem)',
@@ -225,8 +225,11 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                 </motion.button>
               )}
 
-              {/* Mobile View Sign-In Title: Shifted inside card below Back to Home button */}
+              {/* Mobile View Header: Welcome Back & Sign-In */}
               <div className="block md:hidden mb-7 text-left">
+                <p className="text-sm font-semibold text-indigo-600 mb-1">
+                  Welcome back
+                </p>
                 <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
                   Sign-In
                 </h2>
@@ -419,7 +422,7 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)'
                 }}>
                   Secure authentication powered by{' '}
-                  <span className="font-semibold" style={{ color: 'var(--color-text-main)' }}>CRM Gateway</span>
+                  <span className="font-semibold" style={{ color: 'var(--color-text-main)' }}>PydahSoft</span>
                 </p>
               </div>
             </div>
