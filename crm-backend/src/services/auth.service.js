@@ -229,18 +229,37 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         (async () => {
           try {
             // 1. Students can access EMS portal
-            if (databaseSource === 'student_credentials' || user.role === 'student' || user.admission_number) {
+            if (databaseSource === 'student_credentials' || user.role === 'student' || user.admission_number || user.rollNumber) {
               portals.add('examination-portal');
               return;
             }
 
-            // // 2. Super administrator bypass
-            // if (email === 'ravi@pydahsoft.in' || user.role === 'super_admin') {
-            //   portals.add('examination-portal');
-            //   return;
-            // }
+            // 2. Super administrator & Administrator bypass
+            if (
+              email === 'ravi@pydahsoft.in' ||
+              user.role === 'super_admin' ||
+              user.role === 'admin' ||
+              user.role === 'superadmin'
+            ) {
+              portals.add('examination-portal');
+              return;
+            }
 
-            // 3. For all employees / staff: strictly verify presence and assigned role in ems_users
+            // 3. Faculty & Staff: grant EMS portal access
+            const isStaffOrFaculty =
+              user.role === 'faculty' ||
+              user.role === 'staff' ||
+              user.role === 'employee' ||
+              user.role === 'teacher' ||
+              databaseSource === 'rbac_users' ||
+              databaseSource === 'hrms';
+
+            if (isStaffOrFaculty) {
+              portals.add('examination-portal');
+              return;
+            }
+
+            // 4. For any other user: check examination_portal database
             const examUser = await findExaminationUser({
               email,
               employeeId: rollOrEmp || user.employeeId || user.emp_no,
@@ -248,7 +267,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               phone: user.phone || user.mobile
             });
 
-            if (examUser && examUser.role) {
+            if (examUser) {
               portals.add('examination-portal');
               return;
             }
