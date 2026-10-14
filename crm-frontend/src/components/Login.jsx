@@ -121,7 +121,7 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="mt-4 text-base sm:text-lg lg:text-xl font-medium"
+            className="hidden md:block mt-4 text-base sm:text-lg lg:text-xl font-medium"
             style={{ color: 'var(--color-text-muted)' }}
           >
             Sign in once to access all your authorized campus portals and administrative tools.
@@ -136,11 +136,24 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
             transition={{ delay: 0.3, duration: 0.6 }}
           >
             {/* Login Card */}
-            <div className="bg-white rounded-[2.5rem] backdrop-blur-xl border transition-all duration-500" style={{
+            <div className="login-card-container rounded-[2.5rem] backdrop-blur-xl border transition-all duration-500 overflow-hidden" style={{
               border: '1px solid rgba(0, 0, 0, 0.06)',
               boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.05)',
               padding: 'clamp(2rem, 4vw, 3rem)'
             }}>
+              <style>{`
+                .login-card-container {
+                  background-color: #ffffff;
+                }
+                @media (max-width: 767px) {
+                  .login-card-container {
+                    background-image: url('/CRM-login%20card.png') !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    background-repeat: no-repeat !important;
+                  }
+                }
+              `}</style>
               {/* Back button */}
               {onBack && (
                 <motion.button

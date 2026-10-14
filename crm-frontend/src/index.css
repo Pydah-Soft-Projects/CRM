@@ -217,3 +217,17 @@ a:focus-visible {
   background-size: 200% auto;
   animation: text-shine 4s linear infinite;
 }
+
+/* Sign-in card background strictly for mobile view */
+.login-card-container {
+  background-color: #ffffff;
+}
+
+@media (max-width: 767px) {
+  .login-card-container {
+    background-image: url('/CRM-login%20card.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+  }
+}
