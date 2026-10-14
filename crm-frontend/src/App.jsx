@@ -7,9 +7,11 @@ import CTASection from './components/CTASection';
 import Footer from './components/Footer';
 import PortalsPage from './components/PortalsPage';
 import Login from './components/Login';
+import InstallAppModal from './components/InstallAppModal';
 import { authAPI } from './services/api';
 
 function App() {
+  const [showInstallModal, setShowInstallModal] = useState(false);
   // Initialize user from existing session
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem('accessToken');
@@ -139,6 +141,7 @@ function App() {
         onNavigate={handleNavigate}
         onPortalClick={handlePortalClick}
         onLogout={handleLogout}
+        onOpenInstall={() => setShowInstallModal(true)}
       />
 
       <main>
@@ -168,7 +171,12 @@ function App() {
         ) : null}
       </main>
 
-      <Footer />
+      <Footer onOpenInstall={() => setShowInstallModal(true)} />
+
+      <InstallAppModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+      />
     </div>
   );
 }

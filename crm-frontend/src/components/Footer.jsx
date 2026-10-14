@@ -4,7 +4,7 @@ import {
     Mail, Phone, MapPin
 } from 'lucide-react';
 
-const Footer = () => {
+const Footer = ({ onOpenInstall }) => {
     const quickLinks = [
         { name: 'Home', href: '#home' },
         { name: 'About Us', href: '#about' },
@@ -62,6 +62,23 @@ const Footer = () => {
                                     <social.icon size={15} />
                                 </motion.a>
                             ))}
+                        </div>
+                        {/* App Download Badge */}
+                        <div className="pt-2">
+                            <button
+                                onClick={onOpenInstall}
+                                className="w-full max-w-[280px] p-2.5 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-400/50 hover:bg-white/10 flex items-center gap-3 transition-all duration-200 group cursor-pointer text-left shadow-md"
+                            >
+                                <img
+                                    src="/CRM-APP-logo.png"
+                                    alt="Pydah CRM App Logo"
+                                    className="w-10 h-10 rounded-xl object-contain bg-slate-900 p-1 border border-white/10 shrink-0 group-hover:scale-105 transition-transform"
+                                />
+                                <div className="min-w-0">
+                                    <div className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">PWA App Available</div>
+                                    <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">Download Pydah CRM</div>
+                                </div>
+                            </button>
                         </div>
                     </div>
 
