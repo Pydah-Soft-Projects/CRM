@@ -5,7 +5,20 @@ import {
     Brain, Activity, Landmark
 } from 'lucide-react';
 
-const BackgroundAnimations = ({ portalId, color }) => {
+const PORTAL_COLORS = {
+    'academic-portal': '#0d9488',
+    'admissions-crm': '#0284c7',
+    'examination-portal': '#ea580c',
+    'fee-management': '#059669',
+    'hostel-automation': '#db2777',
+    'hrms': '#7c3aed',
+    'student-portal': '#2563eb',
+    'transport-management': '#d97706',
+};
+
+const BackgroundAnimations = ({ portalId, color: propColor }) => {
+    // Exact brand color matching Our Portals
+    const color = PORTAL_COLORS[portalId] || propColor || '#6366f1';
     // Shared container styles - Removed global opacity for full control
     const containerClasses = "absolute inset-0 pointer-events-none overflow-hidden";
 
@@ -170,7 +183,7 @@ const BackgroundAnimations = ({ portalId, color }) => {
                         duration: Math.random() * 2 + 1.5,
                         repeat: Infinity,
                         ease: "linear",
-                        delay: Math.random() * 5
+                        delay: 0
                     }}
                 />
             ))}
@@ -180,7 +193,7 @@ const BackgroundAnimations = ({ portalId, color }) => {
             <motion.div
                 className="absolute top-[68%] z-10"
                 animate={{ x: ['120vw', '-30vw'] }}
-                transition={{ duration: 14, repeat: Infinity, ease: "linear", delay: 1 }}
+                transition={{ duration: 14, repeat: Infinity, ease: "linear", delay: 0 }}
             >
                 <div className="relative">
                     {/* Flipped to face LEFT to match movement direction */}
@@ -199,7 +212,7 @@ const BackgroundAnimations = ({ portalId, color }) => {
             <motion.div
                 className="absolute top-[32%] z-10"
                 animate={{ x: ['-30vw', '120vw'] }}
-                transition={{ duration: 22, repeat: Infinity, ease: "linear", delay: 5 }}
+                transition={{ duration: 22, repeat: Infinity, ease: "linear", delay: 0 }}
             >
                 <div className="relative">
                     {/* Default orientation faces RIGHT to match movement direction */}
@@ -237,9 +250,9 @@ const BackgroundAnimations = ({ portalId, color }) => {
                         borderWidth: ['6px', '1px']
                     }}
                     transition={{
-                        duration: 10,
+                        duration: 8,
                         repeat: Infinity,
-                        delay: i * 2,
+                        delay: i * 0.5,
                         ease: "easeOut"
                     }}
                 />
@@ -341,13 +354,13 @@ const BackgroundAnimations = ({ portalId, color }) => {
     };
 
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
             <motion.div
                 key={portalId}
-                initial={{ opacity: 0 }}
+                initial={{ opacity: 1 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 1 }}
+                transition={{ duration: 0.15 }}
                 className="absolute inset-0 z-0 overflow-hidden pointer-events-none"
                 style={{
                     // Creates a clear "hole" specifically around the heading area (approx 40% from top)

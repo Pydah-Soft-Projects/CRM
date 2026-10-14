@@ -166,9 +166,12 @@ const PortalsPage = ({ user, onBack, onPortalClick, onLoginClick, onLogout, laun
                                     <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight truncate">
                                         {user.name || user.username || 'Pydah Member'}
                                     </h1>
-                                    <p className="text-slate-500 text-xs sm:text-sm mt-0.5 font-medium flex items-center gap-1.5 truncate">
+                                    <p className="flex text-slate-500 text-xs sm:text-sm mt-0.5 font-medium items-center gap-1.5 truncate">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                        <span className="truncate">Authenticated Session · {user.email || user.username}</span>
+                                        <span className="truncate">
+                                            <span className="hidden sm:inline">Authenticated Session · </span>
+                                            {user.email || user.username}
+                                        </span>
                                     </p>
                                 </div>
                             </div>

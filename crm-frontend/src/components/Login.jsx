@@ -4,7 +4,34 @@ import { Lock, User, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucid
 import { authAPI } from '../services/api';
 import BackgroundAnimations from './BackgroundAnimations';
 
+const PORTAL_ANIMATIONS = [
+  { portalId: 'admissions-crm', color: '#0284c7' },
+  { portalId: 'student-portal', color: '#2563eb' },
+  { portalId: 'fee-management', color: '#059669' },
+  { portalId: 'transport-management', color: '#d97706' },
+  { portalId: 'hostel-automation', color: '#db2777' },
+  { portalId: 'hrms', color: '#7c3aed' },
+  { portalId: 'academic-portal', color: '#0d9488' },
+  { portalId: 'examination-portal', color: '#ea580c' },
+];
+
 const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
+  // Random portal animation from Our Portals, changing on every refresh
+  const [randomPortal] = useState(() => {
+    try {
+      const lastId = sessionStorage.getItem('last_portal_anim');
+      const candidates = PORTAL_ANIMATIONS.filter((p) => p.portalId !== lastId);
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)] || PORTAL_ANIMATIONS[0];
+      sessionStorage.setItem('last_portal_anim', chosen.portalId);
+      return chosen;
+    } catch {
+      return PORTAL_ANIMATIONS[Math.floor(Math.random() * PORTAL_ANIMATIONS.length)];
+    }
+  });
+
+  const activePortalId = portalInfo?.portalId || randomPortal.portalId;
+  const activeColor = portalInfo?.color || randomPortal.color;
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -88,40 +115,44 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
       paddingTop: 'clamp(80px, 12vw, 100px)',
       paddingBottom: 'clamp(4rem, 10vw, 8rem)'
     }}>
-      {/* Dynamic Background Animations */}
-      <BackgroundAnimations
-        portalId={portalInfo?.portalId}
-        color={portalInfo?.color || '#6366f1'}
-      />
+      {/* Dynamic Background Animations: Hidden on mobile view, visible on tab, laptop, laptopL, and 4k */}
+      <div className="hidden md:block absolute inset-0 pointer-events-none z-0">
+        <BackgroundAnimations
+          portalId={activePortalId}
+          color={activeColor}
+        />
+      </div>
 
       {/* Content wrapper for centering */}
       <div className="w-full flex-1 relative z-10 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-12">
         {/* Header */}
         <div
-          className="w-full max-w-2xl shrink-0 mb-8 lg:mb-12 text-center"
-          style={{ paddingTop: 'clamp(1rem, 2vw, 2rem)', paddingBottom: 'clamp(0.5rem, 1vw, 1rem)' }}
+          className="w-full max-w-2xl shrink-0 mb-6 lg:mb-8 text-center"
+          style={{ paddingTop: 'clamp(0.5rem, 1.5vw, 1rem)', paddingBottom: 'clamp(0.25rem, 0.8vw, 0.5rem)' }}
         >
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs sm:text-sm font-semibold mb-4"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[11px] sm:text-xs font-semibold mb-3"
           >
-            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
             Pydah Unified Identity Gateway
           </motion.div>
+          {/* Desktop Heading */}
           <motion.h1
-            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl sm:text-5xl lg:text-[clamp(2.5rem,7vw,4.5rem)] font-extrabold text-slate-900 tracking-tighter leading-[1.1] lg:leading-[0.9] [text-shadow:0_10px_30px_rgba(0,0,0,0.05)]"
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="hidden md:block text-2xl sm:text-3xl lg:text-[clamp(1.75rem,3.5vw,2.5rem)] font-extrabold text-slate-900 tracking-tight leading-tight [text-shadow:0_10px_30px_rgba(0,0,0,0.05)]"
           >
             Central <span className="text-indigo-600">Sign-In.</span>
           </motion.h1>
+
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="hidden md:block mt-4 text-base sm:text-lg lg:text-xl font-medium"
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="hidden md:block mt-2 text-xs sm:text-sm font-medium"
             style={{ color: 'var(--color-text-muted)' }}
           >
             Sign in once to access all your authorized campus portals and administrative tools.
@@ -160,7 +191,7 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   onClick={onBack}
-                  className="mb-6 flex items-center gap-2 transition-all duration-200 font-medium group"
+                  className="mb-3 md:mb-6 flex items-center gap-2 transition-all duration-200 font-medium group"
                   style={{
                     color: 'var(--color-text-muted)',
                     fontSize: 'clamp(0.875rem, 2vw, 1rem)',
@@ -175,10 +206,17 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                 </motion.button>
               )}
 
+              {/* Mobile View Sign-In Title: Shifted inside card below Back to Home button */}
+              <div className="block md:hidden mb-7 text-left">
+                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                  Sign-In
+                </h2>
+              </div>
+
               {/* Login Form */}
-              <form onSubmit={handleSubmit} className="flex flex-col">
+              <form onSubmit={handleSubmit} className="flex flex-col pt-4 md:pt-0">
                 {/* Username Field */}
-                <div style={{ marginBottom: 'clamp(1.25rem, 3vw, 1.75rem)' }}>
+                <div className="mt-2 md:mt-0" style={{ marginBottom: 'clamp(1.25rem, 3vw, 1.75rem)' }}>
                   <label
                     htmlFor="username"
                     className="block font-semibold mb-2.5"
@@ -318,7 +356,7 @@ const Login = ({ portalInfo, onLoginSuccess, onBack }) => {
                   whileTap={{ scale: isLoading ? 1 : 0.98 }}
                   className="w-full rounded-xl font-bold text-white flex items-center justify-center gap-2.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   style={{
-                    backgroundColor: portalInfo?.color || 'var(--color-primary)',
+                    backgroundColor: 'var(--color-primary)',
                     boxShadow: 'var(--shadow-soft)',
                     paddingLeft: 'clamp(1.5rem, 3.5vw, 2rem)',
                     paddingRight: 'clamp(1.5rem, 3.5vw, 2rem)',
