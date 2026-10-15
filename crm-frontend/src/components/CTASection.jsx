@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
-const CTASection = ({ onNavigate }) => {
+const CTASection = ({ onNavigate, user }) => {
     return (
         <section className="relative overflow-hidden" style={{
             paddingTop: 'clamp(2rem, 8vw, 6rem)',
@@ -87,7 +87,7 @@ const CTASection = ({ onNavigate }) => {
                             Join the growing list of forward-thinking entities scaling their operations with Pydah's intelligent ecosystem.
                         </motion.p>
 
-                        <InteractiveButton onClick={() => onNavigate('portals')} />
+                        <InteractiveButton onClick={() => onNavigate(user ? 'portals' : 'login')} />
                     </div>
                 </motion.div>
             </div>

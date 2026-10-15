@@ -89,13 +89,6 @@ function App() {
   }, [user]);
 
   const handleNavigate = (page) => {
-    if (page === 'portals') {
-      const activeUser = getActiveUser();
-      if (!activeUser) {
-        handleLogout();
-        return;
-      }
-    }
     setCurrentPage(page);
     setLaunchError(null);
     window.scrollTo(0, 0);
@@ -189,10 +182,10 @@ function App() {
       <main>
         {currentPage === 'home' ? (
           <>
-            <Hero onNavigate={handleNavigate} />
+            <Hero onNavigate={handleNavigate} user={user} />
             <AboutUsSection />
             <FeaturesSection />
-            <CTASection onNavigate={handleNavigate} />
+            <CTASection onNavigate={handleNavigate} user={user} />
           </>
         ) : currentPage === 'login' ? (
           <Login

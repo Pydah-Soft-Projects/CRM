@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const Hero = ({ onNavigate }) => {
+const Hero = ({ onNavigate, user }) => {
     // Typewriter animation rotating texts
     const textSets = [
         {
@@ -216,7 +216,7 @@ const Hero = ({ onNavigate }) => {
                             }}
                             onClick={() => {
                                 if (typeof onNavigate === 'function') {
-                                    onNavigate('portals');
+                                    onNavigate(user ? 'portals' : 'login');
                                 }
                             }}
                         >
