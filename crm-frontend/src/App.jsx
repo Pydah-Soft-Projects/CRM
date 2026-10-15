@@ -8,30 +8,36 @@ import Footer from './components/Footer';
 import PortalsPage from './components/PortalsPage';
 import Login from './components/Login';
 import InstallAppModal from './components/InstallAppModal';
-import { authAPI } from './services/api';
+import { authAPI, isTokenExpired, clearAuthSession } from './services/api';
 
 function App() {
   const [showInstallModal, setShowInstallModal] = useState(false);
-  // Initialize user from existing session
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem('accessToken');
-    const storedUser = localStorage.getItem('user');
-    if (token && storedUser) {
-      try {
-        return JSON.parse(storedUser);
-      } catch (e) {
-        console.error('Failed to parse cached user:', e);
-        return null;
-      }
-    }
-    return null;
-  });
 
-  // If a user is already logged in, show 'portals' directly on site open; otherwise show 'home'
-  const [currentPage, setCurrentPage] = useState(() => {
+  // Helper to validate and return active user session (purges expired tokens)
+  const getActiveUser = () => {
     const token = localStorage.getItem('accessToken');
     const storedUser = localStorage.getItem('user');
-    if (token && storedUser) {
+    if (!token || !storedUser || isTokenExpired(token)) {
+      if (token || storedUser) {
+        clearAuthSession();
+      }
+      return null;
+    }
+    try {
+      return JSON.parse(storedUser);
+    } catch (e) {
+      clearAuthSession();
+      return null;
+    }
+  };
+
+  // Initialize user only if session is valid and unexpired
+  const [user, setUser] = useState(() => getActiveUser());
+
+  // If a user has a valid active session, show 'portals' directly; otherwise show 'home'
+  const [currentPage, setCurrentPage] = useState(() => {
+    const activeUser = getActiveUser();
+    if (activeUser) {
       return 'portals';
     }
     return 'home';
@@ -41,15 +47,65 @@ function App() {
   const [launchingPortalId, setLaunchingPortalId] = useState(null);
   const [launchError, setLaunchError] = useState(null);
 
+  // Continuous monitoring: auto-redirect to home when token expires
+  useEffect(() => {
+    const checkSession = () => {
+      const activeUser = getActiveUser();
+      if (!activeUser && user) {
+        console.log('[Auth] Token expired or invalid. Navigating to home.');
+        handleLogout();
+      }
+    };
+
+    // 1. Initial check
+    checkSession();
+
+    // 2. Listen for auth:expired event from API requests
+    const handleAuthExpired = () => {
+      console.log('[Auth] auth:expired event received. Logging out.');
+      handleLogout();
+    };
+
+    // 3. Periodic check every 15 seconds
+    const intervalId = setInterval(checkSession, 15000);
+
+    // 4. Check on tab visibility or window focus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession();
+      }
+    };
+
+    window.addEventListener('auth:expired', handleAuthExpired);
+    window.addEventListener('focus', checkSession);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('auth:expired', handleAuthExpired);
+      window.removeEventListener('focus', checkSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
+
   const handleNavigate = (page) => {
+    if (page === 'portals') {
+      const activeUser = getActiveUser();
+      if (!activeUser) {
+        handleLogout();
+        return;
+      }
+    }
     setCurrentPage(page);
     setLaunchError(null);
     window.scrollTo(0, 0);
   };
 
   const handlePortalClick = async (portalInfo) => {
-    // 1. If not authenticated, take user to central login
-    if (!user) {
+    const activeUser = getActiveUser();
+    // 1. If not authenticated or token expired, take user to central login
+    if (!activeUser) {
+      handleLogout();
       setSelectedPortal(portalInfo);
       setCurrentPage('login');
       window.scrollTo(0, 0);
@@ -111,21 +167,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    try {
-      if (typeof authAPI.clearAllPortalTokens === 'function') {
-        authAPI.clearAllPortalTokens();
-      }
-    } catch (e) {
-      console.warn('Error clearing cached portal tokens:', e);
-    }
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    try {
-      sessionStorage.clear();
-    } catch (e) {
-      // ignore
-    }
+    clearAuthSession();
     setUser(null);
     setSelectedPortal(null);
     setLaunchError(null);

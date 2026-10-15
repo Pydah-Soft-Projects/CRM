@@ -6,6 +6,50 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
+ * Check if a JWT token is expired
+ * @param {string} token - JWT token string
+ * @returns {boolean} True if token is missing, invalid, or expired
+ */
+export const isTokenExpired = (token) => {
+  if (!token || typeof token !== 'string') return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const decoded = JSON.parse(jsonPayload);
+    if (!decoded.exp) return false;
+    // Buffer by 5 seconds: expired if exp * 1000 <= Date.now() + 5000
+    return decoded.exp * 1000 <= Date.now() + 5000;
+  } catch (e) {
+    return true;
+  }
+};
+
+/**
+ * Clear all authentication and portal session data
+ */
+export const clearAuthSession = () => {
+  try {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    clearAllPortalTokens();
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn('Error clearing auth session:', e);
+  }
+};
+
+/**
  * Generic API request handler
  */
 const apiRequest = async (endpoint, options = {}) => {
@@ -22,6 +66,11 @@ const apiRequest = async (endpoint, options = {}) => {
   // Add auth token if available
   const token = localStorage.getItem('accessToken');
   if (token) {
+    if (isTokenExpired(token)) {
+      clearAuthSession();
+      window.dispatchEvent(new CustomEvent('auth:expired'));
+      throw new Error('Your session has expired. Please log in again.');
+    }
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -30,6 +79,10 @@ const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
+      if (response.status === 401 || (data.message && /token.*expired|expired.*token|jwt expired/i.test(data.message))) {
+        clearAuthSession();
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+      }
       throw new Error(data.message || 'Request failed');
     }
 
@@ -328,4 +381,6 @@ export default {
   clearPortalToken,
   clearAllPortalTokens,
   getAllCachedPortalTokens,
+  isTokenExpired,
+  clearAuthSession,
 };
