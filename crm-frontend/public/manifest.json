@@ -1,8 +1,8 @@
 {
   "id": "/",
   "short_name": "Pydah CRM",
-  "name": "Pydah Central CRM",
-  "description": "Unified Campus Applications & Portals Ecosystem - Pydah Educational Academy",
+  "name": "Pydah Organization CRM",
+  "description": "Unified Campus Applications & Portals Ecosystem - Pydah Educational Organization",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
