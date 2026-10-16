@@ -3,9 +3,14 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { errorHandler } from './middleware/error.middleware.js';
 import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -114,6 +119,12 @@ app.get('/auth/verify-token/test', (req, res) => {
     endpoint: 'POST /auth/verify-token',
     timestamp: new Date().toISOString()
   });
+});
+
+// Static CDN assets for cross-portal floating switcher widget
+app.use('/cdn', express.static(path.join(__dirname, '../public')));
+app.get('/portal-switcher.js', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/portal-switcher.js'));
 });
 
 // API Routes

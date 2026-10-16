@@ -5,7 +5,8 @@ import {
   validateCredentialsForTransport,
   validateCredentialsForFee,
   generatePortalToken, 
-  getCRMUserForVerify 
+  getCRMUserForVerify,
+  discoverUserPortals
 } from '../services/auth.service.js';
 import { generateToken, verifyToken as verifyJWTToken } from '../services/token.service.js';
 import { findHRMSUserByEmail } from '../services/hrms.service.js';
@@ -18,7 +19,7 @@ import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser } from '../models/examination.model.js';
 import { getFeeDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
-import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS } from '../config/constants.js';
+import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS, PORTAL_METADATA } from '../config/constants.js';
 
 // Cache for tracking one-time used SSO tokens to prevent replay attacks
 const usedSsoTokens = new Map();
@@ -852,9 +853,232 @@ export const verifyToken = async (req, res, next) => {
   }
 };
 
+/**
+ * Quick portal switcher endpoint for CDN widget / cross-portal switching
+ * POST /auth/switch-portal
+ */
+export const switchPortal = async (req, res, next) => {
+  try {
+    const { targetPortalId, currentPortalId, token: bodyToken, user: bodyUser } = req.body;
+
+    if (!targetPortalId) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'targetPortalId is required'
+      });
+    }
+
+    const token = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.substring(7)
+      : bodyToken;
+
+    let resolvedUserId = null;
+    let resolvedUsername = null;
+    let resolvedEmail = null;
+    let resolvedRole = 'user';
+    let resolvedDatabaseSource = currentPortalId || null;
+    let resolvedPortals = [];
+    let resolvedPhone = null;
+    let resolvedEmployeeId = null;
+
+    // 1. Try verifying as CRM JWT access token
+    if (token) {
+      try {
+        const decoded = verifyJWTToken(token);
+        if (decoded && (decoded.userId || decoded.username)) {
+          resolvedUserId = decoded.userId;
+          resolvedUsername = decoded.username;
+          resolvedEmail = decoded.email;
+          resolvedRole = decoded.role || 'user';
+          resolvedDatabaseSource = decoded.databaseSource || currentPortalId || 'rbac_users';
+          resolvedPortals = Array.isArray(decoded.portals) ? decoded.portals : [];
+          resolvedPhone = decoded.phone;
+          resolvedEmployeeId = decoded.employeeId;
+        }
+      } catch (e) {
+        // Not a standard CRM token or expired; decode payload without verification as fallback
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4 !== 0) b64 += '=';
+            const payload = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+            resolvedUserId = payload.userId || payload.id || payload._id || payload.sub;
+            resolvedUsername = payload.username || payload.name;
+            resolvedEmail = payload.email;
+            resolvedRole = payload.role || 'user';
+            resolvedEmployeeId = payload.employeeId || payload.emp_no;
+            if (Array.isArray(payload.portals)) resolvedPortals = payload.portals;
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 2. Fallback to bodyUser object if provided by host portal
+    if (bodyUser) {
+      if (!resolvedUserId) resolvedUserId = bodyUser.id || bodyUser.userId || bodyUser._id;
+      if (!resolvedUsername) resolvedUsername = bodyUser.username || bodyUser.name;
+      if (!resolvedEmail) resolvedEmail = bodyUser.email;
+      if (bodyUser.role) resolvedRole = bodyUser.role;
+      if (bodyUser.databaseSource) resolvedDatabaseSource = bodyUser.databaseSource;
+      if (Array.isArray(bodyUser.portals) && bodyUser.portals.length > 0) {
+        resolvedPortals = bodyUser.portals;
+      }
+      if (!resolvedPhone) resolvedPhone = bodyUser.phone || bodyUser.mobile;
+      if (!resolvedEmployeeId) resolvedEmployeeId = bodyUser.employeeId || bodyUser.emp_no || bodyUser.rollNumber;
+    }
+
+    if (!resolvedUserId && !resolvedEmail && !resolvedUsername && !resolvedEmployeeId) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        success: false,
+        message: 'No authenticated user identity provided. Please log in first.'
+      });
+    }
+
+    // 3. Discover user portals if not already present
+    if (resolvedPortals.length === 0) {
+      resolvedPortals = await discoverUserPortals({
+        id: resolvedUserId,
+        username: resolvedUsername,
+        email: resolvedEmail,
+        phone: resolvedPhone,
+        employeeId: resolvedEmployeeId,
+        role: resolvedRole
+      }, resolvedDatabaseSource);
+    }
+
+    // 4. Check permissions
+    const normalizedRole = (resolvedRole || '').toLowerCase();
+    const isAdmin = ['super_admin', 'superadmin', 'admin'].includes(normalizedRole);
+    if (!isAdmin && !resolvedPortals.includes(targetPortalId)) {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: `Your account does not have access permissions for ${targetPortalId}.`
+      });
+    }
+
+    // 5. Generate SSO token
+    const encryptedToken = await generatePortalToken(
+      resolvedUserId || resolvedEmail || resolvedUsername,
+      targetPortalId,
+      resolvedRole,
+      resolvedDatabaseSource || 'rbac_users',
+      resolvedUsername || resolvedEmail,
+      {
+        email: resolvedEmail,
+        portals: resolvedPortals,
+        phone: resolvedPhone,
+        employeeId: resolvedEmployeeId
+      }
+    );
+
+    // 6. Build target redirect URL
+    const portalMeta = PORTAL_METADATA[targetPortalId];
+    let baseUrl = portalMeta ? portalMeta.url : 'https://crm.pydah.edu.in';
+
+    // Special logic for Student Portal (staff vs student entrypoint)
+    if (targetPortalId === PORTAL_IDS.STUDENT_PORTAL) {
+      const parsed = new URL(baseUrl);
+      if (resolvedDatabaseSource === 'rbac_users') {
+        baseUrl = `${parsed.origin}/login`;
+      } else {
+        baseUrl = `${parsed.origin}/student/login`;
+      }
+    }
+
+    const redirectUrlObj = new URL(baseUrl);
+    redirectUrlObj.searchParams.set('token', encryptedToken);
+
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Portal SSO redirect token generated successfully',
+      data: {
+        encryptedToken,
+        targetPortalId,
+        redirectUrl: redirectUrlObj.toString(),
+        expiresIn: '15m'
+      }
+    });
+
+  } catch (error) {
+    console.error('[switchPortal] Error:', error.message);
+    next(error);
+  }
+};
+
+/**
+ * Get user portals for CDN switcher widget
+ * POST /auth/user-portals
+ */
+export const getUserPortals = async (req, res, next) => {
+  try {
+    const { token: bodyToken, user: bodyUser, currentPortalId } = req.body;
+    const token = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.substring(7)
+      : bodyToken;
+
+    let userObj = bodyUser ? { ...bodyUser } : {};
+    let resolvedPortals = Array.isArray(userObj.portals) ? userObj.portals : [];
+
+    if (token) {
+      try {
+        const decoded = verifyJWTToken(token);
+        if (decoded) {
+          userObj = { ...userObj, ...decoded };
+          if (Array.isArray(decoded.portals) && decoded.portals.length > 0) {
+            resolvedPortals = decoded.portals;
+          }
+        }
+      } catch (e) {
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4 !== 0) b64 += '=';
+            const payload = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+            userObj = { ...payload, ...userObj };
+            if (Array.isArray(payload.portals)) resolvedPortals = payload.portals;
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (resolvedPortals.length === 0 && (userObj.id || userObj.userId || userObj.email || userObj.username || userObj.employeeId)) {
+      resolvedPortals = await discoverUserPortals(userObj, userObj.databaseSource || currentPortalId);
+    }
+
+    const normalizedRole = (userObj.role || '').toLowerCase();
+    const isAdmin = ['super_admin', 'superadmin', 'admin'].includes(normalizedRole);
+
+    const accessible = Object.values(PORTAL_METADATA).filter(p => {
+      if (isAdmin) return true;
+      return resolvedPortals.includes(p.id);
+    });
+
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        user: {
+          name: userObj.name || userObj.username || userObj.email || 'User',
+          email: userObj.email || null,
+          role: userObj.role || 'user',
+          profilePhoto: userObj.profilePhoto || null
+        },
+        portals: accessible,
+        allPortals: Object.values(PORTAL_METADATA)
+      }
+    });
+  } catch (error) {
+    console.error('[getUserPortals] Error:', error.message);
+    next(error);
+  }
+};
+
 export default {
   login,
   generateTokenForPortal,
   validateUserCredentials,
-  verifyToken
+  verifyToken,
+  switchPortal,
+  getUserPortals
 };

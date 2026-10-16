@@ -4,7 +4,9 @@ import {
   login,
   generateTokenForPortal,
   validateUserCredentials,
-  verifyToken
+  verifyToken,
+  switchPortal,
+  getUserPortals
 } from '../controllers/auth.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { validateRequest } from '../middleware/validation.middleware.js';
@@ -83,6 +85,33 @@ router.post(
   ],
   validateRequest,
   verifyToken
+);
+
+/**
+ * @route   POST /auth/switch-portal
+ * @desc    Generate SSO redirect token for cross-portal floating switcher widget
+ * @access  Public / Flexible (accepts bearer token or body user identity)
+ */
+router.post(
+  '/switch-portal',
+  [
+    body('targetPortalId')
+      .trim()
+      .notEmpty()
+      .withMessage('Target portal ID is required')
+  ],
+  validateRequest,
+  switchPortal
+);
+
+/**
+ * @route   POST /auth/user-portals
+ * @desc    Retrieve list of accessible portals for the floating widget
+ * @access  Public / Flexible (accepts bearer token or body user identity)
+ */
+router.post(
+  '/user-portals',
+  getUserPortals
 );
 
 export default router;
