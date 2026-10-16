@@ -76,6 +76,37 @@ export const findAcademicUser = async ({ email, employeeId, username, phone }) =
   }
 };
 
-export default {
-  findAcademicUser
+/**
+ * Find active user in academic_portal.ap_users by numeric user ID.
+ * @param {number|string} id - User ID in ap_users
+ * @returns {Promise<Object|null>} Matching academic user or null
+ */
+export const findAcademicUserById = async (id) => {
+  try {
+    const pool = getAcademicPool();
+    if (!pool || !id) return null;
+    const [rows] = await pool.query('SELECT * FROM ap_users WHERE id = ? AND is_active = 1 LIMIT 1', [id]);
+    if (rows && rows.length > 0) {
+      const u = rows[0];
+      return {
+        id: String(u.id),
+        employee_id: u.hrms_employee_id || u.username || null,
+        email: u.email || null,
+        role: u.role || 'faculty',
+        name: u.name || u.username || null,
+        username: u.username || null,
+        phone: u.phone || null
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('[AcademicModel] findAcademicUserById error:', error.message);
+    return null;
+  }
 };
+
+export default {
+  findAcademicUser,
+  findAcademicUserById
+};
+

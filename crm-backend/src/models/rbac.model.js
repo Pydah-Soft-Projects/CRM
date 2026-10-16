@@ -17,7 +17,7 @@ export const findRBACUserByUsername = async (username) => {
       `SELECT id, name, email, phone, username, password, role, 
               college_id, course_id, branch_id, college_ids, course_ids, branch_ids,
               all_courses, all_branches, permissions, is_active, 
-              created_by, created_at, updated_at 
+              created_by, created_at, updated_at, hrms_id 
        FROM rbac_users 
        WHERE username = ? AND is_active = 1`,
       [username]
@@ -50,7 +50,7 @@ export const findRBACUserByEmail = async (email) => {
       `SELECT id, name, email, phone, username, password, role, 
               college_id, course_id, branch_id, college_ids, course_ids, branch_ids,
               all_courses, all_branches, permissions, is_active, 
-              created_by, created_at, updated_at 
+              created_by, created_at, updated_at, hrms_id 
        FROM rbac_users 
        WHERE email = ? AND is_active = 1`,
       [email]
@@ -83,7 +83,7 @@ export const findRBACUserById = async (id) => {
       `SELECT id, name, email, phone, username, password, role, 
               college_id, course_id, branch_id, college_ids, course_ids, branch_ids,
               all_courses, all_branches, permissions, is_active, 
-              created_by, created_at, updated_at 
+              created_by, created_at, updated_at, hrms_id 
        FROM rbac_users 
        WHERE id = ? AND is_active = 1`,
       [id]

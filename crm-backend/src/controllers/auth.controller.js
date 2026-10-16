@@ -319,6 +319,7 @@ export const verifyToken = async (req, res, next) => {
             valid: true,
             data: {
               userId: hrmsIdentity.userId,
+              employeeId: hrmsIdentity.employeeId || targetEmp,
               email: hrmsIdentity.email || email,
               ...baseData
             }
@@ -941,9 +942,27 @@ export const switchPortal = async (req, res, next) => {
       if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
         resolvedEmployeeId = resolvedUsername;
       }
-      if (!resolvedDatabaseSource && (currentPortalId === 'fee-management' || currentPortalId === 'fee')) {
-        resolvedDatabaseSource = 'fee';
-      }
+    }
+
+    const PORTAL_TO_DB_SOURCE = {
+      'academic-portal': 'academic_portal',
+      'academic_portal': 'academic_portal',
+      'student-portal': 'rbac_users',
+      'hrms': 'hrms',
+      'fee-management': 'fee',
+      'fee': 'fee',
+      'transport-management': 'transport',
+      'transport': 'transport',
+      'hostel-automation': 'hostel',
+      'hostel': 'hostel',
+      'admissions-crm': 'admissions_db',
+      'admissions': 'admissions_db',
+      'examination-portal': 'examination_portal',
+      'ems': 'examination_portal'
+    };
+
+    if (!resolvedDatabaseSource && currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) {
+      resolvedDatabaseSource = PORTAL_TO_DB_SOURCE[currentPortalId];
     }
 
     if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
@@ -1049,6 +1068,23 @@ export const getUserPortals = async (req, res, next) => {
     let userObj = bodyUser ? { ...bodyUser } : {};
     let resolvedPortals = Array.isArray(userObj.portals) ? userObj.portals : [];
 
+    const PORTAL_TO_DB_SOURCE = {
+      'academic-portal': 'academic_portal',
+      'academic_portal': 'academic_portal',
+      'student-portal': 'rbac_users',
+      'hrms': 'hrms',
+      'fee-management': 'fee',
+      'fee': 'fee',
+      'transport-management': 'transport',
+      'transport': 'transport',
+      'hostel-automation': 'hostel',
+      'hostel': 'hostel',
+      'admissions-crm': 'admissions_db',
+      'admissions': 'admissions_db',
+      'examination-portal': 'examination_portal',
+      'ems': 'examination_portal'
+    };
+
     if (token) {
       try {
         const decoded = verifyJWTToken(token);
@@ -1072,8 +1108,10 @@ export const getUserPortals = async (req, res, next) => {
       }
     }
 
+    const resolvedDbSource = userObj.databaseSource || (currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) || currentPortalId;
+
     if (resolvedPortals.length === 0 && (userObj.id || userObj.userId || userObj.email || userObj.username || userObj.employeeId)) {
-      resolvedPortals = await discoverUserPortals(userObj, userObj.databaseSource || currentPortalId);
+      resolvedPortals = await discoverUserPortals(userObj, resolvedDbSource);
     }
 
     const normalizedRole = (userObj.role || '').toLowerCase();

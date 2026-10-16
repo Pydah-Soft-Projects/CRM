@@ -2,13 +2,13 @@ import bcrypt from 'bcryptjs';
 import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
-import { findAcademicUser } from '../models/academic.model.js';
+import { findAcademicUser, findAcademicUserById } from '../models/academic.model.js';
 import { findExaminationUser, findExaminationUserById } from '../models/examination.model.js';
 import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail, getEmployeeProfilePhoto } from './hrms.service.js';
 import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify } from './hostel.service.js';
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
 import { validateFeeCredentials, getFeeUserById } from './fee.service.js';
-import { getFeeDb, getTransportDb, getHRMSDb } from '../config/database.js';
+import { getFeeDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool } from '../config/database.js';
 import { generateSSOToken } from './token.service.js';
 import { encryptToken } from './encryption.service.js';
 import { ERROR_MESSAGES } from '../config/constants.js';
@@ -44,23 +44,98 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
 
     const username = (user.username || '').trim();
     let email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
-    let rollOrEmp = (user.admission_number || user.employeeId || user.emp_no || user.rollNumber || user.admissionNumber || '').trim();
+    let rollOrEmp = (user.admission_number || user.employeeId || user.emp_no || user.rollNumber || user.admissionNumber || user.employee_id || '').trim();
     if (!rollOrEmp && /^\d+$/.test(username)) {
       rollOrEmp = username;
     }
     let phone = user.phone || user.mobile || null;
     const name = (user.name || '').trim();
 
-    // 1.5 Auto-enrich missing email, emp_no, or phone from HRMS employees or Fee/Hostel/Transport DBs
+    // 1.4 If coming from Academic Portal, resolve user from ap_users to extract hrms_employee_id, email, phone
+    if (databaseSource === 'academic_portal' || databaseSource === 'academic-portal') {
+      try {
+        const pool = getAcademicPool();
+        if (pool && (user.id || user._id || username || email)) {
+          const conds = [];
+          const params = [];
+          if (user.id || user._id) {
+            conds.push('id = ?');
+            params.push(user.id || user._id);
+          }
+          if (username) {
+            conds.push('username = ?');
+            params.push(username);
+          }
+          if (email) {
+            conds.push('email = ?');
+            params.push(email);
+          }
+          if (conds.length > 0) {
+            const [rows] = await pool.query(`SELECT * FROM ap_users WHERE (${conds.join(' OR ')}) AND is_active = 1 LIMIT 1`, params);
+            if (rows && rows.length > 0) {
+              const ap = rows[0];
+              if (ap.hrms_employee_id && !rollOrEmp) rollOrEmp = String(ap.hrms_employee_id).trim();
+              if (ap.email && !email) email = ap.email.trim().toLowerCase();
+              if (ap.phone && !phone) phone = ap.phone;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[discoverUserPortals] ap_users lookup error:', e.message);
+      }
+    }
+
+    // 1.5 If coming from Student Portal (rbac_users), resolve from rbac_users to extract username/hrms_id, email, phone
+    if (databaseSource === 'rbac_users' || databaseSource === 'student-portal') {
+      try {
+        const pool = getStudentPool();
+        if (pool && (user.id || user._id || username || email)) {
+          const conds = [];
+          const params = [];
+          if (user.id || user._id) {
+            conds.push('id = ?');
+            params.push(user.id || user._id);
+          }
+          if (username) {
+            conds.push('username = ?');
+            params.push(username);
+          }
+          if (email) {
+            conds.push('email = ?');
+            params.push(email);
+          }
+          if (conds.length > 0) {
+            const [rows] = await pool.query(`SELECT * FROM rbac_users WHERE (${conds.join(' OR ')}) AND is_active = 1 LIMIT 1`, params);
+            if (rows && rows.length > 0) {
+              const rbac = rows[0];
+              if (rbac.username && /^\d+$/.test(rbac.username) && !rollOrEmp) rollOrEmp = rbac.username.trim();
+              if (rbac.email && !email) email = rbac.email.trim().toLowerCase();
+              if (rbac.phone && !phone) phone = rbac.phone;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[discoverUserPortals] rbac_users lookup error:', e.message);
+      }
+    }
+
+    // 1.6 Auto-enrich missing email, emp_no, or phone from HRMS employees or Fee/Hostel/Transport DBs
     if (!email || !rollOrEmp || !phone) {
       try {
         const hrmsDb = await getHRMSDb();
         if (hrmsDb) {
           const empQuery = [];
-          if (rollOrEmp) empQuery.push({ emp_no: rollOrEmp });
+          if (rollOrEmp) {
+            empQuery.push({ emp_no: rollOrEmp });
+            empQuery.push({ emp_no: rollOrEmp.toUpperCase() });
+          }
+          if (email) empQuery.push({ email: email });
           if (name && name.length > 3) empQuery.push({ name: name }, { employee_name: name });
           if (empQuery.length > 0) {
-            const emp = await hrmsDb.collection('employees').findOne({ $or: empQuery });
+            const emp = await hrmsDb.collection('employees').findOne({
+              $or: empQuery,
+              $and: [{ $or: [{ is_active: true }, { is_active: { $exists: false } }] }]
+            });
             if (emp) {
               if (emp.email && !email) email = emp.email.trim().toLowerCase();
               if (emp.emp_no && !rollOrEmp) rollOrEmp = emp.emp_no;
@@ -106,7 +181,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     // 2. Concurrently check presence in all other portal databases
     const checks = [];
 
-    // Check HRMS
+    // Check HRMS (Exclusively against employees collection)
     if (!portals.has('hrms')) {
       checks.push(
         (async () => {
@@ -118,10 +193,10 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             } else if (identifier) {
               const db = await getHRMSDb();
               if (db) {
-                const doc = await db.collection('users').findOne({
+                const doc = await db.collection('employees').findOne({
                   $and: [
-                    { $or: [{ username: identifier }, { email: identifier }] },
-                    { $or: [{ isActive: true }, { isActive: { $exists: false } }] }
+                    { $or: [{ emp_no: identifier }, { emp_no: identifier.toUpperCase() }, { email: identifier }] },
+                    { $or: [{ is_active: true }, { is_active: { $exists: false } }] }
                   ]
                 });
                 if (doc) portals.add('hrms');
@@ -798,13 +873,30 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
       }
       return null;
     }
-    if (databaseSource === 'rbac_users') {
+    if (databaseSource === 'academic_portal' || databaseSource === 'academic-portal') {
+      const academicUser = await findAcademicUserById(userId);
+      if (academicUser) {
+        return {
+          email: academicUser.email || null,
+          name: academicUser.name || null,
+          employeeId: academicUser.employee_id || null,
+          username: academicUser.username || null,
+          phone: academicUser.phone || null,
+          role: academicUser.role || null
+        };
+      }
+      return null;
+    }
+    if (databaseSource === 'rbac_users' || databaseSource === 'student-portal') {
       const user = await findRBACUserById(userId);
       if (user) {
         return {
           email: user.email || null,
           name: user.name || user.username || null,
-          employeeId: user.employeeId || user.employee_id || null
+          employeeId: user.username && /^\d+$/.test(user.username) ? user.username : (user.employeeId || user.employee_id || null),
+          username: user.username || null,
+          phone: user.phone || null,
+          role: user.role || null
         };
       }
     }
@@ -841,6 +933,16 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
       }
     }
     // Fallback: try all sources (for tokens issued before databaseSource was added)
+    const acadUser = await findAcademicUserById(userId);
+    if (acadUser) {
+      return {
+        email: acadUser.email || null,
+        name: acadUser.name || null,
+        employeeId: acadUser.employee_id || null,
+        username: acadUser.username || null,
+        role: acadUser.role || null
+      };
+    }
     let user = await findRBACUserById(userId);
     if (user) {
       return {

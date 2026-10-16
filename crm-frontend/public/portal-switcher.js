@@ -133,9 +133,26 @@
     let user = null;
     let portals = null;
 
-    // 1. Check URL query params for pydah_portals (from CRM launcher or cross-portal redirect)
+    // 1. Check URL query params for incoming SSO switch and pydah_portals
     try {
       const urlParams = new URLSearchParams(window.location.search);
+      const isSwitch = urlParams.get('sso_switch') === '1';
+      const switchToken = urlParams.get('token');
+
+      // When arriving via an explicit cross-portal SSO switch, clear stale cached credentials
+      // to ensure the incoming user session is established rather than an old logged-in session.
+      if (isSwitch && switchToken) {
+        const staleTokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token'];
+        const staleUserKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile'];
+        staleTokenKeys.forEach(function (k) {
+          try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (_) {}
+        });
+        staleUserKeys.forEach(function (k) {
+          try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (_) {}
+        });
+        try { localStorage.removeItem('pydah_authorized_portals'); } catch (_) {}
+      }
+
       const portalsParam = urlParams.get('pydah_portals');
       if (portalsParam) {
         const list = JSON.parse(atob(portalsParam));
@@ -458,22 +475,22 @@
         const activeToken = this.token || latestSession.token;
         const activeUser = this.user || latestSession.user;
 
-        // 1. If portals were passed via URL or already cached in storage
+        // 1. Optimistic render: if portals were passed via URL or cached in storage, show them immediately
         if (latestSession.portals && latestSession.portals.length > 0) {
           this.authorizedPortals = latestSession.portals;
-          console.log('[PydahSwitcher] Portals loaded from session/URL:', this.authorizedPortals);
-          this.isLoadingPortals = false;
           this.renderPortalList();
-          return;
-        }
-
-        // 2. If user already has portals in their session
-        if (activeUser && Array.isArray(activeUser.portals) && activeUser.portals.length > 0) {
+          // If no active credentials exist to re-verify against backend, we can stop here
+          if (!activeToken && !activeUser) {
+            this.isLoadingPortals = false;
+            return;
+          }
+        } else if (activeUser && Array.isArray(activeUser.portals) && activeUser.portals.length > 0) {
           this.authorizedPortals = activeUser.portals;
-          console.log('[PydahSwitcher] Portals loaded from user object:', this.authorizedPortals);
-          this.isLoadingPortals = false;
           this.renderPortalList();
-          return;
+          if (!activeToken) {
+            this.isLoadingPortals = false;
+            return;
+          }
         }
 
         if (!activeToken && !activeUser) {
