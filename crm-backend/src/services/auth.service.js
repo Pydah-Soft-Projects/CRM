@@ -8,7 +8,7 @@ import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail, getEmplo
 import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify } from './hostel.service.js';
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
 import { validateFeeCredentials, getFeeUserById } from './fee.service.js';
-import { getFeeDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool } from '../config/database.js';
+import { getFeeDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
 import { generateSSOToken } from './token.service.js';
 import { encryptToken } from './encryption.service.js';
 import { ERROR_MESSAGES } from '../config/constants.js';
@@ -119,8 +119,40 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       }
     }
 
-    // 1.6 Auto-enrich missing email, emp_no, or phone from HRMS employees or Fee/Hostel/Transport DBs
-    if (!email || !rollOrEmp || !phone) {
+    // 1.5.1 If coming from Admissions Portal (admissions_db), resolve from users to extract emp_no, hrms_id, email, phone
+    if (databaseSource === 'admissions_db' || databaseSource === 'admissions-crm' || databaseSource === 'admissions') {
+      try {
+        const pool = getAdmissionsPool();
+        if (pool && (user.id || user._id || email)) {
+          const conds = [];
+          const params = [];
+          if (user.id || user._id) {
+            conds.push('id = ?');
+            params.push(user.id || user._id);
+          }
+          if (email) {
+            conds.push('LOWER(email) = LOWER(?)');
+            params.push(email);
+          }
+          if (conds.length > 0) {
+            const [rows] = await pool.query(`SELECT * FROM users WHERE (${conds.join(' OR ')}) AND (is_active = 1 OR is_active IS NULL) LIMIT 1`, params);
+            if (rows && rows.length > 0) {
+              const adm = rows[0];
+              if (adm.emp_no && !rollOrEmp) rollOrEmp = String(adm.emp_no).trim();
+              if (adm.hrms_id && !user.hrms_id) user.hrms_id = adm.hrms_id;
+              if ((adm.mobile_number || adm.mobile || adm.phone) && !phone) {
+                phone = adm.mobile_number || adm.mobile || adm.phone;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[discoverUserPortals] admissions users lookup error:', e.message);
+      }
+    }
+
+    // 1.6 Auto-enrich canonical email, emp_no, or phone from HRMS employees or Fee/Hostel/Transport DBs
+    if (rollOrEmp || !email || !phone) {
       try {
         const hrmsDb = await getHRMSDb();
         if (hrmsDb) {
@@ -129,21 +161,28 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             empQuery.push({ emp_no: rollOrEmp });
             empQuery.push({ emp_no: rollOrEmp.toUpperCase() });
           }
+          if (user.hrms_id) {
+            try {
+              const { ObjectId } = await import('mongodb');
+              empQuery.push({ _id: new ObjectId(user.hrms_id) });
+            } catch (_) {}
+          }
           if (email) empQuery.push({ email: email });
-          if (name && name.length > 3) empQuery.push({ name: name }, { employee_name: name });
+          if (name && name.length > 3) empQuery.push({ employee_name: name });
           if (empQuery.length > 0) {
             const emp = await hrmsDb.collection('employees').findOne({
               $or: empQuery,
               $and: [{ $or: [{ is_active: true }, { is_active: { $exists: false } }] }]
             });
             if (emp) {
-              if (emp.email && !email) email = emp.email.trim().toLowerCase();
+              if (emp.email && (!email || email.includes('@pydahsoft.in'))) email = emp.email.trim().toLowerCase();
               if (emp.emp_no && !rollOrEmp) rollOrEmp = emp.emp_no;
-              if ((emp.phone || emp.phone_number) && !phone) phone = emp.phone || emp.phone_number;
+              if ((emp.phone || emp.phone_number) && (!phone || phone.length !== 10)) phone = emp.phone || emp.phone_number;
             }
           }
         }
       } catch (_) {}
+    }
 
       // Fallback check against Fee database if identity came from fee management
       if (!email && (databaseSource === 'fee' || databaseSource === 'fee-management')) {
@@ -169,7 +208,6 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
           }
         } catch (_) {}
       }
-    }
 
     const identifier = username || email;
 
@@ -215,9 +253,13 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         (async () => {
           try {
             const db = await getFeeDb();
-            if (db && (identifier || email)) {
+            if (db && (identifier || email || rollOrEmp)) {
               const orConditions = [];
               if (identifier) orConditions.push({ username: identifier });
+              if (rollOrEmp) {
+                orConditions.push({ username: rollOrEmp });
+                orConditions.push({ employeeId: rollOrEmp });
+              }
               if (email) {
                 orConditions.push({ email: email });
                 orConditions.push({ username: email });

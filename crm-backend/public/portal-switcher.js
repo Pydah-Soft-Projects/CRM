@@ -154,10 +154,20 @@
       }
     } catch (_) {}
 
+    // Helper to read cookie value
+    function getCookie(name) {
+      try {
+        const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+        return match ? decodeURIComponent(match[3]) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
     // 2. Check common token storage keys
     const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken'];
     for (const key of tokenKeys) {
-      const val = localStorage.getItem(key) || sessionStorage.getItem(key);
+      const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val && typeof val === 'string' && val.length > 20) {
         token = val;
         break;
@@ -167,10 +177,10 @@
     // 3. Check common user storage keys (including HRMS and portal-specific variants)
     const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser'];
     for (const key of userKeys) {
-      const val = localStorage.getItem(key) || sessionStorage.getItem(key);
+      const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val) {
         try {
-          user = JSON.parse(val);
+          user = typeof val === 'object' ? val : JSON.parse(val);
           if (user && typeof user === 'object') {
             if (!user.employeeId && user.emp_no) user.employeeId = user.emp_no;
             if (!user.username && user.emp_no) user.username = user.emp_no;
@@ -260,10 +270,27 @@
       this.setupDragging();
       this.fetchUserPortals();
       document.addEventListener('click', this.handleDocumentClick);
+
+      this.onSessionChange = () => {
+        const s = detectHostSession();
+        if ((s.token && s.token !== this.token) || (s.user && JSON.stringify(s.user) !== JSON.stringify(this.user))) {
+          this.token = s.token;
+          this.user = s.user;
+          this.fetchUserPortals();
+        }
+      };
+      window.addEventListener('storage', this.onSessionChange);
+      window.addEventListener('popstate', this.onSessionChange);
+      window.addEventListener('pydah_session_updated', this.onSessionChange);
     }
 
     disconnectedCallback() {
       document.removeEventListener('click', this.handleDocumentClick);
+      if (this.onSessionChange) {
+        window.removeEventListener('storage', this.onSessionChange);
+        window.removeEventListener('popstate', this.onSessionChange);
+        window.removeEventListener('pydah_session_updated', this.onSessionChange);
+      }
     }
 
     setSession({ token, user, currentPortal }) {
@@ -295,6 +322,20 @@
       this.isOpen = true;
       this.errorMessage = null;
       this.searchQuery = '';
+
+      // Re-check host session when user opens the widget
+      const s = detectHostSession();
+      if (
+        !this.authorizedPortals ||
+        this.authorizedPortals.length <= 1 ||
+        (s.token && s.token !== this.token) ||
+        (s.user && JSON.stringify(s.user) !== JSON.stringify(this.user))
+      ) {
+        if (s.token) this.token = s.token;
+        if (s.user) this.user = s.user;
+        this.fetchUserPortals();
+      }
+
       this.render();
       // Auto-focus search input
       setTimeout(() => {

@@ -138,11 +138,15 @@ export const findHostelUserForVerify = async (email = null, username = null, rol
   const usersCol = db.collection(USERS_COLLECTION);
 
   try {
-    // 1) Admins: by email or username (active only)
-    if (email || username) {
+    // 1) Admins: by email, username, or employeeId/rollNumber (active only)
+    if (email || username || rollNumber) {
       const or = [];
       if (email) or.push({ email: email.trim().toLowerCase() });
-      if (username) or.push({ username: username.trim() });
+      if (username) or.push({ username: username.trim() }, { employeeId: username.trim() });
+      if (rollNumber) {
+        const cleanRoll = String(rollNumber).trim();
+        or.push({ username: cleanRoll }, { employeeId: cleanRoll });
+      }
       if (or.length) {
         const doc = await adminsCol.findOne({
           $and: [
