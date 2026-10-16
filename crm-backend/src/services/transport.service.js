@@ -37,8 +37,27 @@ export const findTransportUserRole = async (user) => {
   try {
     const userRolesCol = db.collection('userroles');
     const adminCol = db.collection('admins');
-
     const orConditions = [];
+
+    // 0. Auto-resolve employee number (like '2144') from HRMS to obtain employeeId ObjectId, phone, and email
+    const rawEmpNo = user.employeeId || user.emp_no || (/^\d+$/.test(user.username) ? user.username : null);
+    if (rawEmpNo && (!user.phone || !user.email)) {
+      try {
+        const { getHRMSDb } = await import('../config/database.js');
+        const hrmsDb = await getHRMSDb();
+        if (hrmsDb) {
+          const emp = await hrmsDb.collection('employees').findOne({
+            $or: [{ emp_no: String(rawEmpNo) }, { emp_no: String(rawEmpNo).toUpperCase() }]
+          });
+          if (emp) {
+            if (emp._id && !user.employeeId) user.employeeId = emp._id;
+            if ((emp.phone || emp.phone_number) && !user.phone) user.phone = emp.phone || emp.phone_number;
+            if (emp.email && !user.email) user.email = emp.email;
+            if (emp._id) orConditions.push({ employeeId: emp._id });
+          }
+        }
+      } catch (_) {}
+    }
 
     // 1. Match by employeeId ObjectId (from HRMS user.id or employeeId)
     const empIdCandidates = [user.employeeId, user.empId, user.emp_no];

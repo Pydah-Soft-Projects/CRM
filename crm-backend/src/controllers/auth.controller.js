@@ -552,12 +552,13 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
+      const targetEmpId = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
       const transportRole = await findTransportUserRole({
         id: decoded.userId,
-        employeeId: crmUser?.employeeId,
-        email: email,
-        phone: crmUser?.phone,
-        username: username,
+        employeeId: targetEmpId,
+        email: email || decoded.email,
+        phone: decoded.phone || crmUser?.phone,
+        username: username || decoded.username,
         databaseSource: decoded.databaseSource
       });
       if (transportRole) {
