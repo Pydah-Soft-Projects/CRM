@@ -43,9 +43,65 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'examination_portal' || databaseSource === 'examination-portal') portals.add('examination-portal');
 
     const username = (user.username || '').trim();
-    const email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
+    let email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
+    let rollOrEmp = (user.admission_number || user.employeeId || user.emp_no || user.rollNumber || user.admissionNumber || '').trim();
+    if (!rollOrEmp && /^\d+$/.test(username)) {
+      rollOrEmp = username;
+    }
+    let phone = user.phone || user.mobile || null;
+    const name = (user.name || '').trim();
+
+    // 1.5 Auto-enrich missing email, emp_no, or phone from HRMS employees or Fee/Hostel/Transport DBs
+    if (!email || !rollOrEmp || !phone) {
+      try {
+        const hrmsDb = await getHRMSDb();
+        if (hrmsDb) {
+          const empQuery = [];
+          if (rollOrEmp) empQuery.push({ emp_no: rollOrEmp });
+          if (name && name.length > 3) empQuery.push({ name: name }, { employee_name: name });
+          if (empQuery.length > 0) {
+            const emp = await hrmsDb.collection('employees').findOne({ $or: empQuery });
+            if (emp) {
+              if (emp.email && !email) email = emp.email.trim().toLowerCase();
+              if (emp.emp_no && !rollOrEmp) rollOrEmp = emp.emp_no;
+              if ((emp.phone || emp.phone_number) && !phone) phone = emp.phone || emp.phone_number;
+            }
+          }
+        }
+      } catch (_) {}
+
+      // Fallback check against Fee database if identity came from fee management
+      if (!email && (databaseSource === 'fee' || databaseSource === 'fee-management')) {
+        try {
+          const feeDb = await getFeeDb();
+          if (feeDb && (username || user.id || user._id)) {
+            const feeConditions = [];
+            if (username) feeConditions.push({ username });
+            if (user.id || user._id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                feeConditions.push({ _id: new ObjectId(user.id || user._id) });
+              } catch (_) {}
+            }
+            if (feeConditions.length > 0) {
+              const feeDoc = await feeDb.collection('users').findOne({ $or: feeConditions });
+              if (feeDoc) {
+                if (feeDoc.email && !email) email = feeDoc.email.trim().toLowerCase();
+                if (feeDoc.mobile && !phone) phone = feeDoc.mobile;
+                if (feeDoc.username && !rollOrEmp && /^\d+$/.test(feeDoc.username)) rollOrEmp = feeDoc.username;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
     const identifier = username || email;
-    const rollOrEmp = (user.admission_number || user.employeeId || user.emp_no || user.rollNumber || user.admissionNumber || '').trim();
+
+    // Attach enriched fields back to user for downstream consumers
+    if (email && !user.email) user.email = email;
+    if (rollOrEmp && !user.employeeId) user.employeeId = rollOrEmp;
+    if (phone && !user.phone) user.phone = phone;
 
     // 2. Concurrently check presence in all other portal databases
     const checks = [];
