@@ -365,7 +365,8 @@ export const verifyToken = async (req, res, next) => {
       }
 
       // CRM/HRMS user: resolve to hostel identity for HMS
-      const hostelIdentity = await findHostelUserForVerify(email, username, null);
+      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+      const hostelIdentity = await findHostelUserForVerify(email || decoded.email, username, targetEmp);
       if (hostelIdentity) {
         console.log(`[VerifyToken] Hostel lookup: resolved to userId=${hostelIdentity.userId}`);
         return res.status(HTTP_STATUS.OK).json({
@@ -495,8 +496,10 @@ export const verifyToken = async (req, res, next) => {
       }
 
       let rbacUser = null;
-      if (email) rbacUser = await findRBACUserByIdentifier(email);
+      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+      if (email || decoded.email) rbacUser = await findRBACUserByIdentifier(email || decoded.email);
       if (!rbacUser && identifier) rbacUser = await findRBACUserByIdentifier(identifier);
+      if (!rbacUser && targetEmp) rbacUser = await findRBACUserByIdentifier(targetEmp);
       if (rbacUser) {
         console.log(`[VerifyToken] Student portal lookup: resolved to rbac userId=${rbacUser.id}`);
         return res.status(HTTP_STATUS.OK).json({
@@ -513,6 +516,7 @@ export const verifyToken = async (req, res, next) => {
 
       let stuUser = null;
       if (username) stuUser = await findStudentByUsername(username);
+      if (!stuUser && targetEmp) stuUser = await findStudentByUsername(targetEmp);
       if (stuUser) {
         return res.status(HTTP_STATUS.OK).json({
           success: true,
@@ -612,12 +616,15 @@ export const verifyToken = async (req, res, next) => {
       }
 
       const feeDb = await getFeeDb();
-      if (feeDb && identifier) {
+      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+      if (feeDb && (identifier || targetEmp || email || decoded.email)) {
         const orConditions = [];
         if (identifier) orConditions.push({ username: identifier });
-        if (email) {
-          orConditions.push({ email: email });
-          orConditions.push({ username: email });
+        if (targetEmp && targetEmp !== identifier) orConditions.push({ username: targetEmp });
+        const targetEmail = email || decoded.email;
+        if (targetEmail) {
+          orConditions.push({ email: targetEmail });
+          orConditions.push({ username: targetEmail });
         }
         const feeUser = await feeDb.collection('users').findOne({ $or: orConditions });
         if (feeUser) {
@@ -773,11 +780,12 @@ export const verifyToken = async (req, res, next) => {
 
       // C. Staff & Administrators: Check examination_portal database first
       let examUser = null;
+      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
       try {
         examUser = await findExaminationUser({
-          email: email,
-          employeeId: crmUser?.employeeId || decoded.employeeId,
-          username: username,
+          email: email || decoded.email,
+          employeeId: targetEmp,
+          username: username || decoded.username,
           phone: crmUser?.phone || decoded.phone
         });
       } catch (err) {

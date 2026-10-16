@@ -92,6 +92,14 @@ export const findExaminationUser = async ({ email, employeeId, username, phone }
     } else if (columns.has('emp_no') && normEmpId) {
       conditions.push('`emp_no` = ?');
       params.push(normEmpId);
+    } else if (columns.has('employeenumber') && normEmpId) {
+      conditions.push('`employeenumber` = ?');
+      params.push(normEmpId);
+    }
+
+    if (columns.has('hrmsuserid') && (normEmpId || query.id)) {
+      conditions.push('`hrmsuserid` = ?');
+      params.push(String(normEmpId || query.id));
     }
 
     if (columns.has('phone') && normPhone) {
@@ -111,25 +119,27 @@ export const findExaminationUser = async ({ email, employeeId, username, phone }
 
     let activeClause = '';
     if (columns.has('is_active')) {
-      activeClause = ' AND is_active = 1';
+      activeClause = ' AND `is_active` = 1';
+    } else if (columns.has('isactive')) {
+      activeClause = ' AND `isactive` = 1';
     } else if (columns.has('status')) {
       activeClause = " AND (`status` = 'active' OR `status` = '1')";
     } else if (columns.has('active')) {
-      activeClause = ' AND active = 1';
+      activeClause = ' AND `active` = 1';
     }
 
-    const query = `SELECT * FROM \`${table}\` WHERE (${conditions.join(' OR ')})${activeClause} LIMIT 1`;
-    const [rows] = await pool.query(query, params);
+    const queryStr = `SELECT * FROM \`${table}\` WHERE (${conditions.join(' OR ')})${activeClause} LIMIT 1`;
+    const [rows] = await pool.query(queryStr, params);
 
     if (rows && rows.length > 0) {
       const u = rows[0];
       return {
         id: String(u.id || u.user_id || u._id || ''),
-        employee_id: u.employee_id || u.emp_no || u.emp_id || u.username || normEmpId || null,
+        employee_id: u.employeenumber || u.employee_id || u.emp_no || u.emp_id || u.username || normEmpId || null,
         email: u.email || normEmail || null,
-        role: u.role || u.role_name || 'staff',
-        name: u.name || u.full_name || u.username || null,
-        username: u.username || normUsername || null,
+        role: u.role || u.role_name || (u.roleid === 1 ? 'super_admin' : u.roleid === 2 ? 'admin' : 'staff'),
+        name: u.fullname || u.name || u.full_name || u.username || null,
+        username: u.username || normUsername || u.employeenumber || null,
         pinNo: u.pin_no || u.pinNo || u.roll_number || u.admission_number || null
       };
     }
