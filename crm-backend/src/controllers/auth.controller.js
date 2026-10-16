@@ -976,7 +976,7 @@ export const switchPortal = async (req, res, next) => {
       });
     }
 
-    // 3. Discover user portals if not already present
+    // 3. Always discover authoritative user portals directly from live databases
     const userToDiscover = {
       id: resolvedUserId,
       username: resolvedUsername,
@@ -986,19 +986,16 @@ export const switchPortal = async (req, res, next) => {
       role: resolvedRole
     };
 
-    if (resolvedPortals.length === 0) {
-      resolvedPortals = await discoverUserPortals(userToDiscover, resolvedDatabaseSource);
-    }
+    resolvedPortals = await discoverUserPortals(userToDiscover, resolvedDatabaseSource);
 
     // Capture auto-enriched identity fields from discovery
     if (!resolvedEmail && userToDiscover.email) resolvedEmail = userToDiscover.email;
     if (!resolvedEmployeeId && userToDiscover.employeeId) resolvedEmployeeId = userToDiscover.employeeId;
     if (!resolvedPhone && userToDiscover.phone) resolvedPhone = userToDiscover.phone;
 
-    // 4. Check permissions (Only super_admin gets all portals; others must be authorized)
-    const normalizedRole = (resolvedRole || '').toLowerCase();
-    const isSuperAdmin = ['super_admin', 'superadmin'].includes(normalizedRole);
-    if (!isSuperAdmin && !resolvedPortals.includes(targetPortalId)) {
+    // 4. Check permissions (Only central master admin gets unconditional access; others must be verified)
+    const isMasterAdmin = (resolvedEmail || '').toLowerCase() === 'ravi@pydahsoft.in';
+    if (!isMasterAdmin && !resolvedPortals.includes(targetPortalId)) {
       return res.status(HTTP_STATUS.FORBIDDEN).json({
         success: false,
         message: `Your account does not have access permissions for ${targetPortalId}.`
@@ -1110,15 +1107,14 @@ export const getUserPortals = async (req, res, next) => {
 
     const resolvedDbSource = userObj.databaseSource || (currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) || currentPortalId;
 
-    if (resolvedPortals.length === 0 && (userObj.id || userObj.userId || userObj.email || userObj.username || userObj.employeeId)) {
+    if (userObj.id || userObj.userId || userObj.email || userObj.username || userObj.employeeId) {
       resolvedPortals = await discoverUserPortals(userObj, resolvedDbSource);
     }
 
-    const normalizedRole = (userObj.role || '').toLowerCase();
-    const isSuperAdmin = ['super_admin', 'superadmin'].includes(normalizedRole);
+    const isMasterAdmin = (userObj.email || '').toLowerCase() === 'ravi@pydahsoft.in';
 
     const accessible = Object.values(PORTAL_METADATA).filter(p => {
-      if (isSuperAdmin) return true;
+      if (isMasterAdmin) return true;
       return resolvedPortals.includes(p.id);
     });
 

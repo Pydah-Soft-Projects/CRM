@@ -133,7 +133,7 @@
     let user = null;
     let portals = null;
 
-    // 1. Check URL query params for incoming SSO switch and pydah_portals
+    // 1. Check URL query params for incoming SSO switch
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const isSwitch = urlParams.get('sso_switch') === '1';
@@ -142,8 +142,8 @@
       // When arriving via an explicit cross-portal SSO switch, clear stale cached credentials
       // to ensure the incoming user session is established rather than an old logged-in session.
       if (isSwitch && switchToken) {
-        const staleTokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token'];
-        const staleUserKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile'];
+        const staleTokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken'];
+        const staleUserKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser'];
         staleTokenKeys.forEach(function (k) {
           try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (_) {}
         });
@@ -152,32 +152,10 @@
         });
         try { localStorage.removeItem('pydah_authorized_portals'); } catch (_) {}
       }
-
-      const portalsParam = urlParams.get('pydah_portals');
-      if (portalsParam) {
-        const list = JSON.parse(atob(portalsParam));
-        if (Array.isArray(list) && list.length > 0) {
-          portals = list;
-          localStorage.setItem('pydah_authorized_portals', JSON.stringify(list));
-        }
-      }
     } catch (_) {}
 
-    // 2. Check localStorage for cached pydah_authorized_portals
-    if (!portals) {
-      try {
-        const cached = localStorage.getItem('pydah_authorized_portals');
-        if (cached) {
-          const list = JSON.parse(cached);
-          if (Array.isArray(list) && list.length > 0) {
-            portals = list;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 3. Check common token storage keys
-    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token'];
+    // 2. Check common token storage keys
+    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken'];
     for (const key of tokenKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key);
       if (val && typeof val === 'string' && val.length > 20) {
@@ -186,14 +164,19 @@
       }
     }
 
-    // 4. Check common user storage keys
-    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile'];
+    // 3. Check common user storage keys (including HRMS and portal-specific variants)
+    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser'];
     for (const key of userKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key);
       if (val) {
         try {
           user = JSON.parse(val);
-          break;
+          if (user && typeof user === 'object') {
+            if (!user.employeeId && user.emp_no) user.employeeId = user.emp_no;
+            if (!user.username && user.emp_no) user.username = user.emp_no;
+            if (!user.name && user.employee_name) user.name = user.employee_name;
+            break;
+          }
         } catch (_) {}
       }
     }
@@ -377,14 +360,8 @@
         const data = await response.json();
 
         if (response.ok && data.success && data.data?.redirectUrl) {
-          // Seamless redirect to target portal with generated SSO token and portals package
+          // Seamless redirect to target portal with generated SSO token
           const redirectObj = new URL(data.data.redirectUrl);
-          const currentPortals = this.authorizedPortals || (Array.isArray(this.user?.portals) ? this.user.portals : null);
-          if (Array.isArray(currentPortals) && currentPortals.length > 0) {
-            try {
-              redirectObj.searchParams.set('pydah_portals', btoa(JSON.stringify(currentPortals)));
-            } catch (_) {}
-          }
           redirectObj.searchParams.set('sso_switch', '1');
           window.location.href = redirectObj.toString();
           return;
@@ -556,14 +533,12 @@
     getFilteredPortals() {
       let list = PORTAL_REGISTRY;
 
-      const isSuperAdmin = ['super_admin', 'superadmin'].includes((this.user?.role || '').toLowerCase());
-      if (!isSuperAdmin) {
-        const allowed = this.authorizedPortals || (Array.isArray(this.user?.portals) ? this.user.portals : null);
-        if (allowed && allowed.length > 0) {
-          list = list.filter(p => allowed.includes(p.id) || p.id === this.currentPortal);
-        } else if (this.currentPortal) {
-          list = list.filter(p => p.id === this.currentPortal);
-        }
+      // Filter exclusively by authorized portals returned from the auth gateway
+      const allowed = this.authorizedPortals || (Array.isArray(this.user?.portals) ? this.user.portals : null);
+      if (allowed && allowed.length > 0) {
+        list = list.filter(p => allowed.includes(p.id) || p.id === this.currentPortal);
+      } else if (this.currentPortal) {
+        list = list.filter(p => p.id === this.currentPortal);
       }
 
       if (!this.searchQuery) return list;
