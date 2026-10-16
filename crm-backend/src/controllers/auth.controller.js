@@ -13,7 +13,7 @@ import { findHRMSUserByEmail } from '../services/hrms.service.js';
 import { findHostelUserForVerify } from '../services/hostel.service.js';
 import { findTransportUserRole } from '../services/transport.service.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
-import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
+import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId } from '../models/rbac.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser } from '../models/examination.model.js';
@@ -250,7 +250,7 @@ export const validateUserCredentials = async (req, res, next) => {
  */
 export const verifyToken = async (req, res, next) => {
   try {
-    console.log(`[VerifyToken] Request received from: ${req.headers.origin || 'unknown'}`);
+    console.log(`[VerifyToken] Request received from: ${req.headers?.origin || 'unknown'}`);
     console.log(`[VerifyToken] Request body keys:`, Object.keys(req.body || {}));
     
     const { encryptedToken } = req.body;
@@ -498,19 +498,23 @@ export const verifyToken = async (req, res, next) => {
 
       let rbacUser = null;
       const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
-      if (email || decoded.email) rbacUser = await findRBACUserByIdentifier(email || decoded.email);
+      if (decoded.userId) rbacUser = await findRBACUserByHrmsId(decoded.userId);
+      if (!rbacUser && (email || decoded.email)) rbacUser = await findRBACUserByIdentifier(email || decoded.email);
       if (!rbacUser && identifier) rbacUser = await findRBACUserByIdentifier(identifier);
       if (!rbacUser && targetEmp) rbacUser = await findRBACUserByIdentifier(targetEmp);
       if (rbacUser) {
-        console.log(`[VerifyToken] Student portal lookup: resolved to rbac userId=${rbacUser.id}`);
+        console.log(`[VerifyToken] Student portal lookup: resolved to rbac userId=${rbacUser.id}, role=${rbacUser.role}`);
         return res.status(HTTP_STATUS.OK).json({
           success: true,
           valid: true,
           data: {
+            ...baseData,
             userId: rbacUser.id,
+            id: rbacUser.id,
+            username: rbacUser.username,
             email: rbacUser.email,
             name: rbacUser.name,
-            ...baseData
+            role: rbacUser.role || decoded.role
           }
         });
       }
@@ -1024,10 +1028,15 @@ export const switchPortal = async (req, res, next) => {
     // Special logic for Student Portal (staff vs student entrypoint)
     if (targetPortalId === PORTAL_IDS.STUDENT_PORTAL) {
       const parsed = new URL(baseUrl);
-      if (resolvedDatabaseSource === 'rbac_users') {
-        baseUrl = `${parsed.origin}/login`;
-      } else {
+      const isStudent =
+        resolvedRole === 'student' ||
+        resolvedDatabaseSource === 'student_credentials' ||
+        Boolean(bodyUser?.admission_number || bodyUser?.rollNumber);
+
+      if (isStudent) {
         baseUrl = `${parsed.origin}/student/login`;
+      } else {
+        baseUrl = `${parsed.origin}/login`;
       }
     }
 

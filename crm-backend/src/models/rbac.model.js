@@ -104,13 +104,43 @@ export const findRBACUserById = async (id) => {
   }
 };
 
+export const findRBACUserByHrmsId = async (hrmsId) => {
+  try {
+    if (!hrmsId) return null;
+    const pool = getStudentPool();
+    const [rows] = await pool.execute(
+      `SELECT id, name, email, phone, username, password, role, 
+              college_id, course_id, branch_id, college_ids, course_ids, branch_ids,
+              all_courses, all_branches, permissions, is_active, 
+              created_by, created_at, updated_at, hrms_id 
+       FROM rbac_users 
+       WHERE hrms_id = ? AND is_active = 1`,
+      [String(hrmsId)]
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const user = rows[0];
+    return {
+      ...user,
+      role: user.role,
+    };
+  } catch (error) {
+    console.error('Error finding RBAC user by hrms_id:', error);
+    throw error;
+  }
+};
+
 /**
- * Find RBAC user by username or email
- * @param {string} identifier - Username or email to search for
+ * Find RBAC user by username, email, or hrms_id
+ * @param {string} identifier - Username, email, or hrms_id to search for
  * @returns {Promise<Object|null>} User object or null if not found
  */
 export const findRBACUserByIdentifier = async (identifier) => {
   try {
+    if (!identifier) return null;
     // Try username first
     let user = await findRBACUserByUsername(identifier);
     if (user) {
@@ -119,6 +149,12 @@ export const findRBACUserByIdentifier = async (identifier) => {
 
     // If not found, try email
     user = await findRBACUserByEmail(identifier);
+    if (user) {
+      return user;
+    }
+
+    // Try hrms_id
+    user = await findRBACUserByHrmsId(identifier);
     return user;
   } catch (error) {
     console.error('Error finding RBAC user by identifier:', error);
@@ -130,5 +166,6 @@ export default {
   findRBACUserByUsername,
   findRBACUserByEmail,
   findRBACUserById,
+  findRBACUserByHrmsId,
   findRBACUserByIdentifier,
 };
