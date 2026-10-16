@@ -300,9 +300,11 @@ export const findHRMSUserByEmail = async (email, employeeId = null) => {
 
   try {
     const normalizedEmail = email && typeof email === 'string' ? email.trim() : null;
+    let doc = null;
+
     // 1) Try by email in User collection (only active users) if email exists
     if (normalizedEmail) {
-      let doc = await userCollection.findOne({
+      doc = await userCollection.findOne({
         email: normalizedEmail,
         $or: [{ isActive: true }, { isActive: { $exists: false } }]
       });

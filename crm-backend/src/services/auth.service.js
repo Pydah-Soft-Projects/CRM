@@ -259,7 +259,11 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
-            if (email === 'ravi@pydahsoft.in' || user.role === 'super_admin' || user.role === 'admin') {
+            if (
+              email === 'ravi@pydahsoft.in' ||
+              user.role === 'super_admin' ||
+              user.role === 'superadmin'
+            ) {
               portals.add('academic-portal');
               return;
             }
@@ -290,11 +294,10 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               return;
             }
 
-            // 2. Super administrator & Administrator bypass
+            // 2. Super administrator bypass only
             if (
               email === 'ravi@pydahsoft.in' ||
               user.role === 'super_admin' ||
-              user.role === 'admin' ||
               user.role === 'superadmin'
             ) {
               portals.add('examination-portal');

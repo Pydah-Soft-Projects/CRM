@@ -368,6 +368,7 @@
               redirectObj.searchParams.set('pydah_portals', btoa(JSON.stringify(currentPortals)));
             } catch (_) {}
           }
+          redirectObj.searchParams.set('sso_switch', '1');
           window.location.href = redirectObj.toString();
           return;
         }
