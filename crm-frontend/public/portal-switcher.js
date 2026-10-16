@@ -101,7 +101,7 @@
 
   const scriptConfig = {
     currentPortal: currentScript?.getAttribute('data-current-portal') || null,
-    apiBaseUrl: currentScript?.getAttribute('data-api-base-url') || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://crm.pydah.edu.in'),
+    apiBaseUrl: currentScript?.getAttribute('data-api-base-url') || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://pydah-crm-backend.pydah.edu.in'),
     position: currentScript?.getAttribute('data-position') || 'bottom-right',
     theme: currentScript?.getAttribute('data-theme') || 'light',
     landingUrl: currentScript?.getAttribute('data-landing-url') || 'https://crm.pydah.edu.in'
