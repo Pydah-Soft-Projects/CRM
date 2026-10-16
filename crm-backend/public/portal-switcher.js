@@ -228,7 +228,6 @@
       this.startY = 0;
       this.initialX = 0;
       this.initialY = 0;
-      this.searchQuery = '';
       this.switchingPortalId = null;
       this.errorMessage = null;
       this.authorizedPortals = null;
@@ -247,7 +246,6 @@
       // Bound methods
       this.handleToggle = this.handleToggle.bind(this);
       this.handleClose = this.handleClose.bind(this);
-      this.handleSearch = this.handleSearch.bind(this);
       this.handlePortalClick = this.handlePortalClick.bind(this);
       this.handleDocumentClick = this.handleDocumentClick.bind(this);
     }
@@ -321,7 +319,6 @@
     open() {
       this.isOpen = true;
       this.errorMessage = null;
-      this.searchQuery = '';
 
       // Re-check host session when user opens the widget
       const s = detectHostSession();
@@ -337,17 +334,11 @@
       }
 
       this.render();
-      // Auto-focus search input
-      setTimeout(() => {
-        const input = this.shadowRoot.querySelector('#pydah-search-input');
-        if (input) input.focus();
-      }, 100);
     }
 
     close() {
       this.isOpen = false;
       this.errorMessage = null;
-      this.searchQuery = '';
       this.render();
     }
 
@@ -363,11 +354,6 @@
     handleClose(e) {
       e.stopPropagation();
       this.close();
-    }
-
-    handleSearch(e) {
-      this.searchQuery = e.target.value.toLowerCase();
-      this.renderPortalList();
     }
 
     async handlePortalClick(portal) {
@@ -426,19 +412,24 @@
       const container = this.shadowRoot.querySelector('.pydah-switcher-container');
 
       // Load saved position
-      const savedPos = localStorage.getItem('pydah_switcher_pos');
-      if (savedPos) {
-        try {
-          const { x, y } = JSON.parse(savedPos);
-          container.style.right = 'auto';
-          container.style.bottom = 'auto';
-          container.style.left = `${x}px`;
-          container.style.top = `${y}px`;
-        } catch (_) {}
+      // Load saved position on desktop viewports
+      if (window.innerWidth > 640) {
+        const savedPos = localStorage.getItem('pydah_switcher_pos');
+        if (savedPos) {
+          try {
+            const { x, y } = JSON.parse(savedPos);
+            const safeX = Math.max(10, Math.min(window.innerWidth - 60, x));
+            const safeY = Math.max(10, Math.min(window.innerHeight - 60, y));
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+            container.style.left = `${safeX}px`;
+            container.style.top = `${safeY}px`;
+          } catch (_) {}
+        }
       }
 
       const onMouseDown = (e) => {
-        if (e.button !== 0) return; // Primary click only
+        if (e.button !== 0 || window.innerWidth <= 640) return; // Desktop primary click only
         this.isDragging = true;
         this.dragMoved = false;
         this.startX = e.clientX;
@@ -582,13 +573,7 @@
         list = list.filter(p => p.id === this.currentPortal);
       }
 
-      if (!this.searchQuery) return list;
-
-      return list.filter(p =>
-        p.title.toLowerCase().includes(this.searchQuery) ||
-        p.category.toLowerCase().includes(this.searchQuery) ||
-        p.description.toLowerCase().includes(this.searchQuery)
-      );
+      return list;
     }
 
     renderPortalList() {
@@ -611,9 +596,9 @@
         grid.innerHTML = `
           <div class="empty-state">
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <p>No portals matching "${this.searchQuery}"</p>
+            <p>No accessible portals available for this account</p>
           </div>
         `;
         return;
@@ -757,14 +742,19 @@
             100% { transform: scale(1.15); opacity: 0; }
           }
 
+          /* Mobile Backdrop */
+          .pydah-backdrop {
+            display: none;
+          }
+
           /* Popover Flyout Panel */
           .pydah-popover {
             position: absolute;
             bottom: 64px;
             right: 0;
-            width: 360px;
+            width: 350px;
             max-width: calc(100vw - 32px);
-            max-height: 580px;
+            max-height: min(540px, calc(100vh - 100px));
             background: #ffffff;
             border-radius: 20px;
             box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
@@ -773,6 +763,17 @@
             overflow: hidden;
             animation: popover-slide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             transform-origin: bottom right;
+          }
+
+          /* Mobile drag indicator */
+          .mobile-handle {
+            display: none;
+            width: 38px;
+            height: 4px;
+            border-radius: 2px;
+            background: #cbd5e1;
+            margin: 8px auto 0 auto;
+            flex-shrink: 0;
           }
 
           @keyframes popover-slide {
@@ -917,50 +918,15 @@
             margin-top: 2px;
           }
 
-          /* Search Input */
-          .search-wrap {
-            padding: 10px 18px 8px 18px;
-          }
-
-          .search-box {
-            position: relative;
-            display: flex;
-            align-items: center;
-          }
-
-          .search-box svg {
-            position: absolute;
-            left: 10px;
-            color: #94a3b8;
-            pointer-events: none;
-          }
-
-          .search-box input {
-            width: 100%;
-            padding: 8px 12px 8px 32px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            font-size: 12px;
-            color: #1e293b;
-            outline: none;
-            transition: all 0.2s;
-          }
-
-          .search-box input:focus {
-            border-color: #6366f1;
-            background: #ffffff;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-          }
-
           /* Portals Grid / List */
           .portals-list-wrap {
             flex: 1;
             overflow-y: auto;
-            padding: 6px 14px 14px 14px;
+            padding: 10px 14px 14px 14px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 7px;
+            overscroll-behavior: contain;
           }
 
           .portals-list-wrap::-webkit-scrollbar {
@@ -1145,11 +1111,163 @@
             align-items: center;
             gap: 8px;
           }
+
+          /* Responsive sizing across screen sizes */
+          @media (max-width: 640px) {
+            .pydah-backdrop {
+              display: block;
+              position: fixed;
+              inset: 0;
+              background: rgba(15, 23, 42, 0.45);
+              backdrop-filter: blur(3px);
+              -webkit-backdrop-filter: blur(3px);
+              z-index: 9999998;
+              animation: pydah-fade-in 0.2s ease-out;
+            }
+
+            .pydah-switcher-container {
+              left: auto !important;
+              top: auto !important;
+              bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+              right: max(16px, env(safe-area-inset-right, 16px)) !important;
+            }
+
+            .pydah-fab {
+              width: 50px;
+              height: 50px;
+            }
+
+            .mobile-handle {
+              display: block;
+            }
+
+            .pydah-popover {
+              position: fixed !important;
+              left: 12px !important;
+              right: 12px !important;
+              bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+              top: auto !important;
+              width: auto !important;
+              max-width: calc(100vw - 24px) !important;
+              max-height: min(82vh, 600px) !important;
+              border-radius: 22px;
+              box-shadow: 0 -4px 35px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.1);
+              animation: pydah-sheet-slide 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+              transform-origin: bottom center;
+              z-index: 9999999;
+            }
+
+            .popover-header {
+              padding: 12px 16px;
+            }
+
+            .brand-logo-circle {
+              width: 32px;
+              height: 32px;
+              font-size: 14px;
+            }
+
+            .brand-text h3 {
+              font-size: 14px;
+            }
+
+            .brand-text span {
+              font-size: 10.5px;
+            }
+
+            .btn-close {
+              width: 32px;
+              height: 32px;
+              background: #f1f5f9;
+            }
+
+            .user-bar {
+              padding: 8px 16px;
+            }
+
+            .portals-list-wrap {
+              padding: 8px 12px 14px 12px;
+              max-height: 54vh;
+              -webkit-overflow-scrolling: touch;
+              gap: 8px;
+            }
+
+            .portal-card {
+              padding: 10px 12px;
+              min-height: 54px;
+              border-radius: 14px;
+            }
+
+            .portal-icon-wrap {
+              width: 38px;
+              height: 38px;
+            }
+
+            .portal-title {
+              font-size: 13.5px;
+            }
+
+            .portal-cat {
+              font-size: 11px;
+            }
+
+            .popover-footer {
+              padding: 10px 16px;
+            }
+          }
+
+          @media (max-width: 380px) {
+            .pydah-popover {
+              left: 8px !important;
+              right: 8px !important;
+              max-width: calc(100vw - 16px) !important;
+              border-radius: 18px;
+            }
+
+            .popover-header {
+              padding: 10px 14px;
+            }
+
+            .brand-text h3 {
+              font-size: 13px;
+            }
+
+            .portal-card {
+              padding: 8px 10px;
+              gap: 10px;
+            }
+
+            .portal-icon-wrap {
+              width: 34px;
+              height: 34px;
+            }
+          }
+
+          @keyframes pydah-sheet-slide {
+            from {
+              opacity: 0;
+              transform: translateY(28px) scale(0.96);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+
+          @keyframes pydah-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
         </style>
+
+        ${this.isOpen ? `
+          <div class="pydah-backdrop" id="pydah-backdrop"></div>
+        ` : ''}
 
         <div class="pydah-switcher-container">
           ${this.isOpen ? `
             <div class="pydah-popover" role="dialog" aria-label="Pydah Portal Switcher">
+              <div class="mobile-handle"></div>
               <div class="popover-header">
                 <div class="header-brand">
                   <div class="brand-logo-circle">P</div>
@@ -1186,15 +1304,6 @@
                   <span>${this.errorMessage}</span>
                 </div>
               ` : ''}
-
-              <div class="search-wrap">
-                <div class="search-box">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                  <input type="text" id="pydah-search-input" placeholder="Search portals..." value="${this.searchQuery}" />
-                </div>
-              </div>
 
               <div class="portals-list-wrap" id="pydah-portals-grid">
                 <!-- Portals injected via renderPortalList -->
@@ -1246,8 +1355,8 @@
       const closeBtn = this.shadowRoot.querySelector('#pydah-btn-close');
       if (closeBtn) closeBtn.addEventListener('click', this.handleClose);
 
-      const searchInput = this.shadowRoot.querySelector('#pydah-search-input');
-      if (searchInput) searchInput.addEventListener('input', this.handleSearch);
+      const backdrop = this.shadowRoot.querySelector('#pydah-backdrop');
+      if (backdrop) backdrop.addEventListener('click', this.handleClose);
 
       if (this.isOpen) {
         this.renderPortalList();
