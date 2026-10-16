@@ -5,9 +5,6 @@
   "https://crm.pydah.edu.in/": {
     "scope": "/"
   },
-  "https://crm.pydah.edu.in/?v=8": {
-    "scope": "/"
-  },
   "https://crm.pydah.edu.in/manifest.json": {
     "scope": "/"
   },
