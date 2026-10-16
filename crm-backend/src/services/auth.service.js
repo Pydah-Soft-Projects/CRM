@@ -721,9 +721,11 @@ export const generatePortalToken = async (userId, portalId, role, databaseSource
       throw new Error('User does not have access to this portal');
     }
 
-    // Generate SSO JWT token (include databaseSource, username, email, and portals for target portals)
+    // Generate SSO JWT token (include databaseSource, username, email, employeeId, phone, and portals for target portals)
     const ssoToken = generateSSOToken(userId, portalId, role, databaseSource, username, {
       ...(options.email && { email: options.email }),
+      ...(options.employeeId && { employeeId: options.employeeId }),
+      ...(options.phone && { phone: options.phone }),
       portals: userPortals
     });
     

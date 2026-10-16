@@ -28,11 +28,21 @@ export const findAcademicUser = async ({ email, employeeId, username, phone }) =
     if (username && typeof username === 'string' && username.trim()) {
       conditions.push('username = ?');
       params.push(username.trim());
+      // If username is an employee number, also match hrms_employee_id
+      if (/^\d+$/.test(username.trim())) {
+        conditions.push('hrms_employee_id = ?');
+        params.push(username.trim());
+      }
     }
 
-    if (employeeId && typeof employeeId === 'string' && employeeId.trim() && employeeId.trim() !== username?.trim()) {
-      conditions.push('username = ?');
-      params.push(employeeId.trim());
+    if (employeeId && typeof employeeId === 'string' && employeeId.trim()) {
+      const cleanEmp = employeeId.trim();
+      conditions.push('hrms_employee_id = ?');
+      params.push(cleanEmp);
+      if (cleanEmp !== username?.trim()) {
+        conditions.push('username = ?');
+        params.push(cleanEmp);
+      }
     }
 
     if (phone && typeof phone === 'string' && phone.trim()) {
@@ -51,7 +61,7 @@ export const findAcademicUser = async ({ email, employeeId, username, phone }) =
       const u = rows[0];
       return {
         id: String(u.id || ''),
-        employee_id: u.employee_id || u.username || employeeId || null,
+        employee_id: u.hrms_employee_id || u.username || employeeId || null,
         email: u.email || email || null,
         role: u.role || u.role_name || 'faculty',
         name: u.name || u.full_name || u.username || null,

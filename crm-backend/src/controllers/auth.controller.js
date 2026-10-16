@@ -309,8 +309,9 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
-      if (email) {
-        const hrmsIdentity = await findHRMSUserByEmail(email, crmUser?.employeeId);
+      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+      if (email || targetEmp) {
+        const hrmsIdentity = await findHRMSUserByEmail(email, targetEmp);
         if (hrmsIdentity) {
           console.log(`[VerifyToken] HRMS lookup: resolved to userId=${hrmsIdentity.userId}`);
           return res.status(HTTP_STATUS.OK).json({
@@ -318,20 +319,22 @@ export const verifyToken = async (req, res, next) => {
             valid: true,
             data: {
               userId: hrmsIdentity.userId,
-              email: hrmsIdentity.email,
+              email: hrmsIdentity.email || email,
               ...baseData
             }
           });
         }
-        return res.status(HTTP_STATUS.OK).json({
-          success: true,
-          valid: true,
-          data: {
-            userId: email,
-            email,
-            ...baseData
-          }
-        });
+        if (email) {
+          return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            valid: true,
+            data: {
+              userId: email,
+              email,
+              ...baseData
+            }
+          });
+        }
       }
       return res.status(HTTP_STATUS.OK).json({
         success: true,
@@ -925,8 +928,17 @@ export const switchPortal = async (req, res, next) => {
       if (Array.isArray(bodyUser.portals) && bodyUser.portals.length > 0) {
         resolvedPortals = bodyUser.portals;
       }
-      if (!resolvedPhone) resolvedPhone = bodyUser.phone || bodyUser.mobile;
       if (!resolvedEmployeeId) resolvedEmployeeId = bodyUser.employeeId || bodyUser.emp_no || bodyUser.rollNumber;
+      if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
+        resolvedEmployeeId = resolvedUsername;
+      }
+      if (!resolvedDatabaseSource && (currentPortalId === 'fee-management' || currentPortalId === 'fee')) {
+        resolvedDatabaseSource = 'fee';
+      }
+    }
+
+    if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
+      resolvedEmployeeId = resolvedUsername;
     }
 
     if (!resolvedUserId && !resolvedEmail && !resolvedUsername && !resolvedEmployeeId) {
@@ -937,16 +949,23 @@ export const switchPortal = async (req, res, next) => {
     }
 
     // 3. Discover user portals if not already present
+    const userToDiscover = {
+      id: resolvedUserId,
+      username: resolvedUsername,
+      email: resolvedEmail,
+      phone: resolvedPhone,
+      employeeId: resolvedEmployeeId,
+      role: resolvedRole
+    };
+
     if (resolvedPortals.length === 0) {
-      resolvedPortals = await discoverUserPortals({
-        id: resolvedUserId,
-        username: resolvedUsername,
-        email: resolvedEmail,
-        phone: resolvedPhone,
-        employeeId: resolvedEmployeeId,
-        role: resolvedRole
-      }, resolvedDatabaseSource);
+      resolvedPortals = await discoverUserPortals(userToDiscover, resolvedDatabaseSource);
     }
+
+    // Capture auto-enriched identity fields from discovery
+    if (!resolvedEmail && userToDiscover.email) resolvedEmail = userToDiscover.email;
+    if (!resolvedEmployeeId && userToDiscover.employeeId) resolvedEmployeeId = userToDiscover.employeeId;
+    if (!resolvedPhone && userToDiscover.phone) resolvedPhone = userToDiscover.phone;
 
     // 4. Check permissions (Only super_admin gets all portals; others must be authorized)
     const normalizedRole = (resolvedRole || '').toLowerCase();
