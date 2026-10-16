@@ -101,7 +101,7 @@
 
   const scriptConfig = {
     currentPortal: currentScript?.getAttribute('data-current-portal') || null,
-    apiBaseUrl: currentScript?.getAttribute('data-api-base-url') || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://crm.pydah.edu.in'),
+    apiBaseUrl: currentScript?.getAttribute('data-api-base-url') || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://crm.pydah.edu.in'),
     position: currentScript?.getAttribute('data-position') || 'bottom-right',
     theme: currentScript?.getAttribute('data-theme') || 'light',
     landingUrl: currentScript?.getAttribute('data-landing-url') || 'https://crm.pydah.edu.in'
@@ -131,8 +131,35 @@
   function detectHostSession() {
     let token = null;
     let user = null;
+    let portals = null;
 
-    // Check common token storage keys
+    // 1. Check URL query params for pydah_portals (from CRM launcher or cross-portal redirect)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const portalsParam = urlParams.get('pydah_portals');
+      if (portalsParam) {
+        const list = JSON.parse(atob(portalsParam));
+        if (Array.isArray(list) && list.length > 0) {
+          portals = list;
+          localStorage.setItem('pydah_authorized_portals', JSON.stringify(list));
+        }
+      }
+    } catch (_) {}
+
+    // 2. Check localStorage for cached pydah_authorized_portals
+    if (!portals) {
+      try {
+        const cached = localStorage.getItem('pydah_authorized_portals');
+        if (cached) {
+          const list = JSON.parse(cached);
+          if (Array.isArray(list) && list.length > 0) {
+            portals = list;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Check common token storage keys
     const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token'];
     for (const key of tokenKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key);
@@ -142,7 +169,7 @@
       }
     }
 
-    // Check common user storage keys
+    // 4. Check common user storage keys
     const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile'];
     for (const key of userKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key);
@@ -154,7 +181,7 @@
       }
     }
 
-    // If token exists, supplement user info from decoded JWT payload
+    // 5. If token exists, supplement user info from decoded JWT payload
     if (token) {
       const decoded = parseJwt(token);
       if (decoded) {
@@ -164,7 +191,7 @@
           name: decoded.name || user?.name || decoded.username,
           email: decoded.email || user?.email,
           role: decoded.role || user?.role || 'user',
-          portals: decoded.portals || user?.portals || [],
+          portals: decoded.portals || user?.portals || portals || [],
           employeeId: decoded.employeeId || user?.employeeId,
           databaseSource: decoded.databaseSource || user?.databaseSource,
           ...user
@@ -172,7 +199,11 @@
       }
     }
 
-    return { token, user };
+    if (portals && user) {
+      user.portals = portals;
+    }
+
+    return { token, user, portals };
   }
 
   // 3. Web Component definition with Shadow DOM
@@ -197,6 +228,7 @@
       const detected = detectHostSession();
       this.token = detected.token;
       this.user = detected.user;
+      this.authorizedPortals = detected.portals || (Array.isArray(detected.user?.portals) && detected.user.portals.length > 0 ? detected.user.portals : null);
       this.currentPortal = scriptConfig.currentPortal;
       this.apiBaseUrl = scriptConfig.apiBaseUrl;
       this.landingUrl = scriptConfig.landingUrl;
@@ -328,8 +360,15 @@
         const data = await response.json();
 
         if (response.ok && data.success && data.data?.redirectUrl) {
-          // Seamless redirect to target portal with generated SSO token
-          window.location.href = data.data.redirectUrl;
+          // Seamless redirect to target portal with generated SSO token and portals package
+          const redirectObj = new URL(data.data.redirectUrl);
+          const currentPortals = this.authorizedPortals || (Array.isArray(this.user?.portals) ? this.user.portals : null);
+          if (Array.isArray(currentPortals) && currentPortals.length > 0) {
+            try {
+              redirectObj.searchParams.set('pydah_portals', btoa(JSON.stringify(currentPortals)));
+            } catch (_) {}
+          }
+          window.location.href = redirectObj.toString();
           return;
         }
 
@@ -418,9 +457,19 @@
         const activeToken = this.token || latestSession.token;
         const activeUser = this.user || latestSession.user;
 
-        // If user already has portals in their session
+        // 1. If portals were passed via URL or already cached in storage
+        if (latestSession.portals && latestSession.portals.length > 0) {
+          this.authorizedPortals = latestSession.portals;
+          console.log('[PydahSwitcher] Portals loaded from session/URL:', this.authorizedPortals);
+          this.isLoadingPortals = false;
+          this.renderPortalList();
+          return;
+        }
+
+        // 2. If user already has portals in their session
         if (activeUser && Array.isArray(activeUser.portals) && activeUser.portals.length > 0) {
           this.authorizedPortals = activeUser.portals;
+          console.log('[PydahSwitcher] Portals loaded from user object:', this.authorizedPortals);
           this.isLoadingPortals = false;
           this.renderPortalList();
           return;
@@ -433,25 +482,47 @@
           return;
         }
 
-        const response = await fetch(`${this.apiBaseUrl}/auth/user-portals`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {})
-          },
-          body: JSON.stringify({
-            token: activeToken,
-            user: activeUser,
-            currentPortalId: this.currentPortal
-          })
-        });
+        // 3. Query the CRM Auth Gateway
+        let res = null;
+        const payload = {
+          token: activeToken,
+          user: activeUser,
+          currentPortalId: this.currentPortal
+        };
 
-        const res = await response.json();
-        if (res.success && Array.isArray(res.data?.portals)) {
+        const tryFetch = async (baseUrl) => {
+          const resp = await fetch(`${baseUrl}/auth/user-portals`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {})
+            },
+            body: JSON.stringify(payload)
+          });
+          return resp.json();
+        };
+
+        try {
+          res = await tryFetch(this.apiBaseUrl);
+        } catch (err1) {
+          // If on localhost and 8000 failed, try port 3000
+          if (window.location.hostname === 'localhost') {
+            try {
+              const altPort = this.apiBaseUrl.includes('8000') ? 'http://localhost:3000' : 'http://localhost:8000';
+              res = await tryFetch(altPort);
+            } catch (_) {}
+          }
+        }
+
+        if (res && res.success && Array.isArray(res.data?.portals)) {
           this.authorizedPortals = res.data.portals.map(p => p.id || p.portalId);
           if (res.data.user) {
             this.user = { ...this.user, ...res.data.user, portals: this.authorizedPortals };
           }
+          if (this.authorizedPortals.length > 0) {
+            localStorage.setItem('pydah_authorized_portals', JSON.stringify(this.authorizedPortals));
+          }
+          console.log('[PydahSwitcher] Discovered authorized portals from backend:', this.authorizedPortals);
         } else {
           this.authorizedPortals = this.currentPortal ? [this.currentPortal] : [];
         }

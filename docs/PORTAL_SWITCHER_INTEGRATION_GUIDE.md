@@ -1,65 +1,57 @@
 # Pydah Universal Portal Switcher - Integration Guide (CDN)
 
-The **Pydah Universal Portal Switcher** is a floating widget packaged as a lightweight, zero-dependency CDN script. It enables authenticated users in any Pydah portal (HRMS, SDMS, Transport, Hostel, Fee, Academics, EMS, Admissions) to switch between permitted portals without having to log out or manually navigate back to the central landing page.
+The **Pydah Universal Portal Switcher** is a floating widget packaged as a lightweight, zero-dependency CDN script. It allows authenticated users in any Pydah portal (Fee Management, HRMS, SDMS, Transport, Hostel, Academics, EMS, Admissions) to seamlessly switch between their permitted portals with one click.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Capabilities
 
 - **1-Line Embed**: Import via a single `<script>` tag.
 - **Pure Web Component (Shadow DOM)**: 100% style-isolated. It will never conflict with Bootstrap, Tailwind, Material UI, or custom CSS in the host application.
-- **Host Portal Token Detection**: Automatically detects existing auth tokens (`accessToken`, `token`, `jwt`) and user objects from the host portal's `localStorage` / `sessionStorage`.
-- **Seamless One-Click SSO**: Generates short-lived AES-256 encrypted SSO tokens on the fly and redirects users securely.
-- **Draggable Floating Button**: Users can drag the floating button anywhere on their screen to avoid obstructing tables, action buttons, or chatbots. The position is automatically remembered across sessions.
-- **Real-Time Search**: Instant filtering across all authorized portals.
+- **Cross-Portal Permission Continuity**: When redirected from CRM or between portals, the widget automatically carries and persists the user's complete list of authorized portals in `localStorage`.
+- **Live Permission Discovery**: If a user logs into a portal directly, the widget automatically contacts the CRM Auth Gateway to verify and discover their allowed portals across all campus databases.
+- **Draggable Floating Button**: Users can drag the floating button anywhere on the screen so it never covers buttons or table rows. The position is remembered automatically.
+- **Real-Time Search**: Instant filtering across all permitted portals.
 
 ---
 
-## 🚀 1. Quick Start (HTML / PHP / Vanilla JS)
+## 🚀 1. Quick Start (HTML / Index.html)
 
-Add this script tag right before the closing `</body>` tag of your application:
+Add this script tag right before the closing `</body>` tag of your application's `index.html`:
 
 ```html
+<!-- Pydah Universal Portal Switcher CDN -->
 <script 
   src="https://crm.pydah.edu.in/portal-switcher.js" 
-  data-current-portal="hrms" 
+  data-current-portal="fee-management" 
   async>
 </script>
 ```
 
-> **Note**: Replace `data-current-portal="hrms"` with the ID of your application (see [Portal IDs Reference](#-portal-ids-reference)).
+> 💡 **Important:** Replace `data-current-portal="fee-management"` with that specific app's ID (see [Portal IDs Reference](#-portal-ids-reference)).
+
+### For Local Development Testing:
+If you are developing or running portals locally on `localhost`:
+```html
+<script 
+  src="http://localhost:5173/portal-switcher.js" 
+  data-current-portal="fee-management"
+  data-api-base-url="http://localhost:8000">
+</script>
+```
 
 ---
 
 ## ⚛️ 2. React / Next.js / Vite / Vue Integration
 
-### Option A: In `index.html` (Recommended for Vite / React SPA)
+### Option A: In `index.html` (Recommended)
+Simply place the `<script>` tag in your frontend's `index.html`. The widget will automatically:
+1. Detect any active auth token (`accessToken`, `token`, `jwt`) and `user` object in `localStorage`.
+2. Detect cross-portal authorized portals passed from the CRM launcher.
+3. Automatically render the floating switcher button.
 
-Simply add the `<script>` tag to your `index.html`:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Pydah HRMS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-
-    <!-- Pydah Universal Portal Switcher CDN -->
-    <script 
-      src="https://crm.pydah.edu.in/portal-switcher.js" 
-      data-current-portal="hrms" 
-      async>
-    </script>
-  </body>
-</html>
-```
-
-### Option B: Programmatic Initialization via JavaScript (App.jsx / AuthContext)
-
-If your application loads the user session asynchronously (e.g., from an API or AuthContext), you can pass the host token and user details directly:
+### Option B: Programmatic Initialization via JavaScript (App.jsx / AuthProvider)
+If your application loads the user session asynchronously or uses custom state management:
 
 ```javascript
 import { useEffect } from 'react';
@@ -68,11 +60,10 @@ function App() {
   const { user, token } = useAuth(); // Your local auth state
 
   useEffect(() => {
-    // Check if CDN script is loaded
-    if (window.PydahSwitcher) {
+    if (window.PydahSwitcher && user) {
       window.PydahSwitcher.init({
-        currentPortal: 'hrms', // Your portal ID
-        token: token || localStorage.getItem('accessToken'),
+        currentPortal: 'fee-management', // Your portal ID
+        token: token || localStorage.getItem('token') || localStorage.getItem('accessToken'),
         user: user || JSON.parse(localStorage.getItem('user') || '{}'),
         position: 'bottom-right'
       });
@@ -85,14 +76,14 @@ function App() {
 
 ---
 
-## 📋 Configuration Attributes
+## 📋 Configuration Attributes Reference
 
 You can configure the widget using `data-*` attributes on the `<script>` tag or via `window.PydahSwitcher.init({})`:
 
 | Attribute | Script Tag Attribute | Type | Default | Description |
 |---|---|---|---|---|
-| `currentPortal` | `data-current-portal` | `string` | `null` | **Required.** The portal ID of the current app (e.g. `'hrms'`). |
-| `apiBaseUrl` | `data-api-base-url` | `string` | `https://crm.pydah.edu.in` | Base URL of the CRM Auth Gateway. |
+| `currentPortal` | `data-current-portal` | `string` | `null` | **Required.** The portal ID of the current app (e.g. `'fee-management'`). |
+| `apiBaseUrl` | `data-api-base-url` | `string` | `https://crm.pydah.edu.in` (prod) / `http://localhost:8000` (dev) | Base URL of the CRM Auth Gateway. |
 | `landingUrl` | `data-landing-url` | `string` | `https://crm.pydah.edu.in` | URL for the "Central Hub" link. |
 | `position` | `data-position` | `string` | `'bottom-right'` | Initial corner (`'bottom-right'`, `'bottom-left'`). |
 | `token` | N/A (JS only) | `string` | Auto-detected | The host portal's JWT auth token. |
@@ -117,78 +108,23 @@ Use these exact portal IDs for `data-current-portal`:
 
 ---
 
-## ⚙️ JavaScript Developer API
+## 🔒 Session Replacement in Target Portals (Incoming SSO)
 
-The widget exposes a global `window.PydahSwitcher` (and `window.PydahPortalSwitcher`) object:
+When a user switches into your portal via the switcher or CRM, an encrypted SSO token arrives in the URL query (`?token=...`).
 
-```javascript
-// 1. Initialize or update session
-window.PydahSwitcher.init({
-  currentPortal: 'transport-management',
-  token: 'eyJhbGciOi...',
-  user: {
-    name: 'Ramesh Babu',
-    email: 'ramesh@pydah.edu.in',
-    role: 'Transport Admin'
-  }
-});
-
-// 2. Open popover manually
-window.PydahSwitcher.open();
-
-// 3. Close popover
-window.PydahSwitcher.close();
-
-// 4. Toggle popover
-window.PydahSwitcher.toggle();
-
-// 5. Update session after user login / refresh
-window.PydahSwitcher.setSession({
-  token: newAccessToken,
-  user: updatedUser
-});
-```
-
----
-
-## 🔒 How SSO Authentication & Session Replacement Works
-
-When a user clicks any other portal inside the floating switcher:
-1. The widget calls `POST https://crm.pydah.edu.in/auth/switch-portal` with the host portal's token and user payload.
-2. The CRM Gateway verifies access rights and generates a single-use encrypted SSO token.
-3. The widget redirects the browser to the target portal:
-   ```
-   https://target-portal.pydah.edu.in/login?token=<ENCRYPTED_SSO_TOKEN>
-   ```
-4. **Crucial Session Reset in Target Portal**:
-   To prevent stale sessions from lingering in `localStorage`, ensure your target portal checks for `?token=` on page load and clears old credentials:
+To ensure that old cached sessions don't override the incoming login, include this snippet early in your application lifecycle (e.g. in `App.jsx` or `AuthProvider.jsx`):
 
 ```javascript
-// Target Portal: Place early in your component lifecycle (App.jsx / AuthProvider)
 useEffect(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const ssoToken = urlParams.get('token');
 
   if (ssoToken) {
-    // Clear old session so the incoming SSO token takes priority
+    // Clear old session so the incoming SSO login takes over cleanly
     localStorage.removeItem('accessToken');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.clear();
   }
 }, []);
-```
-
----
-
-## 🛠️ Testing Locally
-
-In development, you can test the switcher against local servers:
-
-```html
-<script 
-  src="http://localhost:5173/portal-switcher.js" 
-  data-api-base-url="http://localhost:3000"
-  data-current-portal="hrms">
-</script>
 ```

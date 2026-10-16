@@ -134,9 +134,14 @@ function App() {
           }
         }
 
-        // Redirect to portal with encrypted token
+        // Redirect to portal with encrypted token and authorized portals package
         const portalUrl = new URL(redirectUrl);
         portalUrl.searchParams.set('token', tokenResponse.data.encryptedToken);
+        if (Array.isArray(user?.portals) && user.portals.length > 0) {
+          try {
+            portalUrl.searchParams.set('pydah_portals', btoa(JSON.stringify(user.portals)));
+          } catch (_) {}
+        }
         window.location.href = portalUrl.toString();
         return;
       } else {

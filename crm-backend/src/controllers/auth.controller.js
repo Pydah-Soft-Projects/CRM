@@ -286,6 +286,7 @@ export const verifyToken = async (req, res, next) => {
     const baseData = {
       portalId: decoded.portalId,
       role: decoded.role,
+      portals: Array.isArray(decoded.portals) ? decoded.portals : [],
       expiresAt
     };
 
