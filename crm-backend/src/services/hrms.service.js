@@ -288,7 +288,7 @@ export const validateHRMSCredentials = async (username, password) => {
  * @returns {Promise<{ userId: string, email: string, profilePhoto?: string }|null>} HRMS _id as string, email, profilePhoto or null
  */
 export const findHRMSUserByEmail = async (email, employeeId = null) => {
-  if (!email || typeof email !== 'string') {
+  if ((!email || typeof email !== 'string') && (!employeeId || typeof employeeId !== 'string')) {
     return null;
   }
   const db = await getHRMSDb();
@@ -299,28 +299,30 @@ export const findHRMSUserByEmail = async (email, employeeId = null) => {
   const employeeCollection = db.collection('employees');
 
   try {
-    const normalizedEmail = email.trim();
-    // 1) Try by email in User collection (only active users)
-    let doc = await userCollection.findOne({
-      email: normalizedEmail,
-      $or: [{ isActive: true }, { isActive: { $exists: false } }]
-    });
-    if (doc && doc._id) {
-      let photo = extractProfilePhoto(doc);
-      if (!photo) {
-        const emp = await employeeCollection.findOne({ email: normalizedEmail });
-        if (emp) photo = extractProfilePhoto(emp);
+    const normalizedEmail = email && typeof email === 'string' ? email.trim() : null;
+    // 1) Try by email in User collection (only active users) if email exists
+    if (normalizedEmail) {
+      let doc = await userCollection.findOne({
+        email: normalizedEmail,
+        $or: [{ isActive: true }, { isActive: { $exists: false } }]
+      });
+      if (doc && doc._id) {
+        let photo = extractProfilePhoto(doc);
+        if (!photo) {
+          const emp = await employeeCollection.findOne({ email: normalizedEmail });
+          if (emp) photo = extractProfilePhoto(emp);
+        }
+        return { userId: doc._id.toString(), email: doc.email || email, profilePhoto: photo || null };
       }
-      return { userId: doc._id.toString(), email: doc.email || email, profilePhoto: photo || null };
-    }
 
-    // 2) Try by email in Employee collection (only active)
-    doc = await employeeCollection.findOne({
-      email: normalizedEmail,
-      $or: [{ is_active: true }, { is_active: { $exists: false } }]
-    });
-    if (doc && doc._id) {
-      return { userId: doc._id.toString(), email: doc.email || email, profilePhoto: extractProfilePhoto(doc) };
+      // 2) Try by email in Employee collection (only active)
+      doc = await employeeCollection.findOne({
+        email: normalizedEmail,
+        $or: [{ is_active: true }, { is_active: { $exists: false } }]
+      });
+      if (doc && doc._id) {
+        return { userId: doc._id.toString(), email: doc.email || email, profilePhoto: extractProfilePhoto(doc) };
+      }
     }
 
     // 3) If we have employee number, try User.employeeId or Employee.emp_no (HRMS treats uppercase)
