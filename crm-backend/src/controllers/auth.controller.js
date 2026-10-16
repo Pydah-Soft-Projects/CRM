@@ -947,10 +947,10 @@ export const switchPortal = async (req, res, next) => {
       }, resolvedDatabaseSource);
     }
 
-    // 4. Check permissions
+    // 4. Check permissions (Only super_admin gets all portals; others must be authorized)
     const normalizedRole = (resolvedRole || '').toLowerCase();
-    const isAdmin = ['super_admin', 'superadmin', 'admin'].includes(normalizedRole);
-    if (!isAdmin && !resolvedPortals.includes(targetPortalId)) {
+    const isSuperAdmin = ['super_admin', 'superadmin'].includes(normalizedRole);
+    if (!isSuperAdmin && !resolvedPortals.includes(targetPortalId)) {
       return res.status(HTTP_STATUS.FORBIDDEN).json({
         success: false,
         message: `Your account does not have access permissions for ${targetPortalId}.`
@@ -1048,10 +1048,10 @@ export const getUserPortals = async (req, res, next) => {
     }
 
     const normalizedRole = (userObj.role || '').toLowerCase();
-    const isAdmin = ['super_admin', 'superadmin', 'admin'].includes(normalizedRole);
+    const isSuperAdmin = ['super_admin', 'superadmin'].includes(normalizedRole);
 
     const accessible = Object.values(PORTAL_METADATA).filter(p => {
-      if (isAdmin) return true;
+      if (isSuperAdmin) return true;
       return resolvedPortals.includes(p.id);
     });
 

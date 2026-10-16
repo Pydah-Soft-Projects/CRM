@@ -190,6 +190,8 @@
       this.searchQuery = '';
       this.switchingPortalId = null;
       this.errorMessage = null;
+      this.authorizedPortals = null;
+      this.isLoadingPortals = false;
 
       // Session State
       const detected = detectHostSession();
@@ -217,12 +219,14 @@
       if (name === 'current-portal') this.currentPortal = newValue;
       if (name === 'api-base-url') this.apiBaseUrl = newValue;
       if (name === 'position') this.position = newValue;
+      this.fetchUserPortals();
       this.render();
     }
 
     connectedCallback() {
       this.render();
       this.setupDragging();
+      this.fetchUserPortals();
       document.addEventListener('click', this.handleDocumentClick);
     }
 
@@ -234,6 +238,8 @@
       if (token !== undefined) this.token = token;
       if (user !== undefined) this.user = user;
       if (currentPortal !== undefined) this.currentPortal = currentPortal;
+      this.authorizedPortals = null;
+      this.fetchUserPortals();
       this.render();
     }
 
@@ -404,14 +410,70 @@
       btn.addEventListener('mousedown', onMouseDown);
     }
 
+    async fetchUserPortals() {
+      if (this.isLoadingPortals) return;
+      try {
+        this.isLoadingPortals = true;
+        const latestSession = detectHostSession();
+        const activeToken = this.token || latestSession.token;
+        const activeUser = this.user || latestSession.user;
+
+        // If user already has portals in their session
+        if (activeUser && Array.isArray(activeUser.portals) && activeUser.portals.length > 0) {
+          this.authorizedPortals = activeUser.portals;
+          this.isLoadingPortals = false;
+          this.renderPortalList();
+          return;
+        }
+
+        if (!activeToken && !activeUser) {
+          this.authorizedPortals = this.currentPortal ? [this.currentPortal] : [];
+          this.isLoadingPortals = false;
+          this.renderPortalList();
+          return;
+        }
+
+        const response = await fetch(`${this.apiBaseUrl}/auth/user-portals`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {})
+          },
+          body: JSON.stringify({
+            token: activeToken,
+            user: activeUser,
+            currentPortalId: this.currentPortal
+          })
+        });
+
+        const res = await response.json();
+        if (res.success && Array.isArray(res.data?.portals)) {
+          this.authorizedPortals = res.data.portals.map(p => p.id || p.portalId);
+          if (res.data.user) {
+            this.user = { ...this.user, ...res.data.user, portals: this.authorizedPortals };
+          }
+        } else {
+          this.authorizedPortals = this.currentPortal ? [this.currentPortal] : [];
+        }
+      } catch (e) {
+        console.warn('[PydahSwitcher] Failed to fetch authorized portals:', e.message);
+        this.authorizedPortals = this.currentPortal ? [this.currentPortal] : [];
+      } finally {
+        this.isLoadingPortals = false;
+        this.renderPortalList();
+      }
+    }
+
     getFilteredPortals() {
       let list = PORTAL_REGISTRY;
 
-      // Filter by user's authorized portals if list exists
-      if (this.user && Array.isArray(this.user.portals) && this.user.portals.length > 0) {
-        const isAdmin = ['super_admin', 'superadmin', 'admin'].includes((this.user.role || '').toLowerCase());
-        if (!isAdmin) {
-          list = list.filter(p => this.user.portals.includes(p.id));
+      const isSuperAdmin = ['super_admin', 'superadmin'].includes((this.user?.role || '').toLowerCase());
+      if (!isSuperAdmin) {
+        const allowed = this.authorizedPortals || (Array.isArray(this.user?.portals) ? this.user.portals : null);
+        if (allowed && allowed.length > 0) {
+          list = list.filter(p => allowed.includes(p.id) || p.id === this.currentPortal);
+        } else if (this.currentPortal) {
+          list = list.filter(p => p.id === this.currentPortal);
         }
       }
 
@@ -427,6 +489,16 @@
     renderPortalList() {
       const grid = this.shadowRoot.querySelector('#pydah-portals-grid');
       if (!grid) return;
+
+      if (this.isLoadingPortals && !this.authorizedPortals) {
+        grid.innerHTML = `
+          <div class="empty-state" style="padding: 30px 10px;">
+            <div class="spinner-sm" style="width: 20px; height: 20px; margin-bottom: 8px;"></div>
+            <p style="font-size: 11px; color: #64748b;">Checking accessible portals...</p>
+          </div>
+        `;
+        return;
+      }
 
       const filtered = this.getFilteredPortals();
 

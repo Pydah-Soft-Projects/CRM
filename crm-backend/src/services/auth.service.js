@@ -32,15 +32,15 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
 
     // 1. Grant the portal of the primary authentication source
     if (databaseSource === 'hrms') portals.add('hrms');
-    if (databaseSource === 'hostel') portals.add('hostel-automation');
-    if (databaseSource === 'transport') portals.add('transport-management');
-    if (databaseSource === 'fee') portals.add('fee-management');
-    if (databaseSource === 'admissions_db') portals.add('admissions-crm');
-    if (databaseSource === 'student_credentials') portals.add('student-portal');
+    if (databaseSource === 'hostel' || databaseSource === 'hostel-automation') portals.add('hostel-automation');
+    if (databaseSource === 'transport' || databaseSource === 'transport-management') portals.add('transport-management');
+    if (databaseSource === 'fee' || databaseSource === 'fee-management') portals.add('fee-management');
+    if (databaseSource === 'admissions_db' || databaseSource === 'admissions-crm') portals.add('admissions-crm');
+    if (databaseSource === 'student_credentials' || databaseSource === 'student-portal') portals.add('student-portal');
     // rbac_users table in student_database is strictly for the Student Portal only
     if (databaseSource === 'rbac_users') portals.add('student-portal');
-    if (databaseSource === 'academic_portal') portals.add('academic-portal');
-    if (databaseSource === 'examination_portal') portals.add('examination-portal');
+    if (databaseSource === 'academic_portal' || databaseSource === 'academic-portal') portals.add('academic-portal');
+    if (databaseSource === 'examination_portal' || databaseSource === 'examination-portal') portals.add('examination-portal');
 
     const username = (user.username || '').trim();
     const email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
