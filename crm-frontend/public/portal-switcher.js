@@ -410,21 +410,30 @@
       if (!btn) return;
 
       const container = this.shadowRoot.querySelector('.pydah-switcher-container');
+      if (!container) return;
 
-      // Load saved position
-      // Load saved position on desktop viewports
+      // Restore position on desktop viewports
       if (window.innerWidth > 640) {
-        const savedPos = localStorage.getItem('pydah_switcher_pos');
-        if (savedPos) {
-          try {
-            const { x, y } = JSON.parse(savedPos);
-            const safeX = Math.max(10, Math.min(window.innerWidth - 60, x));
-            const safeY = Math.max(10, Math.min(window.innerHeight - 60, y));
-            container.style.right = 'auto';
-            container.style.bottom = 'auto';
-            container.style.left = `${safeX}px`;
-            container.style.top = `${safeY}px`;
-          } catch (_) {}
+        if (this.currentX !== undefined && this.currentY !== undefined) {
+          container.style.right = 'auto';
+          container.style.bottom = 'auto';
+          container.style.left = `${this.currentX}px`;
+          container.style.top = `${this.currentY}px`;
+        } else {
+          const savedPos = localStorage.getItem('pydah_switcher_pos');
+          if (savedPos) {
+            try {
+              const { x, y } = JSON.parse(savedPos);
+              const safeX = Math.max(10, Math.min(window.innerWidth - 60, x));
+              const safeY = Math.max(10, Math.min(window.innerHeight - 60, y));
+              this.currentX = safeX;
+              this.currentY = safeY;
+              container.style.right = 'auto';
+              container.style.bottom = 'auto';
+              container.style.left = `${safeX}px`;
+              container.style.top = `${safeY}px`;
+            } catch (_) {}
+          }
         }
       }
 
@@ -438,39 +447,41 @@
         this.initialX = rect.left;
         this.initialY = rect.top;
 
+        const onMouseMove = (ev) => {
+          if (!this.isDragging) return;
+          const dx = ev.clientX - this.startX;
+          const dy = ev.clientY - this.startY;
+
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+            this.dragMoved = true;
+            const newX = Math.max(10, Math.min(window.innerWidth - 60, this.initialX + dx));
+            const newY = Math.max(10, Math.min(window.innerHeight - 60, this.initialY + dy));
+            this.currentX = newX;
+            this.currentY = newY;
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+            container.style.left = `${newX}px`;
+            container.style.top = `${newY}px`;
+          }
+        };
+
+        const onMouseUp = () => {
+          if (!this.isDragging) return;
+          this.isDragging = false;
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+
+          if (this.dragMoved) {
+            const rect = container.getBoundingClientRect();
+            localStorage.setItem('pydah_switcher_pos', JSON.stringify({
+              x: Math.round(rect.left),
+              y: Math.round(rect.top)
+            }));
+          }
+        };
+
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-      };
-
-      const onMouseMove = (e) => {
-        if (!this.isDragging) return;
-        const dx = e.clientX - this.startX;
-        const dy = e.clientY - this.startY;
-
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-          this.dragMoved = true;
-          const newX = Math.max(10, Math.min(window.innerWidth - 60, this.initialX + dx));
-          const newY = Math.max(10, Math.min(window.innerHeight - 60, this.initialY + dy));
-          container.style.right = 'auto';
-          container.style.bottom = 'auto';
-          container.style.left = `${newX}px`;
-          container.style.top = `${newY}px`;
-        }
-      };
-
-      const onMouseUp = () => {
-        if (!this.isDragging) return;
-        this.isDragging = false;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-
-        if (this.dragMoved) {
-          const rect = container.getBoundingClientRect();
-          localStorage.setItem('pydah_switcher_pos', JSON.stringify({
-            x: Math.round(rect.left),
-            y: Math.round(rect.top)
-          }));
-        }
       };
 
       btn.addEventListener('mousedown', onMouseDown);
@@ -1357,6 +1368,9 @@
 
       const backdrop = this.shadowRoot.querySelector('#pydah-backdrop');
       if (backdrop) backdrop.addEventListener('click', this.handleClose);
+
+      // Re-setup dragging for newly created DOM
+      this.setupDragging();
 
       if (this.isOpen) {
         this.renderPortalList();
