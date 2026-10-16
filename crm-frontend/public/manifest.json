@@ -1,11 +1,21 @@
 {
-  "id": "/?v=7",
+  "id": "/?v=8",
   "short_name": "Pydah CRM",
   "name": "Pydah Central CRM",
   "description": "Unified Campus Applications & Portals Ecosystem - Pydah Educational Academy",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "scope_extensions": [
+    { "origin": "https://fees.pydah.edu.in" },
+    { "origin": "https://acad.pydah.edu.in" },
+    { "origin": "https://admissions.pydah.edu.in" },
+    { "origin": "https://ems.pydah.edu.in" },
+    { "origin": "https://hrms.pydah.edu.in" },
+    { "origin": "https://sdms.pydah.edu.in" },
+    { "origin": "https://transport.pydah.edu.in" },
+    { "origin": "https://hms.pydahsoft.in" }
+  ],
   "orientation": "any",
   "theme_color": "#4f46e5",
   "background_color": "#ffffff",

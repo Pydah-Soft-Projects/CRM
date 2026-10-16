@@ -123,6 +123,7 @@ app.get('/auth/verify-token/test', (req, res) => {
 
 // Static CDN assets for cross-portal floating switcher widget
 app.use('/cdn', express.static(path.join(__dirname, '../public')));
+app.use('/.well-known', express.static(path.join(__dirname, '../public/.well-known')));
 app.get('/portal-switcher.js', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/portal-switcher.js'));
 });
