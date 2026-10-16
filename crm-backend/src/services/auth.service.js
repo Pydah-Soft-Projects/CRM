@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { findRBACUserByIdentifier, findRBACUserById } from '../models/rbac.model.js';
+import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId } from '../models/rbac.model.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser, findAcademicUserById } from '../models/academic.model.js';
@@ -308,19 +308,30 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
-            const target = rollOrEmp || identifier;
-            if (target) {
-              const stuUser = await findStudentByUsername(target);
+            const stuTarget = rollOrEmp || (username && /^\d+$/.test(username) ? username : null);
+            if (stuTarget) {
+              const stuUser = await findStudentByUsername(stuTarget);
               if (stuUser) {
                 portals.add('student-portal');
                 return;
               }
             }
-            if (identifier) {
-              const rbacUser = await findRBACUserByIdentifier(identifier);
-              if (rbacUser) {
-                portals.add('student-portal');
-              }
+
+            let rbacUser = null;
+            if (user.id || user._id) {
+              rbacUser = await findRBACUserByHrmsId(user.id || user._id);
+            }
+            if (!rbacUser && rollOrEmp) {
+              rbacUser = await findRBACUserByIdentifier(rollOrEmp);
+            }
+            if (!rbacUser && email) {
+              rbacUser = await findRBACUserByIdentifier(email);
+            }
+            if (!rbacUser && identifier && identifier !== name) {
+              rbacUser = await findRBACUserByIdentifier(identifier);
+            }
+            if (rbacUser) {
+              portals.add('student-portal');
             }
           } catch (e) {
             console.error('[discoverUserPortals] Student portal check error:', e.message);

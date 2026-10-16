@@ -935,7 +935,7 @@ export const switchPortal = async (req, res, next) => {
     // 2. Fallback to bodyUser object if provided by host portal
     if (bodyUser) {
       if (!resolvedUserId) resolvedUserId = bodyUser.id || bodyUser.userId || bodyUser._id;
-      if (!resolvedUsername) resolvedUsername = bodyUser.username || bodyUser.name;
+      if (!resolvedUsername) resolvedUsername = bodyUser.username;
       if (!resolvedEmail) resolvedEmail = bodyUser.email;
       if (bodyUser.role) resolvedRole = bodyUser.role;
       if (bodyUser.databaseSource) resolvedDatabaseSource = bodyUser.databaseSource;
@@ -943,6 +943,8 @@ export const switchPortal = async (req, res, next) => {
         resolvedPortals = bodyUser.portals;
       }
       if (!resolvedEmployeeId) resolvedEmployeeId = bodyUser.employeeId || bodyUser.emp_no || bodyUser.rollNumber;
+      if (!resolvedUsername && resolvedEmployeeId) resolvedUsername = resolvedEmployeeId;
+      if (!resolvedUsername && !resolvedEmployeeId) resolvedUsername = bodyUser.name;
       if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
         resolvedEmployeeId = resolvedUsername;
       }

@@ -109,12 +109,32 @@ export const getHRMSUserById = async (userId) => {
   const db = await getHRMSDb();
   if (!db) return null;
   let doc = null;
+  let isUserCol = false;
   try {
+    const userCol = db.collection('users');
     const empCol = db.collection('employees');
+
     if (/^[0-9a-fA-F]{24}$/.test(userId)) {
       const _id = new ObjectId(userId);
-      doc = await empCol.findOne({ _id });
+      doc = await userCol.findOne({ _id });
+      if (doc) {
+        isUserCol = true;
+      } else {
+        doc = await empCol.findOne({ _id });
+      }
     }
+
+    if (!doc) {
+      doc = await userCol.findOne({
+        $or: [
+          { employeeId: userId.trim() },
+          { employeeId: userId.trim().toUpperCase() },
+          { username: userId.trim() }
+        ]
+      });
+      if (doc) isUserCol = true;
+    }
+
     if (!doc) {
       doc = await empCol.findOne({
         $or: [
@@ -123,14 +143,31 @@ export const getHRMSUserById = async (userId) => {
         ]
       });
     }
+
     if (!doc) return null;
 
-    const photo = extractProfilePhoto(doc);
+    let photo = extractProfilePhoto(doc);
+    let empNo = isUserCol ? (doc.employeeId || null) : (doc.emp_no || null);
+    if (isUserCol && (!photo || !empNo)) {
+      const linkedEmp = await empCol.findOne({
+        $or: [
+          ...(doc.employeeRef ? [{ _id: doc.employeeRef }] : []),
+          ...(doc.employeeId ? [{ emp_no: doc.employeeId }, { emp_no: doc.employeeId.toUpperCase() }] : []),
+          ...(doc.email ? [{ email: doc.email }] : [])
+        ]
+      });
+      if (linkedEmp) {
+        if (!photo) photo = extractProfilePhoto(linkedEmp);
+        if (!empNo) empNo = linkedEmp.emp_no;
+      }
+    }
+
     return {
       email: doc.email || null,
-      name: doc.employee_name || doc.name || null,
-      employeeId: doc.emp_no || null,
+      name: doc.employee_name || doc.name || doc.username || null,
+      employeeId: empNo || (doc._id ? doc._id.toString() : null),
       phone: doc.phone_number || doc.phone || doc.mobile || null,
+      role: doc.role || (isUserCol ? 'user' : 'employee'),
       profilePhoto: photo || null
     };
   } catch (error) {
@@ -141,9 +178,8 @@ export const getHRMSUserById = async (userId) => {
 
 /**
  * Validate HRMS credentials (for login when portalId is hrms).
- * Looks up Employee exclusively by email or emp_no, verifies bcrypt password.
- * Per institutional policy, validation is performed ONLY on the employees collection.
- * @param {string} username - Email or emp_no
+ * Looks up User or Employee by email, username, or emp_no, verifies bcrypt password.
+ * @param {string} username - Email, username, or emp_no
  * @param {string} password - Plain password
  * @returns {Promise<Object|null>} Normalized user { id, email, name, role, profilePhoto, databaseSource: 'hrms' } or null
  */
@@ -154,14 +190,72 @@ export const validateHRMSCredentials = async (username, password) => {
     console.log('[Auth] HRMS login requested but HRMS_MONGO_URI not configured');
     return null;
   }
+  const userCol = db.collection('users');
   const empCol = db.collection('employees');
   const identifier = username.trim();
   const upperId = identifier.toUpperCase();
 
   try {
-    console.log(`[Auth-HRMS] Checking employees collection exclusively for identifier: ${identifier}`);
-    // 1) Employee collection: by email or emp_no, active only
-    let doc = await empCol.findOne({
+    // 1) Check users collection (admins, HODs, sub-admins, managers)
+    console.log(`[Auth-HRMS] Checking users collection for identifier: ${identifier}`);
+    let doc = await userCol.findOne({
+      $and: [
+        { $or: [{ email: identifier }, { username: identifier }, { employeeId: identifier }, { employeeId: upperId }] },
+        { $or: [{ isActive: true }, { isActive: { $exists: false } }] }
+      ]
+    });
+
+    if (!doc) {
+      doc = await userCol.findOne({
+        $or: [{ email: identifier }, { username: identifier }, { employeeId: identifier }, { employeeId: upperId }]
+      });
+    }
+
+    if (doc) {
+      console.log(`[Auth-HRMS] Found document in users: ${doc._id}, Active: ${doc.isActive}`);
+      const hash = getPasswordHash(doc);
+      let valid = false;
+      if (hash) {
+        valid = await bcrypt.compare(password, hash);
+        if (!valid && password === hash) valid = true;
+      }
+      if (!valid && doc.plain_password && password === doc.plain_password) {
+        valid = true;
+      }
+
+      if (valid) {
+        console.log(`[Auth-HRMS] HRMS user validated successfully: ${doc._id}`);
+        let photo = extractProfilePhoto(doc);
+        let empNo = doc.employeeId || null;
+        if (!photo || !empNo) {
+          const empDoc = await empCol.findOne({
+            $or: [
+              ...(doc.employeeRef ? [{ _id: doc.employeeRef }] : []),
+              ...(doc.employeeId ? [{ emp_no: doc.employeeId }, { emp_no: doc.employeeId.toUpperCase() }] : []),
+              ...(doc.email ? [{ email: doc.email }] : [])
+            ]
+          });
+          if (empDoc) {
+            if (!photo) photo = extractProfilePhoto(empDoc);
+            if (!empNo) empNo = empDoc.emp_no;
+          }
+        }
+        return {
+          id: doc._id.toString(),
+          email: doc.email || null,
+          name: doc.name || doc.username || null,
+          role: doc.role || 'user',
+          phone: doc.phone_number || doc.phone || doc.mobile || doc.contact || null,
+          employeeId: empNo || (doc._id ? doc._id.toString() : null),
+          profilePhoto: photo || null,
+          databaseSource: 'hrms'
+        };
+      }
+    }
+
+    // 2) Check employees collection
+    console.log(`[Auth-HRMS] Checking employees collection for identifier: ${identifier}`);
+    doc = await empCol.findOne({
       $and: [
         { $or: [{ email: identifier }, { emp_no: upperId }, { emp_no: identifier }] },
         { $or: [{ is_active: true }, { is_active: { $exists: false } }] }
@@ -169,7 +263,6 @@ export const validateHRMSCredentials = async (username, password) => {
     });
 
     if (!doc) {
-      console.log(`[Auth-HRMS] No active employee found, checking all employees for identifier: ${identifier}`);
       doc = await empCol.findOne({
         $or: [{ email: identifier }, { emp_no: upperId }, { emp_no: identifier }]
       });
@@ -180,7 +273,6 @@ export const validateHRMSCredentials = async (username, password) => {
       const hash = getPasswordHash(doc);
       let valid = false;
       if (hash) {
-        console.log(`[Auth-HRMS] Verifying password for employee: ${doc.email || doc.emp_no}`);
         valid = await bcrypt.compare(password, hash);
         if (!valid && password === hash) valid = true;
       }
@@ -195,20 +287,16 @@ export const validateHRMSCredentials = async (username, password) => {
           id: doc._id.toString(),
           email: doc.email || null,
           name: doc.employee_name || doc.name || null,
-          role: doc.role || 'user',
+          role: doc.role || 'employee',
           phone: doc.phone_number || doc.phone || doc.mobile || doc.contact || null,
           employeeId: doc.emp_no || doc.employeeId || (doc._id ? doc._id.toString() : null),
           profilePhoto: photo || null,
           databaseSource: 'hrms'
         };
-      } else {
-        console.log(`[Auth-HRMS] Password mismatch or no hash for employee: ${doc.email || doc.emp_no}`);
       }
-    } else {
-      console.log(`[Auth-HRMS] No document found in employees collection for identifier: ${identifier}`);
     }
 
-    console.log(`[Auth] HRMS: employee not found or invalid password for: ${identifier}`);
+    console.log(`[Auth] HRMS: user/employee not found or invalid password for: ${identifier}`);
     return null;
   } catch (error) {
     console.error('[HRMS] validateHRMSCredentials error:', error.message);
@@ -217,11 +305,10 @@ export const validateHRMSCredentials = async (username, password) => {
 };
 
 /**
- * Find HRMS Employee by email and/or employee number.
- * Exclusively queries the employees collection.
+ * Find HRMS User or Employee by email and/or employee number.
  * @param {string} email - User email
  * @param {string} [employeeId] - Optional employee number (e.g. 2145)
- * @returns {Promise<{ userId: string, employeeId: string, email: string, profilePhoto?: string }|null>} HRMS Employee _id as string, employeeId, email, profilePhoto or null
+ * @returns {Promise<{ userId: string, employeeId: string, email: string, profilePhoto?: string }|null>} HRMS User/Employee _id as string, employeeId, email, profilePhoto or null
  */
 export const findHRMSUserByEmail = async (email, employeeId = null) => {
   if ((!email || typeof email !== 'string') && (!employeeId || typeof employeeId !== 'string')) {
@@ -231,49 +318,89 @@ export const findHRMSUserByEmail = async (email, employeeId = null) => {
   if (!db) {
     return null;
   }
+  const userCollection = db.collection('users');
   const employeeCollection = db.collection('employees');
 
   try {
     const normalizedEmail = email && typeof email === 'string' ? email.trim().toLowerCase() : null;
     const cleanEmp = employeeId && typeof employeeId === 'string' ? employeeId.trim() : null;
 
-    const orConditions = [];
+    // 1) Try users collection by exact employeeId or email
+    const userOr = [];
     if (cleanEmp) {
-      orConditions.push({ emp_no: cleanEmp });
-      orConditions.push({ emp_no: cleanEmp.toUpperCase() });
+      userOr.push({ employeeId: cleanEmp });
+      userOr.push({ employeeId: cleanEmp.toUpperCase() });
       if (/^[0-9a-fA-F]{24}$/.test(cleanEmp)) {
-        try {
-          orConditions.push({ _id: new ObjectId(cleanEmp) });
-        } catch (_) {}
+        try { userOr.push({ _id: new ObjectId(cleanEmp) }); } catch (_) {}
       }
     }
     if (normalizedEmail) {
-      orConditions.push({ email: normalizedEmail });
-      orConditions.push({ email: email.trim() });
+      userOr.push({ email: normalizedEmail });
+      userOr.push({ email: email.trim() });
     }
 
-    if (orConditions.length === 0) return null;
+    if (userOr.length > 0) {
+      let uDoc = await userCollection.findOne({
+        $and: [
+          { $or: userOr },
+          { $or: [{ isActive: true }, { isActive: { $exists: false } }] }
+        ]
+      });
+      if (!uDoc) uDoc = await userCollection.findOne({ $or: userOr });
 
-    // 1) Query active employees
-    let doc = await employeeCollection.findOne({
-      $and: [
-        { $or: orConditions },
-        { $or: [{ is_active: true }, { is_active: { $exists: false } }] }
-      ]
-    });
-
-    // 2) Fallback to any matching employee
-    if (!doc) {
-      doc = await employeeCollection.findOne({ $or: orConditions });
+      if (uDoc && uDoc._id) {
+        let photo = extractProfilePhoto(uDoc);
+        let empNum = uDoc.employeeId || cleanEmp;
+        if (!photo) {
+          const emp = await employeeCollection.findOne({
+            $or: [
+              ...(uDoc.employeeRef ? [{ _id: uDoc.employeeRef }] : []),
+              ...(empNum ? [{ emp_no: empNum }, { emp_no: empNum.toUpperCase() }] : []),
+              ...(normalizedEmail ? [{ email: normalizedEmail }] : [])
+            ]
+          });
+          if (emp) photo = extractProfilePhoto(emp);
+        }
+        return {
+          userId: uDoc._id.toString(),
+          employeeId: empNum,
+          email: uDoc.email || email,
+          profilePhoto: photo
+        };
+      }
     }
 
-    if (doc && doc._id) {
-      return {
-        userId: doc._id.toString(),
-        employeeId: doc.emp_no || cleanEmp,
-        email: doc.email || email,
-        profilePhoto: extractProfilePhoto(doc)
-      };
+    // 2) Try employees collection
+    const empOr = [];
+    if (cleanEmp) {
+      empOr.push({ emp_no: cleanEmp });
+      empOr.push({ emp_no: cleanEmp.toUpperCase() });
+      if (/^[0-9a-fA-F]{24}$/.test(cleanEmp)) {
+        try { empOr.push({ _id: new ObjectId(cleanEmp) }); } catch (_) {}
+      }
+    }
+    if (normalizedEmail) {
+      empOr.push({ email: normalizedEmail });
+      empOr.push({ email: email.trim() });
+    }
+
+    if (empOr.length > 0) {
+      let doc = await employeeCollection.findOne({
+        $and: [
+          { $or: empOr },
+          { $or: [{ is_active: true }, { is_active: { $exists: false } }] }
+        ]
+      });
+      if (!doc) doc = await employeeCollection.findOne({ $or: empOr });
+
+      if (doc && doc._id) {
+        return {
+          userId: doc._id.toString(),
+          employeeId: doc.emp_no || cleanEmp,
+          email: doc.email || email,
+          profilePhoto: extractProfilePhoto(doc)
+        };
+      }
     }
 
     return null;
