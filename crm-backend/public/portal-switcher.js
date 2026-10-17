@@ -815,6 +815,7 @@
       const userName = this.user?.name || this.user?.username || this.user?.email || 'User';
       const userRole = this.user?.role || (this.user ? 'Authenticated' : 'Guest');
       const userPhoto = this.user?.profilePhoto;
+      const crmLogoUrl = (this.apiBaseUrl || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.png';
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -1422,7 +1423,7 @@
             to { opacity: 1; }
           }
 
-          /* Unified Workspace Transition Overlay */
+          /* Unified Workspace Transition Overlay - Light Professional Enterprise Theme */
           .pydah-transition-overlay {
             position: fixed;
             inset: 0;
@@ -1435,7 +1436,7 @@
             opacity: 1;
             visibility: visible;
             pointer-events: all;
-            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           }
 
@@ -1448,9 +1449,9 @@
           .transition-backdrop {
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle at 50% 38%, rgba(15, 23, 42, 0.94) 0%, rgba(3, 7, 18, 0.98) 100%);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(248, 250, 252, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
           }
 
           .transition-modal {
@@ -1459,106 +1460,89 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            max-width: 440px;
+            max-width: 390px;
             width: 90%;
-            padding: 38px 28px 32px;
-            border-radius: 28px;
-            background: rgba(30, 41, 59, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7), 0 0 90px -20px var(--portal-accent);
+            padding: 34px 28px 26px;
+            border-radius: 20px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 1px 1px rgba(15, 23, 42, 0.04);
             text-align: center;
-            animation: pydah-pop-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: pydah-pop-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
           }
 
-          .transition-glow {
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: var(--portal-accent);
-            opacity: 0.22;
-            filter: blur(50px);
-            pointer-events: none;
-          }
-
-          .transition-badge-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 5px 14px;
-            border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #94a3b8;
-            margin-bottom: 22px;
-          }
-
-          .pulse-indicator {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--portal-accent);
-            box-shadow: 0 0 8px var(--portal-accent);
-            animation: pydah-pulse 1.8s infinite;
-          }
-
-          .transition-icon-halo {
+          .transition-logo-badge-row {
             position: relative;
-            width: 86px;
-            height: 86px;
-            border-radius: 24px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.12);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
-            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 18px;
           }
 
-          .transition-icon-core {
-            width: 44px;
-            height: 44px;
-            color: var(--portal-accent);
+          .transition-logo-frame {
+            width: 68px;
+            height: 68px;
+            border-radius: 18px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.06);
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 9px;
           }
 
-          .transition-icon-core svg {
+          .transition-logo-frame img {
             width: 100%;
             height: 100%;
-            stroke: var(--portal-accent);
+            object-fit: contain;
+            border-radius: 10px;
+          }
+
+          .transition-target-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+          }
+
+          .target-chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--portal-accent, #2563eb);
           }
 
           .transition-text-content {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
           }
 
           .transition-heading {
             font-size: 12px;
             font-weight: 600;
-            letter-spacing: 0.04em;
-            color: #94a3b8;
+            letter-spacing: 0.03em;
+            color: #64748b;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
           }
 
           .transition-target-title {
-            margin: 0 0 8px 0;
-            font-size: 24px;
+            margin: 0 0 6px 0;
+            font-size: 21px;
             font-weight: 700;
-            color: #ffffff;
+            color: #0f172a;
             letter-spacing: -0.02em;
             line-height: 1.25;
           }
@@ -1566,23 +1550,23 @@
           .transition-detail {
             margin: 0;
             font-size: 13.5px;
-            color: #cbd5e1;
+            color: #64748b;
             font-weight: 400;
             line-height: 1.5;
-            max-width: 320px;
+            max-width: 310px;
           }
 
           .transition-loader-bar {
             width: 100%;
-            max-width: 260px;
-            margin-bottom: 22px;
+            max-width: 230px;
+            margin-bottom: 20px;
           }
 
           .transition-loader-track {
             width: 100%;
             height: 4px;
             border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.1);
+            background: #f1f5f9;
             overflow: hidden;
             position: relative;
           }
@@ -1592,26 +1576,29 @@
             top: 0;
             left: 0;
             height: 100%;
-            width: 50%;
+            width: 40%;
             border-radius: 9999px;
-            background: var(--portal-accent);
-            box-shadow: 0 0 12px var(--portal-accent);
-            animation: pydah-progress-indeterminate 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--portal-accent, #2563eb);
+            animation: pydah-progress-indeterminate 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
           }
 
           .transition-footer-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-size: 11.5px;
-            color: #64748b;
+            font-size: 11px;
+            color: #94a3b8;
             font-weight: 500;
+          }
+
+          .transition-footer-pill svg {
+            stroke: #94a3b8;
           }
 
           @keyframes pydah-pop-in {
             from {
               opacity: 0;
-              transform: scale(0.92) translateY(12px);
+              transform: scale(0.95) translateY(8px);
             }
             to {
               opacity: 1;
@@ -1619,29 +1606,18 @@
             }
           }
 
-          @keyframes pydah-pulse {
-            0%, 100% {
-              opacity: 1;
-              transform: scale(1);
-            }
-            50% {
-              opacity: 0.4;
-              transform: scale(0.85);
-            }
-          }
-
           @keyframes pydah-progress-indeterminate {
             0% {
-              left: -40%;
-              width: 35%;
+              left: -35%;
+              width: 30%;
             }
             50% {
-              left: 25%;
-              width: 60%;
+              left: 30%;
+              width: 50%;
             }
             100% {
               left: 100%;
-              width: 35%;
+              width: 30%;
             }
           }
         </style>
@@ -1650,22 +1626,19 @@
           <div class="pydah-transition-overlay ${this.transitionFading ? 'is-fading' : ''}" style="--portal-accent: ${this.transitionState.color || '#2563eb'};">
             <div class="transition-backdrop"></div>
             <div class="transition-modal">
-              <div class="transition-glow"></div>
-              
-              <div class="transition-badge-pill">
-                <span class="pulse-indicator"></span>
-                <span>${this.transitionState.category || 'Pydah Workspace'}</span>
+              <div class="transition-logo-badge-row">
+                <div class="transition-logo-frame">
+                  <img 
+                    src="${crmLogoUrl}" 
+                    alt="Pydah CRM" 
+                    onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.png';" 
+                  />
+                </div>
               </div>
 
-              <div class="transition-icon-halo">
-                <div class="transition-icon-core">
-                  ${this.transitionState.icon || `
-                    <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                    </svg>
-                  `}
-                </div>
+              <div class="transition-target-chip">
+                <span class="target-chip-dot"></span>
+                <span>${this.transitionState.category || 'Pydah Workspace'}</span>
               </div>
 
               <div class="transition-text-content">
@@ -1681,11 +1654,11 @@
               </div>
 
               <div class="transition-footer-pill">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                <span>Pydah SSO Workspace Transition</span>
+                <span>Single Sign-On (SSO) • Pydah Suite</span>
               </div>
             </div>
           </div>
@@ -1847,12 +1820,7 @@
       const color = portalMeta.color || '#059669';
       const heading = this.getAttribute('heading') || 'Switching workspace...';
       const detail = this.getAttribute('detail') || 'Authenticating session & verifying permissions...';
-      const icon = portalMeta.icon || `
-        <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-        </svg>
-      `;
+      const crmLogoUrl = (this.getAttribute('api-base-url') || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.png';
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -1865,14 +1833,15 @@
             z-index: 2147483647;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             pointer-events: all;
+            --portal-accent: ${color};
           }
 
           .transition-backdrop {
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle at 50% 38%, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 0.99) 100%);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(248, 250, 252, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
           }
 
           .transition-modal {
@@ -1884,106 +1853,89 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            max-width: 440px;
+            max-width: 390px;
             width: 90%;
-            padding: 38px 28px 32px;
-            border-radius: 28px;
-            background: rgba(30, 41, 59, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7), 0 0 90px -20px ${color};
+            padding: 34px 28px 26px;
+            border-radius: 20px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 1px 1px rgba(15, 23, 42, 0.04);
             text-align: center;
-            animation: pydah-pop-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: pydah-pop-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
           }
 
-          .transition-glow {
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: ${color};
-            opacity: 0.22;
-            filter: blur(50px);
-            pointer-events: none;
-          }
-
-          .transition-badge-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 5px 14px;
-            border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #94a3b8;
-            margin-bottom: 22px;
-          }
-
-          .pulse-indicator {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: ${color};
-            box-shadow: 0 0 8px ${color};
-            animation: pydah-pulse 1.8s infinite;
-          }
-
-          .transition-icon-halo {
+          .transition-logo-badge-row {
             position: relative;
-            width: 86px;
-            height: 86px;
-            border-radius: 24px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.12);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
-            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 18px;
           }
 
-          .transition-icon-core {
-            width: 44px;
-            height: 44px;
-            color: ${color};
+          .transition-logo-frame {
+            width: 68px;
+            height: 68px;
+            border-radius: 18px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.06);
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 9px;
           }
 
-          .transition-icon-core svg {
+          .transition-logo-frame img {
             width: 100%;
             height: 100%;
-            stroke: ${color};
+            object-fit: contain;
+            border-radius: 10px;
+          }
+
+          .transition-target-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+          }
+
+          .target-chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: ${color};
           }
 
           .transition-text-content {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
           }
 
           .transition-heading {
             font-size: 12px;
             font-weight: 600;
-            letter-spacing: 0.04em;
-            color: #94a3b8;
+            letter-spacing: 0.03em;
+            color: #64748b;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
           }
 
           .transition-target-title {
-            margin: 0 0 8px 0;
-            font-size: 24px;
+            margin: 0 0 6px 0;
+            font-size: 21px;
             font-weight: 700;
-            color: #ffffff;
+            color: #0f172a;
             letter-spacing: -0.02em;
             line-height: 1.25;
           }
@@ -1991,23 +1943,23 @@
           .transition-detail {
             margin: 0;
             font-size: 13.5px;
-            color: #cbd5e1;
+            color: #64748b;
             font-weight: 400;
             line-height: 1.5;
-            max-width: 320px;
+            max-width: 310px;
           }
 
           .transition-loader-bar {
             width: 100%;
-            max-width: 260px;
-            margin-bottom: 22px;
+            max-width: 230px;
+            margin-bottom: 20px;
           }
 
           .transition-loader-track {
             width: 100%;
             height: 4px;
             border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.1);
+            background: #f1f5f9;
             overflow: hidden;
             position: relative;
           }
@@ -2017,73 +1969,67 @@
             top: 0;
             left: 0;
             height: 100%;
-            width: 50%;
+            width: 40%;
             border-radius: 9999px;
             background: ${color};
-            box-shadow: 0 0 12px ${color};
-            animation: pydah-progress-indeterminate 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+            animation: pydah-progress-indeterminate 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
           }
 
           .transition-footer-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-size: 11.5px;
-            color: #64748b;
+            font-size: 11px;
+            color: #94a3b8;
             font-weight: 500;
+          }
+
+          .transition-footer-pill svg {
+            stroke: #94a3b8;
           }
 
           @keyframes pydah-pop-in {
             from {
               opacity: 0;
-              transform: scale(0.92) translateY(12px);
+              transform: translate(-50%, calc(-50% + 8px)) scale(0.95);
             }
             to {
               opacity: 1;
-              transform: scale(1) translateY(0);
-            }
-          }
-
-          @keyframes pydah-pulse {
-            0%, 100% {
-              opacity: 1;
-              transform: scale(1);
-            }
-            50% {
-              opacity: 0.4;
-              transform: scale(0.85);
+              transform: translate(-50%, -50%) scale(1);
             }
           }
 
           @keyframes pydah-progress-indeterminate {
             0% {
-              left: -40%;
-              width: 35%;
+              left: -35%;
+              width: 30%;
             }
             50% {
-              left: 25%;
-              width: 60%;
+              left: 30%;
+              width: 50%;
             }
             100% {
               left: 100%;
-              width: 35%;
+              width: 30%;
             }
           }
         </style>
 
         <div class="transition-backdrop"></div>
         <div class="transition-modal">
-          <div class="transition-glow"></div>
-          
-          <div class="transition-badge-pill">
-            <span class="pulse-indicator"></span>
-            <span>${category}</span>
+          <div class="transition-logo-badge-row">
+            <div class="transition-logo-frame">
+              <img 
+                src="${crmLogoUrl}" 
+                alt="Pydah CRM" 
+                onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.png';" 
+              />
+            </div>
           </div>
 
-          <div class="transition-icon-halo">
-            <div class="transition-icon-core">
-              ${icon}
-            </div>
+          <div class="transition-target-chip">
+            <span class="target-chip-dot"></span>
+            <span>${category}</span>
           </div>
 
           <div class="transition-text-content">
@@ -2099,11 +2045,11 @@
           </div>
 
           <div class="transition-footer-pill">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            <span>Pydah SSO Workspace Transition</span>
+            <span>Single Sign-On (SSO) • Pydah Suite</span>
           </div>
         </div>
       `;

@@ -133,10 +133,12 @@ useEffect(() => {
 
 ## 🎨 Unified Workspace Transition Screen (Automatic)
 
-The widget includes an automated, high-end **Workspace Transition Overlay** (`z-index: 2147483647`):
-- **On Departure**: When a user clicks any portal in the widget, it displays a branded full-screen loading screen (*"Switching workspace to [Target Portal]..."* with that portal's colors, badge, and animated progress bar) until redirection.
+The widget includes an automated, professional **Light-Theme Workspace Transition Overlay** (`z-index: 2147483647`):
+- **Enterprise Design**: Clean, modern light theme (`#ffffff` card, `#f8fafc` frosted glass backdrop, crisp corporate typography, and smooth indeterminate progress indicator).
+- **Official CRM App Logo**: Prominently features the colorful Pydah CRM App logo (`CRM-APP-logo.png`) in an elegant badge container.
+- **On Departure**: When a user clicks any portal in the widget, it displays the branded full-screen loading screen (*"Switching workspace to [Target Portal]..."* with that portal's colors, category chip, and animated progress bar) until redirection.
 - **On Arrival**: When a target portal loads with `?sso_switch=1` or `?token=...`, the widget instantly displays the matching transition screen, masking any local loaders or blank renders underneath.
-- **Auto-Dismiss**: Gracefully fades out automatically once the user's session is stored in `localStorage` or after ~2 seconds.
+- **Smart Auto-Dismiss**: Gracefully fades out automatically once the target portal finishes authenticating and renders its dashboard layout, or after a safety cap.
 - **Manual Control (Optional)**: If you ever wish to dismiss the transition overlay programmatically from your code, simply call:
   ```javascript
   window.PydahSwitcher?.hideTransition();
@@ -146,20 +148,21 @@ The widget includes an automated, high-end **Workspace Transition Overlay** (`z-
 
 ## ⚡ Standalone Component: `<pydah-sso-loader>`
 
-If your portal displays a verifying state (e.g. `isVerifying === true` in React / Next.js) and you want to display this exact same high-end loader in place so there is **no blank screen**:
+If your portal displays a verifying state (e.g. `isVerifying === true` in React / Next.js / Vue) and you want to display this exact same corporate loading screen in place so there is **zero flicker or blank screen**:
 
 Simply replace your local spinner with the custom web component:
 
 ```jsx
 // In Fee Portal / SDMS / Admissions / HRMS:
 if (isVerifying) {
-  return <pydah-sso-loader portal="fee-management" />;
+  return <pydah-sso-loader />;
 }
 ```
 
 > 💡 **Features:**
+> - **Zero attributes required**: It automatically detects which portal it is running on from the domain hostname (e.g., `fee.pydah.edu.in`, `sdms.pydah.edu.in`, `hrms.pydah.edu.in`, `admissions.pydah.edu.in`)!
 > - Zero extra CSS or npm packages required (it's automatically provided by `portal-switcher.js`).
-> - Displays the exact same dark glowing aesthetic, official portal color badge, and animated track bar.
+> - Renders the clean, professional light-theme card with the official **CRM App Logo**, portal category chip, and indeterminate progress bar.
 > - Automatically unmounts as soon as `isVerifying` becomes `false` and your dashboard renders!
 
 
