@@ -97,9 +97,9 @@ export const findExaminationUser = async ({ email, employeeId, username, phone }
       params.push(normEmpId);
     }
 
-    if (columns.has('hrmsuserid') && (normEmpId || query.id)) {
+    if (columns.has('hrmsuserid') && normEmpId) {
       conditions.push('`hrmsuserid` = ?');
-      params.push(String(normEmpId || query.id));
+      params.push(String(normEmpId));
     }
 
     if (columns.has('phone') && normPhone) {

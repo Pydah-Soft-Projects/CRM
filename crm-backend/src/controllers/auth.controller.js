@@ -13,7 +13,7 @@ import { findHRMSUserByEmail } from '../services/hrms.service.js';
 import { findHostelUserForVerify } from '../services/hostel.service.js';
 import { findTransportUserRole } from '../services/transport.service.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
-import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId } from '../models/rbac.model.js';
+import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findRBACUserByEmail } from '../models/rbac.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser } from '../models/examination.model.js';
@@ -400,17 +400,17 @@ export const verifyToken = async (req, res, next) => {
       let admUser = null;
 
       // 1. If databaseSource was admissions_db, try finding by ID first
-      if (decoded.databaseSource === 'admissions_db') {
+      if (decoded.databaseSource === 'admissions_db' && decoded.userId) {
         admUser = await findAdmissionsUserById(decoded.userId);
       }
 
       // 2. If not found or came from another database source, search by identity candidates
       if (!admUser) {
-        const candidates = [email, identifier, username, decoded.userId, crmUser?.phone].filter(Boolean);
+        const candidates = [decoded.userId, email, decoded.email, identifier, username, crmUser?.phone].filter(Boolean);
         for (const candidate of candidates) {
           admUser = await findAdmissionsUserByIdentifier(candidate, {
-            email,
-            phone: crmUser?.phone,
+            email: email || decoded.email,
+            phone: crmUser?.phone || decoded.phone,
             name: crmUser?.name
           });
           if (admUser) {
@@ -418,6 +418,17 @@ export const verifyToken = async (req, res, next) => {
             break;
           }
         }
+      }
+
+      // Deny access if user does not exist in Admissions database (unless master admin)
+      const isMasterAdmin = (email || decoded.email || '').toLowerCase() === 'ravi@pydahsoft.in';
+      if (!admUser && !isMasterAdmin && decoded.databaseSource !== 'admissions_db') {
+        console.warn(`[VerifyToken] Access Denied: User ${decoded.userId} (${email || username}) not found in admissions database`);
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          success: false,
+          valid: false,
+          message: 'User does not have an active account in Admission Portal'
+        });
       }
 
       // Parse permissions object
@@ -436,26 +447,24 @@ export const verifyToken = async (req, res, next) => {
 
       // Format roleName specifically for Admissions Next.js route guards:
       // ('Super Admin', 'Sub Super Admin', 'Manager', 'Counsellor', etc.)
-      const rawRole = String(decoded.role || '').trim().toLowerCase();
-      const isAdminRole = ['admin', 'superadmin', 'super_admin', 'super admin'].includes(rawRole);
       let roleName = admUser?.role_name;
-
       if (!roleName) {
-        if (isAdminRole) {
+        const rawRole = String(decoded.role || '').trim().toLowerCase();
+        if (['admin', 'superadmin', 'super_admin', 'super admin'].includes(rawRole) || isMasterAdmin) {
           roleName = 'Super Admin';
         } else if (rawRole === 'manager') {
           roleName = 'Manager';
         } else {
           roleName = decoded.role || 'Counsellor';
         }
-      } else if (isAdminRole && roleName.toLowerCase() === 'admin') {
+      } else if (roleName.toLowerCase() === 'admin') {
         roleName = 'Super Admin';
       }
 
       const isManager = admUser ? (admUser.is_manager === 1 || admUser.is_manager === true) : (roleName === 'Manager');
       const isActive = admUser ? (admUser.is_active === 1 || admUser.is_active === true || admUser.is_active === null) : true;
       const finalUserId = admUser?.id || decoded.userId;
-      const finalEmail = admUser?.email || email;
+      const finalEmail = admUser?.email || email || decoded.email;
       const finalName = admUser?.name || crmUser?.name || username;
 
       return res.status(HTTP_STATUS.OK).json({
@@ -498,10 +507,29 @@ export const verifyToken = async (req, res, next) => {
 
       let rbacUser = null;
       const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
-      if (decoded.userId) rbacUser = await findRBACUserByHrmsId(decoded.userId);
-      if (!rbacUser && (email || decoded.email)) rbacUser = await findRBACUserByIdentifier(email || decoded.email);
-      if (!rbacUser && identifier) rbacUser = await findRBACUserByIdentifier(identifier);
-      if (!rbacUser && targetEmp) rbacUser = await findRBACUserByIdentifier(targetEmp);
+
+      // Only check findRBACUserByHrmsId if token came from HRMS DB or explicit hrms_id exists (never raw user.id from other DBs)
+      if (decoded.hrmsId) {
+        rbacUser = await findRBACUserByHrmsId(decoded.hrmsId);
+      } else if (decoded.databaseSource === 'hrms' && decoded.userId) {
+        rbacUser = await findRBACUserByHrmsId(decoded.userId);
+      }
+
+      // Check by verified email
+      const targetEmail = email || decoded.email;
+      if (!rbacUser && targetEmail && targetEmail.includes('@')) {
+        rbacUser = await findRBACUserByEmail(targetEmail);
+      }
+
+      // Check by verified employee number (avoid generic role names like 'admin', 'user')
+      const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff'];
+      if (!rbacUser && targetEmp && !GENERIC_NAMES.includes(String(targetEmp).toLowerCase())) {
+        rbacUser = await findRBACUserByIdentifier(String(targetEmp));
+      }
+      if (!rbacUser && username && !GENERIC_NAMES.includes(String(username).toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(username)) {
+        rbacUser = await findRBACUserByIdentifier(String(username));
+      }
+
       if (rbacUser) {
         console.log(`[VerifyToken] Student portal lookup: resolved to rbac userId=${rbacUser.id}, role=${rbacUser.role}`);
         return res.status(HTTP_STATUS.OK).json({
@@ -514,7 +542,7 @@ export const verifyToken = async (req, res, next) => {
             username: rbacUser.username,
             email: rbacUser.email,
             name: rbacUser.name,
-            role: rbacUser.role || decoded.role
+            role: rbacUser.role // Strictly use their local RBAC role in Student Portal!
           }
         });
       }
@@ -535,14 +563,29 @@ export const verifyToken = async (req, res, next) => {
         });
       }
 
-      return res.status(HTTP_STATUS.OK).json({
-        success: true,
-        valid: true,
-        data: {
-          userId: decoded.userId,
-          ...(email && { email }),
-          ...baseData
-        }
+      // Master Admin bootstrap only
+      if ((email || decoded.email || '').toLowerCase() === 'ravi@pydahsoft.in') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: 1,
+            id: 1,
+            role: 'super_admin',
+            email: 'ravi@pydahsoft.in',
+            username: 'superadmin',
+            name: 'Master Admin',
+            ...baseData
+          }
+        });
+      }
+
+      // Deny access if user does not exist in student_database (no bypassing for super_admin or sub_super_admin!)
+      console.warn(`[VerifyToken] Access Denied: User ${decoded.userId} (${email || username}) has no active account in Student Portal`);
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        valid: false,
+        message: 'User does not have an active account in Student Portal'
       });
     }
 
@@ -1008,12 +1051,60 @@ export const switchPortal = async (req, res, next) => {
       });
     }
 
-    // 5. Generate SSO token
+    // 5. Generate SSO token with target-portal specific role resolution
+    let targetRole = resolvedRole;
+    let targetUserId = resolvedUserId || resolvedEmail || resolvedUsername;
+    let targetDatabaseSource = resolvedDatabaseSource || 'rbac_users';
+
+    if (targetPortalId === PORTAL_IDS.STUDENT_PORTAL && !isMasterAdmin) {
+      // Resolve user's actual local role in Student Portal to prevent Admissions role leakage
+      let resolvedStudentUser = null;
+      let resolvedRbacUser = null;
+
+      const targetEmp = resolvedEmployeeId || (/^\d+$/.test(resolvedUsername) ? resolvedUsername : null);
+      if (targetEmp) {
+        resolvedStudentUser = await findStudentByUsername(targetEmp);
+      }
+      if (!resolvedStudentUser && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
+        resolvedStudentUser = await findStudentByUsername(resolvedUsername);
+      }
+
+      if (resolvedStudentUser) {
+        targetRole = 'student';
+        targetUserId = resolvedStudentUser.id;
+        targetDatabaseSource = 'student_credentials';
+      } else {
+        if (userToDiscover.hrms_id) {
+          resolvedRbacUser = await findRBACUserByHrmsId(userToDiscover.hrms_id);
+        } else if (resolvedDatabaseSource === 'hrms' && resolvedUserId) {
+          resolvedRbacUser = await findRBACUserByHrmsId(resolvedUserId);
+        }
+        if (!resolvedRbacUser && resolvedEmail) {
+          resolvedRbacUser = await findRBACUserByEmail(resolvedEmail);
+        }
+        const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff'];
+        if (!resolvedRbacUser && targetEmp && !GENERIC_NAMES.includes(String(targetEmp).toLowerCase())) {
+          resolvedRbacUser = await findRBACUserByUsername(String(targetEmp));
+        }
+
+        if (resolvedRbacUser) {
+          targetRole = resolvedRbacUser.role; // Local RBAC role in student_database
+          targetUserId = resolvedRbacUser.id;
+          targetDatabaseSource = 'rbac_users';
+        } else {
+          return res.status(HTTP_STATUS.FORBIDDEN).json({
+            success: false,
+            message: 'Your account does not have access permissions for student-portal.'
+          });
+        }
+      }
+    }
+
     const encryptedToken = await generatePortalToken(
-      resolvedUserId || resolvedEmail || resolvedUsername,
+      targetUserId,
       targetPortalId,
-      resolvedRole,
-      resolvedDatabaseSource || 'rbac_users',
+      targetRole,
+      targetDatabaseSource,
       resolvedUsername || resolvedEmail,
       {
         email: resolvedEmail,
@@ -1031,8 +1122,8 @@ export const switchPortal = async (req, res, next) => {
     if (targetPortalId === PORTAL_IDS.STUDENT_PORTAL) {
       const parsed = new URL(baseUrl);
       const isStudent =
-        resolvedRole === 'student' ||
-        resolvedDatabaseSource === 'student_credentials' ||
+        targetRole === 'student' ||
+        targetDatabaseSource === 'student_credentials' ||
         Boolean(bodyUser?.admission_number || bodyUser?.rollNumber);
 
       if (isStudent) {

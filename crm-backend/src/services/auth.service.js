@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId } from '../models/rbac.model.js';
+import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findRBACUserByEmail } from '../models/rbac.model.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser, findAcademicUserById } from '../models/academic.model.js';
@@ -122,28 +122,17 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     // 1.5.1 If coming from Admissions Portal (admissions_db), resolve from users to extract emp_no, hrms_id, email, phone
     if (databaseSource === 'admissions_db' || databaseSource === 'admissions-crm' || databaseSource === 'admissions') {
       try {
-        const pool = getAdmissionsPool();
-        if (pool && (user.id || user._id || email)) {
-          const conds = [];
-          const params = [];
-          if (user.id || user._id) {
-            conds.push('id = ?');
-            params.push(user.id || user._id);
-          }
-          if (email) {
-            conds.push('LOWER(email) = LOWER(?)');
-            params.push(email);
-          }
-          if (conds.length > 0) {
-            const [rows] = await pool.query(`SELECT * FROM users WHERE (${conds.join(' OR ')}) AND (is_active = 1 OR is_active IS NULL) LIMIT 1`, params);
-            if (rows && rows.length > 0) {
-              const adm = rows[0];
-              if (adm.emp_no && !rollOrEmp) rollOrEmp = String(adm.emp_no).trim();
-              if (adm.hrms_id && !user.hrms_id) user.hrms_id = adm.hrms_id;
-              if ((adm.mobile_number || adm.mobile || adm.phone) && !phone) {
-                phone = adm.mobile_number || adm.mobile || adm.phone;
-              }
-            }
+        const adm = await findAdmissionsUserByIdentifier(user.id || user._id || email || username, {
+          email,
+          phone,
+          name
+        });
+        if (adm) {
+          if (adm.emp_no && !rollOrEmp) rollOrEmp = String(adm.emp_no).trim();
+          if (adm.hrms_id && !user.hrms_id) user.hrms_id = adm.hrms_id;
+          if (adm.email && !email) email = adm.email.trim().toLowerCase();
+          if ((adm.mobile_number || adm.mobile || adm.phone) && !phone) {
+            phone = adm.mobile_number || adm.mobile || adm.phone;
           }
         }
       } catch (e) {
@@ -350,6 +339,13 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
+            // Master Admin bypass only
+            if (email === 'ravi@pydahsoft.in') {
+              portals.add('student-portal');
+              return;
+            }
+
+            // A. Check student credentials (PIN, roll number, admission number)
             const stuTarget = rollOrEmp || (username && /^\d+$/.test(username) ? username : null);
             if (stuTarget) {
               const stuUser = await findStudentByUsername(stuTarget);
@@ -359,19 +355,29 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               }
             }
 
+            // B. Check RBAC staff/faculty/admin in student_database
             let rbacUser = null;
-            if (user.id || user._id) {
+            // Only check by hrms_id if coming from HRMS DB or explicit hrms_id exists (never raw user.id from other DBs)
+            if (user.hrms_id) {
+              rbacUser = await findRBACUserByHrmsId(user.hrms_id);
+            } else if (databaseSource === 'hrms' && (user.id || user._id)) {
               rbacUser = await findRBACUserByHrmsId(user.id || user._id);
             }
-            if (!rbacUser && rollOrEmp) {
-              rbacUser = await findRBACUserByIdentifier(rollOrEmp);
+
+            // Check by verified email
+            if (!rbacUser && email && email.includes('@')) {
+              rbacUser = await findRBACUserByEmail(email);
             }
-            if (!rbacUser && email) {
-              rbacUser = await findRBACUserByIdentifier(email);
+
+            // Check by verified employee number (avoid generic role names like 'admin', 'user', etc.)
+            const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff'];
+            if (!rbacUser && rollOrEmp && !GENERIC_NAMES.includes(rollOrEmp.toLowerCase())) {
+              rbacUser = await findRBACUserByUsername(rollOrEmp);
             }
-            if (!rbacUser && identifier && identifier !== name) {
-              rbacUser = await findRBACUserByIdentifier(identifier);
+            if (!rbacUser && username && !GENERIC_NAMES.includes(username.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(username)) {
+              rbacUser = await findRBACUserByUsername(username);
             }
+
             if (rbacUser) {
               portals.add('student-portal');
             }
@@ -387,11 +393,8 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
-            if (
-              email === 'ravi@pydahsoft.in' ||
-              user.role === 'super_admin' ||
-              user.role === 'superadmin'
-            ) {
+            // Master administrator bypass only
+            if (email === 'ravi@pydahsoft.in') {
               portals.add('academic-portal');
               return;
             }
@@ -422,12 +425,8 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               return;
             }
 
-            // 2. Super administrator bypass only
-            if (
-              email === 'ravi@pydahsoft.in' ||
-              user.role === 'super_admin' ||
-              user.role === 'superadmin'
-            ) {
+            // 2. Master administrator bypass only
+            if (email === 'ravi@pydahsoft.in') {
               portals.add('examination-portal');
               return;
             }
