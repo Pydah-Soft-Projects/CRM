@@ -416,6 +416,8 @@
 
     startArrivalDismissWatcher() {
       let dismissed = false;
+      const initialPath = window.location.pathname;
+
       const doDismiss = () => {
         if (dismissed) return;
         dismissed = true;
@@ -423,43 +425,72 @@
         cleanup();
       };
 
-      // 1. Storage listener: as soon as the host app sets tokens or user
-      const onStorage = (e) => {
-        if (e && e.key && ['token', 'accessToken', 'jwt', 'user', 'currentUser', 'auth_token', 'hrms_token'].includes(e.key)) {
-          setTimeout(doDismiss, 350);
-        }
-      };
-      window.addEventListener('storage', onStorage);
+      // Helper to check if the target portal has finished SSO login and mounted dashboard
+      const checkNavigation = () => {
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
+        const isStillOnLogin = currentPath.toLowerCase().includes('login') || currentPath.toLowerCase().includes('auth');
+        const hasTokenInUrl = currentSearch.includes('token=') || currentSearch.includes('sso_switch=');
 
-      // 2. Poll URL search params: if ?token= or ?sso_switch= is consumed/removed by host app router
+        // Only dismiss when the portal has navigated away from the login/auth page OR removed the SSO token
+        if (!isStillOnLogin || (!hasTokenInUrl && currentPath !== initialPath)) {
+          setTimeout(doDismiss, 350);
+          return true;
+        }
+
+        // Also check if dashboard UI containers (header, sidebar, nav, main, table) have rendered
+        const dashboardElements = document.querySelector('nav, header, aside, [class*="dashboard"], [class*="sidebar"], [class*="layout"], table, main');
+        if (dashboardElements && !isStillOnLogin) {
+          setTimeout(doDismiss, 300);
+          return true;
+        }
+
+        return false;
+      };
+
+      // 1. Intercept History API (React Router / Next.js / Vue Router pushState & replaceState)
+      const originalPushState = history.pushState;
+      const originalReplaceState = history.replaceState;
+
+      history.pushState = function (...args) {
+        originalPushState.apply(this, args);
+        setTimeout(checkNavigation, 100);
+      };
+
+      history.replaceState = function (...args) {
+        originalReplaceState.apply(this, args);
+        setTimeout(checkNavigation, 100);
+      };
+
+      // 2. Poll URL and DOM for dashboard elements every 150ms
       const pollTimer = setInterval(() => {
         try {
-          const p = new URLSearchParams(window.location.search);
-          if (!p.has('token') && !p.has('sso_switch')) {
-            setTimeout(doDismiss, 250);
-          }
+          checkNavigation();
         } catch (_) {}
       }, 150);
 
-      // 3. Graceful auto-fade timer (standard SSO verification takes 800-1500ms)
-      const autoFadeTimer = setTimeout(() => {
-        doDismiss();
-      }, 2100);
-
-      // 4. Hard safety cap
-      const safetyCapTimer = setTimeout(() => {
-        if (this.transitionState) {
-          this.transitionState = null;
-          this.transitionFading = false;
-          this.render();
+      // 3. Storage listener: when portal saves user or sessionToken
+      const onStorage = (e) => {
+        if (e && e.key && ['sessionToken', 'token', 'accessToken', 'jwt', 'user', 'currentUser'].includes(e.key)) {
+          setTimeout(checkNavigation, 300);
         }
-        cleanup();
-      }, 3800);
+      };
+      window.addEventListener('storage', onStorage);
+      window.addEventListener('popstate', checkNavigation);
+
+      // 4. Hard safety cap (5.5s) to guarantee user is never permanently blocked on network hangs
+      const safetyCapTimer = setTimeout(() => {
+        doDismiss();
+      }, 5500);
 
       const cleanup = () => {
+        try {
+          history.pushState = originalPushState;
+          history.replaceState = originalReplaceState;
+        } catch (_) {}
         window.removeEventListener('storage', onStorage);
+        window.removeEventListener('popstate', checkNavigation);
         clearInterval(pollTimer);
-        clearTimeout(autoFadeTimer);
         clearTimeout(safetyCapTimer);
       };
     }
