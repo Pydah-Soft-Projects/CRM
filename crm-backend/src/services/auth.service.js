@@ -108,9 +108,17 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             const [rows] = await pool.query(`SELECT * FROM rbac_users WHERE (${conds.join(' OR ')}) AND is_active = 1 LIMIT 1`, params);
             if (rows && rows.length > 0) {
               const rbac = rows[0];
-              if (rbac.username && /^\d+$/.test(rbac.username) && !rollOrEmp) rollOrEmp = rbac.username.trim();
+              if (rbac.hrms_id && !user.hrms_id) user.hrms_id = rbac.hrms_id;
+              if (!rollOrEmp) {
+                if (rbac.username && /^\d+$/.test(rbac.username)) {
+                  rollOrEmp = rbac.username.trim();
+                } else if (rbac.email && /^(\d+)@/.test(rbac.email)) {
+                  rollOrEmp = rbac.email.match(/^(\d+)@/)[1];
+                }
+              }
               if (rbac.email && !email) email = rbac.email.trim().toLowerCase();
               if (rbac.phone && !phone) phone = rbac.phone;
+              if (rbac.name && !name) user.name = rbac.name;
             }
           }
         }
@@ -141,7 +149,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     }
 
     // 1.6 Auto-enrich canonical email, emp_no, or phone from HRMS employees or Fee/Hostel/Transport DBs
-    if (rollOrEmp || !email || !phone) {
+    if (rollOrEmp || user.hrms_id || !email || !phone) {
       try {
         const hrmsDb = await getHRMSDb();
         if (hrmsDb) {
@@ -213,6 +221,23 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       checks.push(
         (async () => {
           try {
+            if (user.hrms_id) {
+              const db = await getHRMSDb();
+              if (db) {
+                try {
+                  const { ObjectId } = await import('mongodb');
+                  const doc = await db.collection('employees').findOne({
+                    _id: new ObjectId(user.hrms_id),
+                    $or: [{ is_active: true }, { is_active: { $exists: false } }]
+                  });
+                  if (doc) {
+                    portals.add('hrms');
+                    return;
+                  }
+                } catch (_) {}
+              }
+            }
+
             const hrmsTarget = email || (identifier.includes('@') ? identifier : null);
             if (hrmsTarget || rollOrEmp) {
               const hUser = await findHRMSUserByEmail(hrmsTarget, rollOrEmp);
@@ -242,12 +267,19 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         (async () => {
           try {
             const db = await getFeeDb();
-            if (db && (identifier || email || rollOrEmp)) {
+            if (db && (identifier || email || rollOrEmp || user.hrms_id)) {
               const orConditions = [];
               if (identifier) orConditions.push({ username: identifier });
               if (rollOrEmp) {
                 orConditions.push({ username: rollOrEmp });
                 orConditions.push({ employeeId: rollOrEmp });
+              }
+              if (user.hrms_id) {
+                orConditions.push({ employeeId: user.hrms_id });
+                try {
+                  const { ObjectId } = await import('mongodb');
+                  orConditions.push({ employeeId: new ObjectId(user.hrms_id) });
+                } catch (_) {}
               }
               if (email) {
                 orConditions.push({ email: email });
