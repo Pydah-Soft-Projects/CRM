@@ -128,6 +128,9 @@ app.use('/.well-known', express.static(path.join(__dirname, '../public/.well-kno
 app.get('/portal-switcher.js', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/portal-switcher.js'));
 });
+app.get('/CRM-APP-logo.webp', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/CRM-APP-logo.webp'));
+});
 app.get('/CRM-APP-logo.png', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/CRM-APP-logo.png'));
 });

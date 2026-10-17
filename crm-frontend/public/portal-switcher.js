@@ -815,7 +815,7 @@
       const userName = this.user?.name || this.user?.username || this.user?.email || 'User';
       const userRole = this.user?.role || (this.user ? 'Authenticated' : 'Guest');
       const userPhoto = this.user?.profilePhoto;
-      const crmLogoUrl = (this.apiBaseUrl || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.png';
+      const crmLogoUrl = (this.apiBaseUrl || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.webp';
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -1519,7 +1519,7 @@
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: var(--portal-accent, #2563eb);
+            background: #2563eb;
           }
 
           .transition-text-content {
@@ -1578,7 +1578,7 @@
             height: 100%;
             width: 40%;
             border-radius: 9999px;
-            background: var(--portal-accent, #2563eb);
+            background: #2563eb;
             animation: pydah-progress-indeterminate 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
           }
 
@@ -1623,7 +1623,7 @@
         </style>
 
         ${this.transitionState ? `
-          <div class="pydah-transition-overlay ${this.transitionFading ? 'is-fading' : ''}" style="--portal-accent: ${this.transitionState.color || '#2563eb'};">
+          <div class="pydah-transition-overlay ${this.transitionFading ? 'is-fading' : ''}" style="--portal-accent: #2563eb;">
             <div class="transition-backdrop"></div>
             <div class="transition-modal">
               <div class="transition-logo-badge-row">
@@ -1631,7 +1631,7 @@
                   <img 
                     src="${crmLogoUrl}" 
                     alt="Pydah CRM" 
-                    onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.png';" 
+                    onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.webp';" 
                   />
                 </div>
               </div>
@@ -1820,7 +1820,7 @@
       const color = portalMeta.color || '#059669';
       const heading = this.getAttribute('heading') || 'Switching workspace...';
       const detail = this.getAttribute('detail') || 'Authenticating session & verifying permissions...';
-      const crmLogoUrl = (this.getAttribute('api-base-url') || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.png';
+      const crmLogoUrl = (this.getAttribute('api-base-url') || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.webp';
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -1833,7 +1833,7 @@
             z-index: 2147483647;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             pointer-events: all;
-            --portal-accent: ${color};
+            --portal-accent: #2563eb;
           }
 
           .transition-backdrop {
@@ -1912,7 +1912,7 @@
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: ${color};
+            background: #2563eb;
           }
 
           .transition-text-content {
@@ -1971,7 +1971,7 @@
             height: 100%;
             width: 40%;
             border-radius: 9999px;
-            background: ${color};
+            background: #2563eb;
             animation: pydah-progress-indeterminate 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
           }
 
@@ -2022,7 +2022,7 @@
               <img 
                 src="${crmLogoUrl}" 
                 alt="Pydah CRM" 
-                onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.png';" 
+                onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.webp';" 
               />
             </div>
           </div>
