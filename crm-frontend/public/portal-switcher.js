@@ -1823,7 +1823,19 @@
     }
 
     render() {
-      const portalAttr = this.getAttribute('portal') || scriptConfig.currentPortal;
+      let portalAttr = this.getAttribute('portal') || scriptConfig.currentPortal || document.querySelector('pydah-portal-switcher')?.getAttribute('current-portal');
+      if (!portalAttr) {
+        const host = window.location.hostname.toLowerCase();
+        if (host.includes('fee')) portalAttr = 'fee-management';
+        else if (host.includes('sdms') || host.includes('student')) portalAttr = 'student-portal';
+        else if (host.includes('admissions') || host.includes('adm')) portalAttr = 'admissions-crm';
+        else if (host.includes('hrms')) portalAttr = 'hrms';
+        else if (host.includes('ems') || host.includes('exam')) portalAttr = 'examination-portal';
+        else if (host.includes('acad')) portalAttr = 'academic-portal';
+        else if (host.includes('transport')) portalAttr = 'transport-management';
+        else if (host.includes('hms') || host.includes('hostel')) portalAttr = 'hostel-automation';
+      }
+
       const portalMeta = PORTAL_REGISTRY.find(p => p.id === portalAttr) || {
         title: portalAttr ? portalAttr.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Workspace',
         color: '#059669',
