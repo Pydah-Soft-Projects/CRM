@@ -814,8 +814,8 @@
     render() {
       const userName = this.user?.name || this.user?.username || this.user?.email || 'User';
       const userRole = this.user?.role || (this.user ? 'Authenticated' : 'Guest');
-      const userPhoto = this.user?.profilePhoto;
-      const crmLogoUrl = (this.apiBaseUrl || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.webp';
+      const userPhoto = this.user?.profilePhoto || null;
+      const crmLogoUrl = (this.apiBaseUrl || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.png';
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -1631,7 +1631,7 @@
                   <img 
                     src="${crmLogoUrl}" 
                     alt="Pydah CRM" 
-                    onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.webp';" 
+                    onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.png';" 
                   />
                 </div>
               </div>
@@ -1820,7 +1820,7 @@
       const color = portalMeta.color || '#059669';
       const heading = this.getAttribute('heading') || 'Switching workspace...';
       const detail = this.getAttribute('detail') || 'Authenticating session & verifying permissions...';
-      const crmLogoUrl = (this.getAttribute('api-base-url') || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.webp';
+      const crmLogoUrl = (this.getAttribute('api-base-url') || scriptConfig.landingUrl || 'https://crm.pydah.edu.in').replace(/\/$/, '') + '/CRM-APP-logo.png';
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -2022,7 +2022,7 @@
               <img 
                 src="${crmLogoUrl}" 
                 alt="Pydah CRM" 
-                onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.webp';" 
+                onerror="this.onerror=null; this.src='https://crm.pydah.edu.in/CRM-APP-logo.png';" 
               />
             </div>
           </div>
