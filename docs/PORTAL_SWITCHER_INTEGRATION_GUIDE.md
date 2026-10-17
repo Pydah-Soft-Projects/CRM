@@ -136,7 +136,7 @@ useEffect(() => {
 The widget includes an automated, professional **Light-Theme Workspace Transition Overlay** (`z-index: 2147483647`):
 - **Enterprise Design**: Clean, modern light theme (`#ffffff` card, `#f8fafc` frosted glass backdrop, crisp corporate typography, and smooth indeterminate progress indicator).
 - **Official CRM App Logo**: Prominently features the colorful Pydah CRM App logo (`CRM-APP-logo.png`) in an elegant badge container.
-- **On Departure**: When a user clicks any portal in the widget, it displays the branded full-screen loading screen (*"Switching workspace to [Target Portal]..."* with that portal's colors, category chip, and animated progress bar) until redirection.
+- **On Departure**: When a user clicks any portal in the widget, it displays the branded full-screen loading screen (*"Switching workspace to [Target Portal]..."* with that portal's title, uniform corporate blue accent, category chip, and animated progress bar) until redirection.
 - **On Arrival**: When a target portal loads with `?sso_switch=1` or `?token=...`, the widget instantly displays the matching transition screen, masking any local loaders or blank renders underneath.
 - **Smart Auto-Dismiss**: Gracefully fades out automatically once the target portal finishes authenticating and renders its dashboard layout, or after a safety cap.
 - **Manual Control (Optional)**: If you ever wish to dismiss the transition overlay programmatically from your code, simply call:
