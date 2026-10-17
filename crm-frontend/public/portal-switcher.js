@@ -1803,6 +1803,305 @@
     customElements.define('pydah-portal-switcher', PydahPortalSwitcherComponent);
   }
 
+  // 4. Standalone In-Place SSO Loader Web Component
+  class PydahSsoLoaderComponent extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' });
+    }
+
+    connectedCallback() {
+      this.render();
+    }
+
+    static get observedAttributes() {
+      return ['portal', 'title', 'heading', 'detail'];
+    }
+
+    attributeChangedCallback() {
+      this.render();
+    }
+
+    render() {
+      const portalAttr = this.getAttribute('portal') || scriptConfig.currentPortal;
+      const portalMeta = PORTAL_REGISTRY.find(p => p.id === portalAttr) || {
+        title: portalAttr ? portalAttr.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Workspace',
+        color: '#059669',
+        category: 'Pydah Workspace'
+      };
+
+      const title = this.getAttribute('title') || portalMeta.title;
+      const category = portalMeta.category || 'Pydah Workspace';
+      const color = portalMeta.color || '#059669';
+      const heading = this.getAttribute('heading') || 'Switching workspace...';
+      const detail = this.getAttribute('detail') || 'Authenticating session & verifying permissions...';
+      const icon = portalMeta.icon || `
+        <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+      `;
+
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2147483647;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            pointer-events: all;
+          }
+
+          .transition-backdrop {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 38%, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 0.99) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+          }
+
+          .transition-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 440px;
+            width: 90%;
+            padding: 38px 28px 32px;
+            border-radius: 28px;
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7), 0 0 90px -20px ${color};
+            text-align: center;
+            animation: pydah-pop-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          .transition-glow {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: ${color};
+            opacity: 0.22;
+            filter: blur(50px);
+            pointer-events: none;
+          }
+
+          .transition-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            margin-bottom: 22px;
+          }
+
+          .pulse-indicator {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: ${color};
+            box-shadow: 0 0 8px ${color};
+            animation: pydah-pulse 1.8s infinite;
+          }
+
+          .transition-icon-halo {
+            position: relative;
+            width: 86px;
+            height: 86px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.4);
+          }
+
+          .transition-icon-core {
+            width: 44px;
+            height: 44px;
+            color: ${color};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .transition-icon-core svg {
+            width: 100%;
+            height: 100%;
+            stroke: ${color};
+          }
+
+          .transition-text-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+          }
+
+          .transition-heading {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+          }
+
+          .transition-target-title {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+          }
+
+          .transition-detail {
+            margin: 0;
+            font-size: 13.5px;
+            color: #cbd5e1;
+            font-weight: 400;
+            line-height: 1.5;
+            max-width: 320px;
+          }
+
+          .transition-loader-bar {
+            width: 100%;
+            max-width: 260px;
+            margin-bottom: 22px;
+          }
+
+          .transition-loader-track {
+            width: 100%;
+            height: 4px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+          }
+
+          .transition-loader-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 50%;
+            border-radius: 9999px;
+            background: ${color};
+            box-shadow: 0 0 12px ${color};
+            animation: pydah-progress-indeterminate 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .transition-footer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            color: #64748b;
+            font-weight: 500;
+          }
+
+          @keyframes pydah-pop-in {
+            from {
+              opacity: 0;
+              transform: scale(0.92) translateY(12px);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+
+          @keyframes pydah-pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.4;
+              transform: scale(0.85);
+            }
+          }
+
+          @keyframes pydah-progress-indeterminate {
+            0% {
+              left: -40%;
+              width: 35%;
+            }
+            50% {
+              left: 25%;
+              width: 60%;
+            }
+            100% {
+              left: 100%;
+              width: 35%;
+            }
+          }
+        </style>
+
+        <div class="transition-backdrop"></div>
+        <div class="transition-modal">
+          <div class="transition-glow"></div>
+          
+          <div class="transition-badge-pill">
+            <span class="pulse-indicator"></span>
+            <span>${category}</span>
+          </div>
+
+          <div class="transition-icon-halo">
+            <div class="transition-icon-core">
+              ${icon}
+            </div>
+          </div>
+
+          <div class="transition-text-content">
+            <span class="transition-heading">${heading}</span>
+            <h2 class="transition-target-title">${title}</h2>
+            <p class="transition-detail">${detail}</p>
+          </div>
+
+          <div class="transition-loader-bar">
+            <div class="transition-loader-track">
+              <div class="transition-loader-fill"></div>
+            </div>
+          </div>
+
+          <div class="transition-footer-pill">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>Pydah SSO Workspace Transition</span>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  if (!customElements.get('pydah-sso-loader')) {
+    customElements.define('pydah-sso-loader', PydahSsoLoaderComponent);
+  }
+
   // Auto-mount element into document
   function mountSwitcher() {
     if (document.querySelector('pydah-portal-switcher')) return;

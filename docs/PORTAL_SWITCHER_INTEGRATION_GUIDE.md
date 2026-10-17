@@ -142,3 +142,24 @@ The widget includes an automated, high-end **Workspace Transition Overlay** (`z-
   window.PydahSwitcher?.hideTransition();
   ```
 
+---
+
+## ⚡ Standalone Component: `<pydah-sso-loader>`
+
+If your portal displays a verifying state (e.g. `isVerifying === true` in React / Next.js) and you want to display this exact same high-end loader in place so there is **no blank screen**:
+
+Simply replace your local spinner with the custom web component:
+
+```jsx
+// In Fee Portal / SDMS / Admissions / HRMS:
+if (isVerifying) {
+  return <pydah-sso-loader portal="fee-management" />;
+}
+```
+
+> 💡 **Features:**
+> - Zero extra CSS or npm packages required (it's automatically provided by `portal-switcher.js`).
+> - Displays the exact same dark glowing aesthetic, official portal color badge, and animated track bar.
+> - Automatically unmounts as soon as `isVerifying` becomes `false` and your dashboard renders!
+
+
