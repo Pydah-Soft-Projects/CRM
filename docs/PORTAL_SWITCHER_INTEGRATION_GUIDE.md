@@ -128,3 +128,17 @@ useEffect(() => {
   }
 }, []);
 ```
+
+---
+
+## 🎨 Unified Workspace Transition Screen (Automatic)
+
+The widget includes an automated, high-end **Workspace Transition Overlay** (`z-index: 2147483647`):
+- **On Departure**: When a user clicks any portal in the widget, it displays a branded full-screen loading screen (*"Switching workspace to [Target Portal]..."* with that portal's colors, badge, and animated progress bar) until redirection.
+- **On Arrival**: When a target portal loads with `?sso_switch=1` or `?token=...`, the widget instantly displays the matching transition screen, masking any local loaders or blank renders underneath.
+- **Auto-Dismiss**: Gracefully fades out automatically once the user's session is stored in `localStorage` or after ~2 seconds.
+- **Manual Control (Optional)**: If you ever wish to dismiss the transition overlay programmatically from your code, simply call:
+  ```javascript
+  window.PydahSwitcher?.hideTransition();
+  ```
+

@@ -242,12 +242,16 @@
       this.apiBaseUrl = scriptConfig.apiBaseUrl;
       this.landingUrl = scriptConfig.landingUrl;
       this.position = scriptConfig.position;
+      this.transitionState = null;
+      this.transitionFading = false;
 
       // Bound methods
       this.handleToggle = this.handleToggle.bind(this);
       this.handleClose = this.handleClose.bind(this);
       this.handlePortalClick = this.handlePortalClick.bind(this);
       this.handleDocumentClick = this.handleDocumentClick.bind(this);
+      this.showTransition = this.showTransition.bind(this);
+      this.hideTransition = this.hideTransition.bind(this);
     }
 
     static get observedAttributes() {
@@ -264,6 +268,32 @@
     }
 
     connectedCallback() {
+      // Check for incoming SSO transition
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasSsoSwitch = urlParams.get('sso_switch') === '1' || Boolean(urlParams.get('token'));
+        if (hasSsoSwitch) {
+          const curPortalId = this.currentPortal || scriptConfig.currentPortal;
+          const portalMeta = PORTAL_REGISTRY.find(p => p.id === curPortalId) || {
+            title: curPortalId ? curPortalId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Workspace',
+            color: '#2563eb',
+            category: 'Pydah Workspace'
+          };
+
+          this.transitionState = {
+            title: portalMeta.title,
+            color: portalMeta.color,
+            icon: portalMeta.icon,
+            category: portalMeta.category,
+            heading: 'Switching workspace...',
+            detail: 'Authenticating session & verifying permissions...',
+            isArrival: true
+          };
+
+          this.startArrivalDismissWatcher();
+        }
+      } catch (_) {}
+
       this.render();
       this.setupDragging();
       this.fetchUserPortals();
@@ -356,13 +386,102 @@
       this.close();
     }
 
+    showTransition(config) {
+      this.transitionState = {
+        title: config.title || 'Workspace',
+        color: config.color || '#2563eb',
+        icon: config.icon || '',
+        category: config.category || 'Pydah Suite',
+        heading: config.heading || 'Switching workspace...',
+        detail: config.detail || 'Authenticating your session securely...',
+        isArrival: Boolean(config.isArrival)
+      };
+      this.transitionFading = false;
+      this.render();
+    }
+
+    hideTransition() {
+      if (!this.transitionState) return;
+      const overlay = this.shadowRoot.querySelector('.pydah-transition-overlay');
+      if (overlay) {
+        overlay.classList.add('is-fading');
+      }
+      this.transitionFading = true;
+      setTimeout(() => {
+        this.transitionState = null;
+        this.transitionFading = false;
+        this.render();
+      }, 420);
+    }
+
+    startArrivalDismissWatcher() {
+      let dismissed = false;
+      const doDismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        this.hideTransition();
+        cleanup();
+      };
+
+      // 1. Storage listener: as soon as the host app sets tokens or user
+      const onStorage = (e) => {
+        if (e && e.key && ['token', 'accessToken', 'jwt', 'user', 'currentUser', 'auth_token', 'hrms_token'].includes(e.key)) {
+          setTimeout(doDismiss, 350);
+        }
+      };
+      window.addEventListener('storage', onStorage);
+
+      // 2. Poll URL search params: if ?token= or ?sso_switch= is consumed/removed by host app router
+      const pollTimer = setInterval(() => {
+        try {
+          const p = new URLSearchParams(window.location.search);
+          if (!p.has('token') && !p.has('sso_switch')) {
+            setTimeout(doDismiss, 250);
+          }
+        } catch (_) {}
+      }, 150);
+
+      // 3. Graceful auto-fade timer (standard SSO verification takes 800-1500ms)
+      const autoFadeTimer = setTimeout(() => {
+        doDismiss();
+      }, 2100);
+
+      // 4. Hard safety cap
+      const safetyCapTimer = setTimeout(() => {
+        if (this.transitionState) {
+          this.transitionState = null;
+          this.transitionFading = false;
+          this.render();
+        }
+        cleanup();
+      }, 3800);
+
+      const cleanup = () => {
+        window.removeEventListener('storage', onStorage);
+        clearInterval(pollTimer);
+        clearTimeout(autoFadeTimer);
+        clearTimeout(safetyCapTimer);
+      };
+    }
+
     async handlePortalClick(portal) {
       if (portal.id === this.currentPortal) return;
       if (this.switchingPortalId) return;
 
       this.switchingPortalId = portal.id;
       this.errorMessage = null;
-      this.render();
+
+      // Close the widget popover and immediately launch the unified transition overlay
+      this.isOpen = false;
+      this.showTransition({
+        title: portal.title,
+        color: portal.color,
+        icon: portal.icon,
+        category: portal.category,
+        heading: 'Switching workspace...',
+        detail: `Connecting to ${portal.title} securely...`,
+        isArrival: false
+      });
 
       try {
         // Refresh session detection right before switching
@@ -398,7 +517,9 @@
         throw new Error(data.message || 'Unable to generate single sign-on token for portal.');
       } catch (err) {
         console.error('[PydahSwitcher] Portal switch error:', err);
+        this.hideTransition();
         this.errorMessage = err.message || 'Failed to switch portal. Please try again.';
+        this.open();
       } finally {
         this.switchingPortalId = null;
         this.render();
@@ -674,7 +795,7 @@
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
             box-sizing: border-box;
-            z-index: 9999999;
+            z-index: 2147483647;
           }
 
           *, *::before, *::after {
@@ -1269,7 +1390,275 @@
             from { opacity: 0; }
             to { opacity: 1; }
           }
+
+          /* Unified Workspace Transition Overlay */
+          .pydah-transition-overlay {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2147483647;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            visibility: visible;
+            pointer-events: all;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          }
+
+          .pydah-transition-overlay.is-fading {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+          }
+
+          .transition-backdrop {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 38%, rgba(15, 23, 42, 0.94) 0%, rgba(3, 7, 18, 0.98) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+          }
+
+          .transition-modal {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 440px;
+            width: 90%;
+            padding: 38px 28px 32px;
+            border-radius: 28px;
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7), 0 0 90px -20px var(--portal-accent);
+            text-align: center;
+            animation: pydah-pop-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          .transition-glow {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: var(--portal-accent);
+            opacity: 0.22;
+            filter: blur(50px);
+            pointer-events: none;
+          }
+
+          .transition-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            margin-bottom: 22px;
+          }
+
+          .pulse-indicator {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--portal-accent);
+            box-shadow: 0 0 8px var(--portal-accent);
+            animation: pydah-pulse 1.8s infinite;
+          }
+
+          .transition-icon-halo {
+            position: relative;
+            width: 86px;
+            height: 86px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.4);
+          }
+
+          .transition-icon-core {
+            width: 44px;
+            height: 44px;
+            color: var(--portal-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .transition-icon-core svg {
+            width: 100%;
+            height: 100%;
+            stroke: var(--portal-accent);
+          }
+
+          .transition-text-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+          }
+
+          .transition-heading {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+          }
+
+          .transition-target-title {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+          }
+
+          .transition-detail {
+            margin: 0;
+            font-size: 13.5px;
+            color: #cbd5e1;
+            font-weight: 400;
+            line-height: 1.5;
+            max-width: 320px;
+          }
+
+          .transition-loader-bar {
+            width: 100%;
+            max-width: 260px;
+            margin-bottom: 22px;
+          }
+
+          .transition-loader-track {
+            width: 100%;
+            height: 4px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+          }
+
+          .transition-loader-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 50%;
+            border-radius: 9999px;
+            background: var(--portal-accent);
+            box-shadow: 0 0 12px var(--portal-accent);
+            animation: pydah-progress-indeterminate 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .transition-footer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            color: #64748b;
+            font-weight: 500;
+          }
+
+          @keyframes pydah-pop-in {
+            from {
+              opacity: 0;
+              transform: scale(0.92) translateY(12px);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+
+          @keyframes pydah-pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.4;
+              transform: scale(0.85);
+            }
+          }
+
+          @keyframes pydah-progress-indeterminate {
+            0% {
+              left: -40%;
+              width: 35%;
+            }
+            50% {
+              left: 25%;
+              width: 60%;
+            }
+            100% {
+              left: 100%;
+              width: 35%;
+            }
+          }
         </style>
+
+        ${this.transitionState ? `
+          <div class="pydah-transition-overlay ${this.transitionFading ? 'is-fading' : ''}" style="--portal-accent: ${this.transitionState.color || '#2563eb'};">
+            <div class="transition-backdrop"></div>
+            <div class="transition-modal">
+              <div class="transition-glow"></div>
+              
+              <div class="transition-badge-pill">
+                <span class="pulse-indicator"></span>
+                <span>${this.transitionState.category || 'Pydah Workspace'}</span>
+              </div>
+
+              <div class="transition-icon-halo">
+                <div class="transition-icon-core">
+                  ${this.transitionState.icon || `
+                    <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                  `}
+                </div>
+              </div>
+
+              <div class="transition-text-content">
+                <span class="transition-heading">${this.transitionState.heading || 'Switching workspace...'}</span>
+                <h2 class="transition-target-title">${this.transitionState.title}</h2>
+                <p class="transition-detail">${this.transitionState.detail || 'Authenticating session & verifying permissions...'}</p>
+              </div>
+
+              <div class="transition-loader-bar">
+                <div class="transition-loader-track">
+                  <div class="transition-loader-fill"></div>
+                </div>
+              </div>
+
+              <div class="transition-footer-pill">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span>Pydah SSO Workspace Transition</span>
+              </div>
+            </div>
+          </div>
+        ` : ''}
 
         ${this.isOpen ? `
           <div class="pydah-backdrop" id="pydah-backdrop"></div>
@@ -1436,6 +1825,18 @@
     setSession: function (session) {
       const el = document.querySelector('pydah-portal-switcher');
       if (el) el.setSession(session);
+    },
+    showTransition: function (config) {
+      const el = document.querySelector('pydah-portal-switcher');
+      if (el && el.showTransition) el.showTransition(config);
+    },
+    hideTransition: function () {
+      const el = document.querySelector('pydah-portal-switcher');
+      if (el && el.hideTransition) el.hideTransition();
+    },
+    dismissTransition: function () {
+      const el = document.querySelector('pydah-portal-switcher');
+      if (el && el.hideTransition) el.hideTransition();
     }
   };
 
