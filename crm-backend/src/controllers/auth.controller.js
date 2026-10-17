@@ -1084,7 +1084,10 @@ export const switchPortal = async (req, res, next) => {
         }
         const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff'];
         if (!resolvedRbacUser && targetEmp && !GENERIC_NAMES.includes(String(targetEmp).toLowerCase())) {
-          resolvedRbacUser = await findRBACUserByUsername(String(targetEmp));
+          resolvedRbacUser = await findRBACUserByIdentifier(String(targetEmp), { email: resolvedEmail, hrmsId: userToDiscover.hrms_id });
+        }
+        if (!resolvedRbacUser && resolvedUsername && !GENERIC_NAMES.includes(String(resolvedUsername).toLowerCase())) {
+          resolvedRbacUser = await findRBACUserByIdentifier(String(resolvedUsername), { email: resolvedEmail, hrmsId: userToDiscover.hrms_id });
         }
 
         if (resolvedRbacUser) {

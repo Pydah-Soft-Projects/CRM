@@ -134,28 +134,61 @@ export const findRBACUserByHrmsId = async (hrmsId) => {
 };
 
 /**
- * Find RBAC user by username, email, or hrms_id
- * @param {string} identifier - Username, email, or hrms_id to search for
+ * Find RBAC user by username, email, hrms_id, or numeric employee number
+ * @param {string} identifier - Username, email, emp_no, or hrms_id to search for
+ * @param {Object} [options] - Optional secondary fields { email, hrmsId }
  * @returns {Promise<Object|null>} User object or null if not found
  */
-export const findRBACUserByIdentifier = async (identifier) => {
+export const findRBACUserByIdentifier = async (identifier, options = {}) => {
   try {
-    if (!identifier) return null;
-    // Try username first
-    let user = await findRBACUserByUsername(identifier);
-    if (user) {
-      return user;
+    if (!identifier && !options.email && !options.hrmsId) return null;
+    const pool = getStudentPool();
+
+    // 1. If explicit hrmsId provided, try that first
+    if (options.hrmsId) {
+      const byHrms = await findRBACUserByHrmsId(options.hrmsId);
+      if (byHrms) return byHrms;
     }
 
-    // If not found, try email
-    user = await findRBACUserByEmail(identifier);
-    if (user) {
-      return user;
+    if (identifier) {
+      const strId = String(identifier).trim();
+
+      // 2. Try username
+      let user = await findRBACUserByUsername(strId);
+      if (user) return user;
+
+      // 3. Try email
+      user = await findRBACUserByEmail(strId);
+      if (user) return user;
+
+      // 4. Try hrms_id if 24 hex characters
+      if (/^[0-9a-fA-F]{24}$/.test(strId)) {
+        user = await findRBACUserByHrmsId(strId);
+        if (user) return user;
+      }
+
+      // 5. If numeric (e.g. employee number '1559', '2153'), match email = ? or email LIKE CONCAT(?, '@%')
+      if (/^\d+$/.test(strId)) {
+        const [rows] = await pool.execute(
+          `SELECT id, name, email, phone, username, password, role, 
+                  college_id, course_id, branch_id, college_ids, course_ids, branch_ids,
+                  all_courses, all_branches, permissions, is_active, 
+                  created_by, created_at, updated_at, hrms_id 
+           FROM rbac_users 
+           WHERE (email = ? OR email LIKE CONCAT(?, '@%') OR username = ?) AND is_active = 1 LIMIT 1`,
+          [strId, strId, strId]
+        );
+        if (rows.length > 0) return rows[0];
+      }
     }
 
-    // Try hrms_id
-    user = await findRBACUserByHrmsId(identifier);
-    return user;
+    // 6. If email option provided
+    if (options.email) {
+      const user = await findRBACUserByEmail(options.email);
+      if (user) return user;
+    }
+
+    return null;
   } catch (error) {
     console.error('Error finding RBAC user by identifier:', error);
     throw error;

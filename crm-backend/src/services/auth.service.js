@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findRBACUserByEmail } from '../models/rbac.model.js';
+import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findRBACUserByEmail, findRBACUserByUsername } from '../models/rbac.model.js';
 import { findAdmissionsUserByEmail, findAdmissionsUserById, findAdmissionsUserByIdentifier } from '../models/admissions.model.js';
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser, findAcademicUserById } from '../models/academic.model.js';
@@ -45,7 +45,12 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     const username = (user.username || '').trim();
     let email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
     let rollOrEmp = (user.admission_number || user.employeeId || user.emp_no || user.rollNumber || user.admissionNumber || user.employee_id || '').trim();
-    if (!rollOrEmp && /^\d+$/.test(username)) {
+    if (!user.hrms_id && user.employeeId && /^[0-9a-fA-F]{24}$/.test(user.employeeId)) {
+      user.hrms_id = user.employeeId;
+    }
+    if (/^[0-9a-fA-F]{24}$/.test(rollOrEmp)) {
+      rollOrEmp = /^\d+$/.test(username) ? username : '';
+    } else if (!rollOrEmp && /^\d+$/.test(username)) {
       rollOrEmp = username;
     }
     let phone = user.phone || user.mobile || null;
@@ -172,8 +177,9 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               $and: [{ $or: [{ is_active: true }, { is_active: { $exists: false } }] }]
             });
             if (emp) {
+              if (emp._id && !user.hrms_id) user.hrms_id = emp._id.toString();
               if (emp.email && (!email || email.includes('@pydahsoft.in'))) email = emp.email.trim().toLowerCase();
-              if (emp.emp_no && !rollOrEmp) rollOrEmp = emp.emp_no;
+              if (emp.emp_no && (!rollOrEmp || /^[0-9a-fA-F]{24}$/.test(rollOrEmp))) rollOrEmp = emp.emp_no;
               if ((emp.phone || emp.phone_number) && (!phone || phone.length !== 10)) phone = emp.phone || emp.phone_number;
             }
           }
@@ -182,7 +188,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     }
 
       // Fallback check against Fee database if identity came from fee management
-      if (!email && (databaseSource === 'fee' || databaseSource === 'fee-management')) {
+      if ((!email || !user.hrms_id) && (databaseSource === 'fee' || databaseSource === 'fee-management')) {
         try {
           const feeDb = await getFeeDb();
           if (feeDb && (username || user.id || user._id)) {
@@ -200,6 +206,9 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
                 if (feeDoc.email && !email) email = feeDoc.email.trim().toLowerCase();
                 if (feeDoc.mobile && !phone) phone = feeDoc.mobile;
                 if (feeDoc.username && !rollOrEmp && /^\d+$/.test(feeDoc.username)) rollOrEmp = feeDoc.username;
+                if (feeDoc.employeeId && !user.hrms_id && /^[0-9a-fA-F]{24}$/.test(feeDoc.employeeId)) {
+                  user.hrms_id = feeDoc.employeeId;
+                }
               }
             }
           }
@@ -404,10 +413,10 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             // Check by verified employee number (avoid generic role names like 'admin', 'user', etc.)
             const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff'];
             if (!rbacUser && rollOrEmp && !GENERIC_NAMES.includes(rollOrEmp.toLowerCase())) {
-              rbacUser = await findRBACUserByUsername(rollOrEmp);
+              rbacUser = await findRBACUserByIdentifier(rollOrEmp, { email, hrmsId: user.hrms_id });
             }
             if (!rbacUser && username && !GENERIC_NAMES.includes(username.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(username)) {
-              rbacUser = await findRBACUserByUsername(username);
+              rbacUser = await findRBACUserByIdentifier(username, { email, hrmsId: user.hrms_id });
             }
 
             if (rbacUser) {
@@ -952,7 +961,10 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
           email: feeUser.email || null,
           name: feeUser.name || null,
           username: feeUser.username || null,
-          role: feeUser.role || null
+          role: feeUser.role || null,
+          employeeId: feeUser.employeeId || null,
+          hrms_id: feeUser.hrms_id || null,
+          phone: feeUser.phone || feeUser.mobile || null
         };
       }
       return null;

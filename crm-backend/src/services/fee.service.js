@@ -45,6 +45,11 @@ export const validateFeeCredentials = async (username, password) => {
             username: user.username,
             name: user.name || user.username,
             role: user.role || 'office_staff',
+            employeeId: user.employeeId || null,
+            hrms_id: user.employeeId || null,
+            phone: user.mobile || null,
+            mobile: user.mobile || null,
+            email: user.email || null,
             databaseSource: 'fee'
           };
         } else {
@@ -80,10 +85,15 @@ export const getFeeUserById = async (userId) => {
     if (!user) return null;
     
     return {
+      id: user._id.toString(),
       username: user.username,
       name: user.name || user.username,
       email: user.email || null,
-      role: user.role || 'office_staff'
+      role: user.role || 'office_staff',
+      employeeId: user.employeeId || null,
+      hrms_id: user.employeeId || null,
+      phone: user.mobile || null,
+      mobile: user.mobile || null
     };
   } catch (error) {
     console.error('[Fee] getFeeUserById error:', error.message);
