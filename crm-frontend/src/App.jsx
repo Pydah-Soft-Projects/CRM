@@ -147,6 +147,7 @@ function App() {
       } else {
         setLaunchError(tokenResponse.message || 'Failed to generate secure SSO token.');
       }
+      
     } catch (error) {
       console.error('Portal SSO launch error:', error);
       setLaunchError(error.message || 'Failed to launch portal. Please try again.');
