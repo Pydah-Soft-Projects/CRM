@@ -3,7 +3,11 @@
  * Handles all backend API communication
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' && !import.meta.env.DEV
+    ? window.location.origin
+    : 'http://localhost:8000');
 
 /**
  * Check if a JWT token is expired
