@@ -1,5 +1,5 @@
-# Deploy CRM Backend to AWS Lightsail on push to main
-name: Deploy CRM Backend to Lightsail
+# Deploy CRM Backend and Frontend to AWS Lightsail
+name: Deploy CRM to Lightsail
 
 on:
   push:
@@ -7,14 +7,50 @@ on:
       - main
     paths:
       - 'crm-backend/**'
-  workflow_dispatch:  # Allow manual trigger
+      - 'crm-frontend/**'
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'Component to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
 
 env:
-  REMOTE_APP_DIR: '/home/ec2-user/landing/crm-backend'   # landing/crm-backend on Lightsail (ec2-user)
+  REMOTE_BACKEND_DIR: '/home/ec2-user/landing/crm-backend'
+  REMOTE_FRONTEND_DIR: '/home/ec2-user/landing/crm-frontend/dist'
 
 jobs:
-  deploy:
-    name: Deploy to Lightsail
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'crm-backend/**'
+            frontend:
+              - 'crm-frontend/**'
+
+  deploy-backend:
+    name: Deploy Backend to Lightsail
+    needs: changes
+    if: |
+      (github.event_name == 'push' && needs.changes.outputs.backend == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'all' || inputs.deploy_target == 'backend' || inputs.deploy_target == ''))
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,16 +67,16 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Sync files to Lightsail
+      - name: Sync backend files to Lightsail
         run: |
           rsync -avz --delete \
             --exclude 'node_modules' \
             --exclude '.env' \
             --exclude '.git' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
-            ./ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.REMOTE_APP_DIR }}/
+            ./ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.REMOTE_BACKEND_DIR }}/
 
-      - name: Install dependencies and restart on Lightsail
+      - name: Install dependencies and restart backend on Lightsail
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
@@ -49,7 +85,7 @@ jobs:
           port: 22
           script: |
             set -e
-            cd ${{ env.REMOTE_APP_DIR }}
+            cd ${{ env.REMOTE_BACKEND_DIR }}
             npm ci --omit=dev 2>/dev/null || npm install --omit=dev
             if command -v pm2 &> /dev/null; then
               pm2 restart crm-backend 2>/dev/null || pm2 start src/server.js --name crm-backend
@@ -58,3 +94,67 @@ jobs:
             else
               echo "Configure pm2 or systemd on the server for auto-restart"
             fi
+
+  deploy-frontend:
+    name: Deploy Frontend to Lightsail
+    needs: changes
+    if: |
+      (github.event_name == 'push' && needs.changes.outputs.frontend == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'all' || inputs.deploy_target == 'frontend' || inputs.deploy_target == ''))
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crm-frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: crm-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend on GitHub runner
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || vars.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Setup SSH key for deploy
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Ensure remote directory exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            mkdir -p ${{ env.REMOTE_FRONTEND_DIR }}
+
+      - name: Sync dist to Lightsail
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            dist/ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.REMOTE_FRONTEND_DIR }}/
+
+      - name: Configure folder permissions for Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            chmod -R a+rX ${{ env.REMOTE_FRONTEND_DIR }}
+            chmod a+x /home/ec2-user /home/ec2-user/landing /home/ec2-user/landing/crm-frontend

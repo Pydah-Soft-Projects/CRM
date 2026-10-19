@@ -182,17 +182,63 @@ GitHub Actions will SSH into Lightsail using a **private key**. You can use the 
 | `LIGHTSAIL_HOST`             | Public IP or hostname of the instance | `3.110.xx.xx` or `your-instance.region.cs.amazonlightsail.com` |
 | `LIGHTSAIL_USER`             | SSH username on the instance        | `ec2-user` |
 | `LIGHTSAIL_SSH_PRIVATE_KEY`  | Full private key (PEM or OpenSSH)   | Entire contents of the `.pem` or private key file |
+| `VITE_API_BASE_URL` *(opt)*  | Backend API URL for Vite build      | `http://3.110.xx.xx:8000` or `https://api.yourdomain.com` |
 
 - **LIGHTSAIL_HOST**: In Lightsail, open your instance and copy the **Public IP** (or use the instance DNS name).
 - **LIGHTSAIL_USER**: The user you use with `ssh user@host` (use `ec2-user` for your setup).
 - **LIGHTSAIL_SSH_PRIVATE_KEY**: Paste the full private key; do **not** add extra spaces or newlines at the start/end.
+- **VITE_API_BASE_URL**: (Optional) In GitHub **Settings** → **Secrets and variables** → **Actions** (Secret or Variable). Vite bakes this into the frontend build. Defaults to `http://localhost:8000` if not set.
 
 ---
 
-## 4. Adjust the Workflow (optional)
+## 4. Nginx Setup for Frontend
 
-- **App path on server**: The workflow uses `/home/ec2-user/landing/crm-backend`. If your path differs, change the `REMOTE_APP_DIR` env in `.github/workflows/deploy-crm-backend-lightsail.yml`.
-- **Branches / paths**: The workflow runs on pushes to `main` that change files under `crm-backend/`. You can change `branches` or `paths` in the same file if needed.
+The workflow builds the frontend on the GitHub runner and uploads the compiled `dist/` directory to:
+```bash
+/home/ec2-user/landing/crm-frontend/dist
+```
+
+To configure Nginx on Lightsail:
+
+1. Install and enable Nginx (if not already):
+   ```bash
+   sudo yum install -y nginx
+   sudo systemctl enable nginx
+   ```
+
+2. Configure Nginx:
+   Edit or create `/etc/nginx/conf.d/crm.conf`:
+   ```nginx
+   server {
+       listen 80;
+       server_name _;
+
+       # Frontend SPA static build
+       location / {
+           root /home/ec2-user/landing/crm-frontend/dist;
+           index index.html index.htm;
+           try_files $uri $uri/ /index.html;
+       }
+
+       # Backend API proxy
+       location /api/ {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       }
+   }
+   ```
+
+3. Test and reload Nginx:
+   ```bash
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
 
 ---
 
