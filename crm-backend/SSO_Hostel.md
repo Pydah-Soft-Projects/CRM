@@ -17,7 +17,7 @@ The external application acts as a **central authentication gateway** (referred 
    - Optional: `portalId`, `expiresAt`.
 3. **Redirects the user to our application** with the token as a query parameter:
    ```text
-   https://hms.pydahsoft.in/login?token=<encrypted_token>
+   https://hostel.pydah.edu.in/login?token=<encrypted_token>
    ```
 4. Does **not** perform the actual login into HMS; that is done by **our backend** after we verify the token and optionally look up the user in our database.
 

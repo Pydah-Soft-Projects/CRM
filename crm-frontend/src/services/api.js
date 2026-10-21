@@ -200,7 +200,10 @@ export const PORTAL_IDS = {
   'https://admissions.pydah.edu.in': 'admissions-crm',
   'https://sdms.pydah.edu.in': 'student-portal',
   'https://pydahsdms.vercel.app': 'student-portal',
+  'https://hostel.pydah.edu.in': 'hostel-automation',
+  'https://hostel.pydah.edu.in/login': 'hostel-automation',
   'https://hms.pydahsoft.in': 'hostel-automation',
+  'https://hms.pydahsoft.in/login': 'hostel-automation',
   'https://hrms.pydahsoft.in': 'hrms',
   'https://hrms.pydah.edu.in': 'hrms', // HRMS portal
   'http://localhost:3000': 'hostel-automation', // Hostel software (local dev; HRMS local may use another port)

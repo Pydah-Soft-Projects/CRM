@@ -58,7 +58,7 @@ export const PORTAL_METADATA = {
     category: 'Facility Management',
     description: 'Campus room allotments, warden logs, hostel passes, and mess management.',
     color: '#db2777',
-    url: 'https://hms.pydahsoft.in/login'
+    url: 'https://hostel.pydah.edu.in/login'
   },
   [PORTAL_IDS.HRMS]: {
     id: PORTAL_IDS.HRMS,

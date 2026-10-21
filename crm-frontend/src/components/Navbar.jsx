@@ -40,7 +40,7 @@ const solutions = [
   {
     title: 'Hostel Automation',
     desc: 'Smart and secure student residency management.',
-    url: 'https://hms.pydahsoft.in',
+    url: 'https://hostel.pydah.edu.in',
     icon: Home,
     color: '#6366f1',
     portalId: 'hostel-automation'

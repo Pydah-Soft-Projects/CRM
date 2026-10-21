@@ -48,7 +48,7 @@ const portalDetails = [
         description: 'Campus room allotments, warden logs, hostel passes, and mess management.',
         color: '#db2777',
         image: '/be5b597fc3fce8fb5502c228cafa87f1.jpg',
-        url: 'https://hms.pydahsoft.in/login',
+        url: 'https://hostel.pydah.edu.in/login',
         portalId: 'hostel-automation'
     },
     {

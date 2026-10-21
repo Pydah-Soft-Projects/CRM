@@ -15,8 +15,8 @@ const tabs = [
     {
         id: 'hostel',
         name: 'Hostel CRM',
-        displayUrl: 'hms.pydahsoft.in',
-        redirectUrl: 'https://hms.pydahsoft.in',
+        displayUrl: 'hostel.pydah.edu.in',
+        redirectUrl: 'https://hostel.pydah.edu.in',
         icon: Package,
         color: '#0ea5e9',
         bgColor: '#F0F9FF'
