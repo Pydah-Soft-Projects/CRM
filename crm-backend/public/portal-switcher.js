@@ -89,6 +89,15 @@
       color: '#d97706',
       url: 'https://transport.pydah.edu.in/login',
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 10h18"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/></svg>`
+    },
+    {
+      id: 'stationary-management',
+      title: 'Stationary Management',
+      category: 'Inventory & Operations',
+      description: 'Stationary stock distribution, inventory logs, sub-admin privileges, and campus allocations.',
+      color: '#4f46e5',
+      url: 'https://stationary.pydah.edu.in/login',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`
     }
   ];
 
@@ -1676,6 +1685,7 @@
         else if (host.includes('acad')) portalAttr = 'academic-portal';
         else if (host.includes('transport')) portalAttr = 'transport-management';
         else if (host.includes('hms') || host.includes('hostel')) portalAttr = 'hostel-automation';
+        else if (host.includes('station')) portalAttr = 'stationary-management';
       }
 
       const portalMeta = PORTAL_REGISTRY.find(p => p.id === portalAttr) || {

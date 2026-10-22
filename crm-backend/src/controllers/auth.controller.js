@@ -4,6 +4,7 @@ import {
   validateCredentialsForHostel, 
   validateCredentialsForTransport,
   validateCredentialsForFee,
+  validateCredentialsForStationary,
   generatePortalToken, 
   getCRMUserForVerify,
   discoverUserPortals
@@ -17,7 +18,7 @@ import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findR
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser } from '../models/examination.model.js';
-import { getFeeDb } from '../config/database.js';
+import { getFeeDb, getStationaryDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
 import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS, PORTAL_METADATA } from '../config/constants.js';
 
@@ -76,6 +77,8 @@ export const login = async (req, res, next) => {
       user = await validateCredentialsForTransport(username, password);
     } else if (portalId === PORTAL_IDS.FEE_MANAGEMENT) {
       user = await validateCredentialsForFee(username, password);
+    } else if (portalId === PORTAL_IDS.STATIONARY_MANAGEMENT) {
+      user = await validateCredentialsForStationary(username, password);
     } else {
       user = await validateCredentials(username, password, role);
     }
@@ -705,6 +708,83 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
+    // 6.5 For Stationary Management portal: resolve to SubAdmin in Stationary MongoDB (subadmins collection)
+    if (decoded.portalId === PORTAL_IDS.STATIONARY_MANAGEMENT) {
+      if (decoded.databaseSource === 'stationary') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            name: decoded.name || username,
+            username: username,
+            ...(decoded.empNo && { empNo: decoded.empNo }),
+            role: decoded.role || 'Editor',
+            permissions: decoded.permissions || [],
+            ...(decoded.assignedCollege && { assignedCollege: decoded.assignedCollege }),
+            ...(decoded.assignedBranch && { assignedBranch: decoded.assignedBranch }),
+            ...(email && { email }),
+            ...baseData
+          }
+        });
+      }
+
+      const stationaryDb = await getStationaryDb();
+      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+
+      if (stationaryDb && (identifier || targetEmp || username || decoded.userId)) {
+        const orConditions = [];
+        if (identifier) orConditions.push({ name: identifier });
+        if (username && username !== identifier) orConditions.push({ name: username });
+        if (targetEmp) {
+          orConditions.push({ empNo: targetEmp });
+          orConditions.push({ name: targetEmp });
+        }
+        if (decoded.userId) {
+          try {
+            const { ObjectId } = await import('mongodb');
+            orConditions.push({ _id: new ObjectId(decoded.userId) });
+          } catch (_) {}
+        }
+
+        const subAdmin = await stationaryDb.collection('subadmins').findOne({ $or: orConditions });
+        if (subAdmin) {
+          console.log(`[VerifyToken] Stationary lookup: resolved to subAdmin _id=${subAdmin._id}, name=${subAdmin.name}`);
+          return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            valid: true,
+            data: {
+              userId: subAdmin._id.toString(),
+              name: subAdmin.name,
+              username: subAdmin.name,
+              empNo: subAdmin.empNo || targetEmp || null,
+              role: subAdmin.role || 'Editor',
+              permissions: subAdmin.permissions || [],
+              assignedCollege: subAdmin.assignedCollege ? subAdmin.assignedCollege.toString() : null,
+              assignedBranch: subAdmin.assignedBranch ? subAdmin.assignedBranch.toString() : null,
+              ...(email && { email }),
+              ...baseData
+            }
+          });
+        }
+      }
+
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: String(decoded.userId),
+          name: username,
+          username: username,
+          empNo: targetEmp || null,
+          role: crmUser?.role || decoded.role || 'Editor',
+          permissions: [],
+          ...(email && { email }),
+          ...baseData
+        }
+      });
+    }
+
     // 7. For Academic Portal: return verified user details (userId, role, email, employeeId, expiresAt)
     if (decoded.portalId === PORTAL_IDS.ACADEMIC_PORTAL) {
       // Prevent replay attacks (one-time token use)
@@ -1000,6 +1080,8 @@ export const switchPortal = async (req, res, next) => {
       'hrms': 'hrms',
       'fee-management': 'fee',
       'fee': 'fee',
+      'stationary-management': 'stationary',
+      'stationary': 'stationary',
       'transport-management': 'transport',
       'transport': 'transport',
       'hostel-automation': 'hostel',
@@ -1177,6 +1259,8 @@ export const getUserPortals = async (req, res, next) => {
       'hrms': 'hrms',
       'fee-management': 'fee',
       'fee': 'fee',
+      'stationary-management': 'stationary',
+      'stationary': 'stationary',
       'transport-management': 'transport',
       'transport': 'transport',
       'hostel-automation': 'hostel',

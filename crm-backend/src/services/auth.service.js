@@ -8,7 +8,8 @@ import { validateHRMSCredentials, getHRMSUserById, findHRMSUserByEmail, getEmplo
 import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify } from './hostel.service.js';
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
 import { validateFeeCredentials, getFeeUserById } from './fee.service.js';
-import { getFeeDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
+import { validateStationaryCredentials, getStationarySubAdminById, findStationarySubAdmin } from './stationary.service.js';
+import { getFeeDb, getStationaryDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
 import { generateSSOToken } from './token.service.js';
 import { encryptToken } from './encryption.service.js';
 import { ERROR_MESSAGES } from '../config/constants.js';
@@ -35,6 +36,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'hostel' || databaseSource === 'hostel-automation') portals.add('hostel-automation');
     if (databaseSource === 'transport' || databaseSource === 'transport-management') portals.add('transport-management');
     if (databaseSource === 'fee' || databaseSource === 'fee-management') portals.add('fee-management');
+    if (databaseSource === 'stationary' || databaseSource === 'stationary-management') portals.add('stationary-management');
     if (databaseSource === 'admissions_db' || databaseSource === 'admissions-crm') portals.add('admissions-crm');
     if (databaseSource === 'student_credentials' || databaseSource === 'student-portal') portals.add('student-portal');
     // rbac_users table in student_database is strictly for the Student Portal only
@@ -215,6 +217,29 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         } catch (_) {}
       }
 
+      // Fallback check against Stationary database if identity came from stationary management
+      if ((!rollOrEmp || !email) && (databaseSource === 'stationary' || databaseSource === 'stationary-management')) {
+        try {
+          const stationaryDb = await getStationaryDb();
+          if (stationaryDb && (username || user.id || user._id)) {
+            const statConditions = [];
+            if (username) statConditions.push({ name: username });
+            if (user.id || user._id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                statConditions.push({ _id: new ObjectId(user.id || user._id) });
+              } catch (_) {}
+            }
+            if (statConditions.length > 0) {
+              const statDoc = await stationaryDb.collection('subadmins').findOne({ $or: statConditions });
+              if (statDoc) {
+                if (statDoc.empNo && !rollOrEmp) rollOrEmp = statDoc.empNo;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
     const identifier = username || email;
 
     // Attach enriched fields back to user for downstream consumers
@@ -299,6 +324,38 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             }
           } catch (e) {
             console.error('[discoverUserPortals] Fee check error:', e.message);
+          }
+        })()
+      );
+    }
+
+    // Check Stationary Management (checks 'subadmins' collection by name or empNo)
+    if (!portals.has('stationary-management')) {
+      checks.push(
+        (async () => {
+          try {
+            const db = await getStationaryDb();
+            if (db && (identifier || email || rollOrEmp || user.hrms_id || user.employeeId)) {
+              const orConditions = [];
+              if (identifier) {
+                orConditions.push({ name: identifier });
+                orConditions.push({ empNo: identifier });
+              }
+              if (rollOrEmp) {
+                orConditions.push({ empNo: rollOrEmp });
+                orConditions.push({ name: rollOrEmp });
+              }
+              if (user.hrms_id) {
+                orConditions.push({ empNo: user.hrms_id });
+              }
+              if (user.employeeId && user.employeeId !== rollOrEmp) {
+                orConditions.push({ empNo: user.employeeId });
+              }
+              const subAdmin = await db.collection('subadmins').findOne({ $or: orConditions });
+              if (subAdmin) portals.add('stationary-management');
+            }
+          } catch (e) {
+            console.error('[discoverUserPortals] Stationary check error:', e.message);
           }
         })()
       );
@@ -500,6 +557,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'hostel') return ['hostel-automation'];
     if (databaseSource === 'transport') return ['transport-management'];
     if (databaseSource === 'fee') return ['fee-management'];
+    if (databaseSource === 'stationary') return ['stationary-management'];
     if (databaseSource === 'admissions_db') return ['admissions-crm'];
     if (databaseSource === 'student_credentials') return ['student-portal'];
     return ['admissions-crm'];
@@ -705,6 +763,29 @@ export const validateCredentials = async (username, password, role = null) => {
       return normalizedUser;
     }
 
+    console.log(`[Auth] Checking Stationary MongoDB for: ${username}`);
+    const stationaryUser = await validateStationaryCredentials(username, password);
+    if (stationaryUser) {
+      console.log(`[Auth] User authenticated via Stationary MongoDB: ${stationaryUser.id}`);
+      const normalizedUser = {
+        ...stationaryUser,
+        databaseSource: stationaryUser.databaseSource || 'stationary'
+      };
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.empNo,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {}
+      }
+      normalizedUser.portals = await discoverUserPortals(normalizedUser, 'stationary');
+      return normalizedUser;
+    }
+
     console.log(`[Auth] User not found or invalid credentials across all databases for username: ${username}`);
     return null;
   } catch (error) {
@@ -858,6 +939,75 @@ export const validateCredentialsForFee = async (username, password) => {
 };
 
 /**
+ * Validate credentials against Stationary MongoDB, fallout to HRMS MongoDB if not found.
+ * @param {string} username - Username / Name / empNo
+ * @param {string} password - Plain password
+ * @returns {Promise<Object|null>} User object with dynamically discovered portals
+ */
+export const validateCredentialsForStationary = async (username, password) => {
+  // 1. Try Stationary database first (subadmins collection)
+  console.log(`[Auth-Stationary] Attempting login via Stationary database for: ${username}`);
+  let user = await validateStationaryCredentials(username, password);
+  let dbSource = 'stationary';
+
+  if (!user) {
+    // 2. Fallback to HRMS database if not found in Stationary
+    console.log(`[Auth-Stationary] User not found in Stationary, falling back to HRMS database for: ${username}`);
+    user = await validateHRMSCredentials(username, password);
+    dbSource = 'hrms';
+
+    if (user) {
+      // Check if user has SubAdmin profile in Stationary DB by matching empNo
+      try {
+        const db = await getStationaryDb();
+        if (db) {
+          const empIdentifier = user.emp_no || user.employeeId || username;
+          const subAdmin = await db.collection('subadmins').findOne({
+            $or: [
+              { empNo: empIdentifier },
+              { name: username },
+              { name: user.name }
+            ]
+          });
+          if (subAdmin) {
+            user.role = subAdmin.role || user.role;
+            user.permissions = subAdmin.permissions || [];
+            user.assignedCollege = subAdmin.assignedCollege ? subAdmin.assignedCollege.toString() : null;
+            user.assignedBranch = subAdmin.assignedBranch ? subAdmin.assignedBranch.toString() : null;
+            user.subAdminId = subAdmin._id.toString();
+          }
+        }
+      } catch (e) {
+        console.error('[Auth-Stationary] HRMS subadmin lookup error:', e.message);
+      }
+    }
+  }
+
+  if (user) {
+    const normalizedUser = {
+      ...user,
+      databaseSource: dbSource
+    };
+    if (!normalizedUser.profilePhoto) {
+      try {
+        const photo = await getEmployeeProfilePhoto({
+          email: normalizedUser.email,
+          employeeId: normalizedUser.employeeId || normalizedUser.emp_no || normalizedUser.empNo,
+          username: normalizedUser.username,
+          phone: normalizedUser.phone
+        });
+        if (photo) normalizedUser.profilePhoto = photo;
+      } catch (e) {}
+    }
+    normalizedUser.portals = await discoverUserPortals(normalizedUser, dbSource);
+    return normalizedUser;
+  }
+
+  console.log(`[Auth-Stationary] User not found in either Stationary or HRMS for: ${username}`);
+  return null;
+};
+
+/**
  * Generate encrypted SSO token for portal access
  * @param {string} userId - User ID
  * @param {string} portalId - Target portal identifier
@@ -965,6 +1115,23 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
           employeeId: feeUser.employeeId || null,
           hrms_id: feeUser.hrms_id || null,
           phone: feeUser.phone || feeUser.mobile || null
+        };
+      }
+      return null;
+    }
+    if (databaseSource === 'stationary') {
+      const stationaryUser = await getStationarySubAdminById(userId);
+      if (stationaryUser) {
+        return {
+          name: stationaryUser.name || null,
+          username: stationaryUser.username || null,
+          role: stationaryUser.role || null,
+          empNo: stationaryUser.empNo || null,
+          employeeId: stationaryUser.empNo || null,
+          hrms_id: stationaryUser.empNo || null,
+          permissions: stationaryUser.permissions || [],
+          assignedCollege: stationaryUser.assignedCollege || null,
+          assignedBranch: stationaryUser.assignedBranch || null
         };
       }
       return null;

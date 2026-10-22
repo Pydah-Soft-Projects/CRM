@@ -51,8 +51,10 @@ const productionOrigins = [
   'https://pydah-transport.vercel.app',      // Production Transport
   'https://transport.pydah.edu.in',          // Production Transport Custom Domain
   'https://academic.pydah.edu.in',           // Production Academic Portal
-  'https://acad.pydah.edu.in',               // Production Academic Portal (acad.pydah.edu.in)
-  'https://ems.pydah.edu.in'                 // Production Examination Management System
+  'https://ems.pydah.edu.in',                // Production Examination Management System
+  'https://stationary.pydah.edu.in',         // Production Stationary Management
+  'http://localhost:5176',                   // Local Stationary frontend
+  'http://localhost:5177'                    // Local dev port
 ];
 
 // Combine and remove duplicates

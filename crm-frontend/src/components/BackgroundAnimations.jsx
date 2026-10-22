@@ -14,6 +14,7 @@ const PORTAL_COLORS = {
     'hrms': '#7c3aed',
     'student-portal': '#2563eb',
     'transport-management': '#d97706',
+    'stationary-management': '#4f46e5',
 };
 
 const BackgroundAnimations = ({ portalId, color: propColor }) => {
@@ -349,6 +350,7 @@ const BackgroundAnimations = ({ portalId, color: propColor }) => {
             case 'hrms': return <HRMSAnimation />;
             case 'academic-portal': return <StudentAnimation />;
             case 'examination-portal': return <StudentAnimation />;
+            case 'stationary-management': return <DefaultAnimation />;
             default: return <DefaultAnimation />;
         }
     };

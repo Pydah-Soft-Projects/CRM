@@ -16,7 +16,8 @@ export const PORTAL_IDS = {
   TRANSPORT_MANAGEMENT: 'transport-management',
   FEE_MANAGEMENT: 'fee-management',
   ACADEMIC_PORTAL: 'academic-portal',
-  EXAMINATION_PORTAL: 'examination-portal'
+  EXAMINATION_PORTAL: 'examination-portal',
+  STATIONARY_MANAGEMENT: 'stationary-management'
 };
 
 export const PORTAL_METADATA = {
@@ -67,6 +68,14 @@ export const PORTAL_METADATA = {
     description: 'Staff directory, biometric attendance, salary payroll, and leave management.',
     color: '#7c3aed',
     url: 'https://hrms.pydah.edu.in/login'
+  },
+  [PORTAL_IDS.STATIONARY_MANAGEMENT]: {
+    id: PORTAL_IDS.STATIONARY_MANAGEMENT,
+    title: 'Stationary Management',
+    category: 'Inventory & Operations',
+    description: 'Stationary stock distribution, inventory logs, sub-admin privileges, and campus allocations.',
+    color: '#4f46e5',
+    url: process.env.STATIONARY_PORTAL_URL || 'https://stationary.pydah.edu.in/login'
   },
   [PORTAL_IDS.STUDENT_PORTAL]: {
     id: PORTAL_IDS.STUDENT_PORTAL,

@@ -23,6 +23,8 @@ let transportMongoClient = null;
 let transportMongoDb = null;
 let feeMongoClient = null;
 let feeMongoDb = null;
+let stationaryMongoClient = null;
+let stationaryMongoDb = null;
 
 /**
  * Create MySQL connection pool for student database
@@ -232,7 +234,12 @@ export const connectDatabase = async () => {
       await connectFeeMongo();
     }
 
-    return { studentPool, admissionsPool, academicPool, examinationPool, hrmsMongoDb, hostelMongoDb, transportMongoDb, feeMongoDb };
+    // Connect to Stationary MongoDB if configured
+    if (process.env.STATIONARY_MONGO_URI || process.env.STATIONARY_MONGO_URL) {
+      await connectStationaryMongo();
+    }
+
+    return { studentPool, admissionsPool, academicPool, examinationPool, hrmsMongoDb, hostelMongoDb, transportMongoDb, feeMongoDb, stationaryMongoDb };
   } catch (error) {
     console.error('❌ Database connection error:', error);
     throw error;
@@ -287,6 +294,12 @@ export const closeDatabase = async () => {
       feeMongoClient = null;
       feeMongoDb = null;
       console.log('✅ Fee MongoDB connection closed');
+    }
+    if (stationaryMongoClient) {
+      await stationaryMongoClient.close();
+      stationaryMongoClient = null;
+      stationaryMongoDb = null;
+      console.log('✅ Stationary MongoDB connection closed');
     }
   } catch (error) {
     console.error('❌ Error closing database connection:', error);
@@ -443,6 +456,43 @@ export const getFeeDb = async () => {
   return connectFeeMongo();
 };
 
+/**
+ * Connect to Stationary MongoDB (optional; when STATIONARY_MONGO_URI or STATIONARY_MONGO_URL is set)
+ * @returns {Promise<import('mongodb').Db|null>} Stationary db instance or null
+ */
+export const connectStationaryMongo = async () => {
+  const uri = process.env.STATIONARY_MONGO_URI || process.env.STATIONARY_MONGO_URL;
+  if (!uri) {
+    return null;
+  }
+  if (stationaryMongoClient) {
+    return stationaryMongoDb;
+  }
+  try {
+    stationaryMongoClient = new MongoClient(uri);
+    await stationaryMongoClient.connect();
+    stationaryMongoDb = stationaryMongoClient.db();
+    console.log('✅ Stationary MongoDB connection established');
+    return stationaryMongoDb;
+  } catch (error) {
+    console.error('❌ Stationary MongoDB connection error:', error.message);
+    stationaryMongoClient = null;
+    stationaryMongoDb = null;
+    return null;
+  }
+};
+
+/**
+ * Get Stationary MongoDB db instance (lazy connect if URI is set)
+ * @returns {Promise<import('mongodb').Db|null>} Stationary db or null if not configured
+ */
+export const getStationaryDb = async () => {
+  if (stationaryMongoDb) {
+    return stationaryMongoDb;
+  }
+  return connectStationaryMongo();
+};
+
 export default {
   createPool,
   createStudentPool,
@@ -457,6 +507,8 @@ export default {
   getTransportDb,
   connectFeeMongo,
   getFeeDb,
+  connectStationaryMongo,
+  getStationaryDb,
   getPool,
   getStudentPool,
   getAdmissionsPool,

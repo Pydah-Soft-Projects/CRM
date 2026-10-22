@@ -13,6 +13,7 @@ const PORTAL_ANIMATIONS = [
   { portalId: 'hrms', color: '#7c3aed' },
   { portalId: 'academic-portal', color: '#0d9488' },
   { portalId: 'examination-portal', color: '#ea580c' },
+  { portalId: 'stationary-management', color: '#4f46e5' },
 ];
 
 const Login = ({ portalInfo, onLoginSuccess, onBack }) => {

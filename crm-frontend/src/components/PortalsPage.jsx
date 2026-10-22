@@ -70,6 +70,15 @@ const portalDetails = [
         portalId: 'student-portal'
     },
     {
+        title: 'Stationary Management',
+        category: 'Inventory & Operations',
+        description: 'Stationary stock distribution, inventory logs, sub-admin privileges, and campus allocations.',
+        color: '#4f46e5',
+        image: '/stationary-card.jpg',
+        url: 'https://stationary.pydah.edu.in/login',
+        portalId: 'stationary-management'
+    },
+    {
         title: 'Transport Management',
         category: 'Logistics Hub',
         description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',

@@ -68,6 +68,14 @@ const solutions = [
     icon: ClipboardCheck,
     color: '#ea580c',
     portalId: 'examination-portal'
+  },
+  {
+    title: 'Stationary Management',
+    desc: 'Stationary stock distribution, inventory logs, and allocations.',
+    url: 'https://stationary.pydah.edu.in',
+    icon: Box,
+    color: '#4f46e5',
+    portalId: 'stationary-management'
   }
 ];
 
