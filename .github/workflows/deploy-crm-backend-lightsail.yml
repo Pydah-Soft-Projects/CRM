@@ -8,6 +8,7 @@ on:
     paths:
       - 'crm-backend/**'
       - 'crm-frontend/**'
+      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
       deploy_target:
@@ -25,31 +26,10 @@ env:
   REMOTE_FRONTEND_DIR: '/home/ec2-user/landing/crm-frontend/dist'
 
 jobs:
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check changed paths
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'crm-backend/**'
-            frontend:
-              - 'crm-frontend/**'
-
   deploy-backend:
     name: Deploy Backend to Lightsail
-    needs: changes
     if: |
-      (github.event_name == 'push' && needs.changes.outputs.backend == 'true') ||
+      github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'all' || inputs.deploy_target == 'backend' || inputs.deploy_target == ''))
     runs-on: ubuntu-latest
     defaults:
@@ -97,9 +77,8 @@ jobs:
 
   deploy-frontend:
     name: Deploy Frontend to Lightsail
-    needs: changes
     if: |
-      (github.event_name == 'push' && needs.changes.outputs.frontend == 'true') ||
+      github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'all' || inputs.deploy_target == 'frontend' || inputs.deploy_target == ''))
     runs-on: ubuntu-latest
     defaults:
