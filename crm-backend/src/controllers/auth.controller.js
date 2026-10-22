@@ -730,7 +730,16 @@ export const verifyToken = async (req, res, next) => {
       }
 
       const stationaryDb = await getStationaryDb();
-      const targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+      let targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
+      if (!targetEmp && (email || decoded.email)) {
+        try {
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const hrmsEmp = await hrmsDb.collection('employees').findOne({ email: email || decoded.email });
+            if (hrmsEmp && hrmsEmp.emp_no) targetEmp = String(hrmsEmp.emp_no).trim();
+          }
+        } catch (_) {}
+      }
 
       if (stationaryDb && (identifier || targetEmp || username || decoded.userId)) {
         const orConditions = [];

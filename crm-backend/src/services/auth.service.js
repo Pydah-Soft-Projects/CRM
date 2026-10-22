@@ -190,7 +190,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     }
 
       // Fallback check against Fee database if identity came from fee management
-      if ((!email || !user.hrms_id) && (databaseSource === 'fee' || databaseSource === 'fee-management')) {
+      if ((!email || !rollOrEmp) && (databaseSource === 'fee' || databaseSource === 'fee-management')) {
         try {
           const feeDb = await getFeeDb();
           if (feeDb && (username || user.id || user._id)) {
@@ -208,10 +208,47 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
                 if (feeDoc.email && !email) email = feeDoc.email.trim().toLowerCase();
                 if (feeDoc.mobile && !phone) phone = feeDoc.mobile;
                 if (feeDoc.username && !rollOrEmp && /^\d+$/.test(feeDoc.username)) rollOrEmp = feeDoc.username;
-                if (feeDoc.employeeId && !user.hrms_id && /^[0-9a-fA-F]{24}$/.test(feeDoc.employeeId)) {
-                  user.hrms_id = feeDoc.employeeId;
+                if (feeDoc.employeeId) {
+                  const empStr = String(feeDoc.employeeId).trim();
+                  if (/^\d+$/.test(empStr) && !rollOrEmp) rollOrEmp = empStr;
+                  if (!user.employeeId) user.employeeId = empStr;
+                  if (/^[0-9a-fA-F]{24}$/.test(empStr)) {
+                    if (!user.hrms_id) user.hrms_id = empStr;
+                    try {
+                      const hrmsDb = await getHRMSDb();
+                      if (hrmsDb) {
+                        const { ObjectId } = await import('mongodb');
+                        const hrmsEmp = await hrmsDb.collection('employees').findOne({ _id: new ObjectId(empStr) });
+                        if (hrmsEmp && hrmsEmp.emp_no && !rollOrEmp) {
+                          rollOrEmp = String(hrmsEmp.emp_no).trim();
+                        }
+                      }
+                    } catch (_) {}
+                  }
                 }
               }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // If user has email or hrms_id but no employee number, resolve emp_no from HRMS
+      if (!rollOrEmp && (email || user.hrms_id)) {
+        try {
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const hrmsConds = [];
+            if (email) hrmsConds.push({ email: email });
+            if (user.hrms_id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                hrmsConds.push({ _id: new ObjectId(user.hrms_id) });
+              } catch (_) {}
+            }
+            const hrmsEmp = await hrmsDb.collection('employees').findOne({ $or: hrmsConds });
+            if (hrmsEmp && hrmsEmp.emp_no) {
+              rollOrEmp = String(hrmsEmp.emp_no).trim();
+              if (!user.employeeId) user.employeeId = rollOrEmp;
             }
           }
         } catch (_) {}
