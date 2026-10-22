@@ -173,7 +173,7 @@
     }
 
     // 2. Check common token storage keys
-    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken'];
+    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken', 'transport_token', 'transportToken', 'fee_token', 'feeToken'];
     for (const key of tokenKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val && typeof val === 'string' && val.length > 20) {
@@ -183,7 +183,7 @@
     }
 
     // 3. Check common user storage keys (including HRMS and portal-specific variants)
-    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser'];
+    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser', 'transport_user', 'transportUser', 'fee_user', 'feeUser'];
     for (const key of userKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val) {
@@ -193,6 +193,7 @@
             if (!user.employeeId && user.emp_no) user.employeeId = user.emp_no;
             if (!user.username && user.emp_no) user.username = user.emp_no;
             if (!user.name && user.employee_name) user.name = user.employee_name;
+            if (!user.phone && user.mobile) user.phone = user.mobile;
             break;
           }
         } catch (_) {}
@@ -219,6 +220,7 @@
           username: decoded.username || decoded.name || user?.username,
           name: decoded.name || user?.name || decoded.username,
           email: decoded.email || user?.email,
+          phone: decoded.phone || decoded.mobile || user?.phone || user?.mobile,
           role: decoded.role || user?.role || 'user',
           portals: decoded.portals || user?.portals || portals || [],
           employeeId: decoded.employeeId || user?.employeeId,

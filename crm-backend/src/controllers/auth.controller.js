@@ -730,13 +730,37 @@ export const verifyToken = async (req, res, next) => {
       }
 
       const stationaryDb = await getStationaryDb();
-      let targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) ? username : null);
-      if (!targetEmp && (email || decoded.email)) {
+      let targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) && !/^\d{10}$/.test(username) ? username : null);
+      if (targetEmp && /^\d{10}$/.test(targetEmp)) targetEmp = null;
+
+      const lookupPhone = decoded.phone || crmUser?.phone || (/^\d{10}$/.test(username) ? username : null);
+
+      if (!targetEmp && (email || decoded.email || lookupPhone || crmUser?.hrms_id)) {
         try {
           const hrmsDb = await getHRMSDb();
           if (hrmsDb) {
-            const hrmsEmp = await hrmsDb.collection('employees').findOne({ email: email || decoded.email });
-            if (hrmsEmp && hrmsEmp.emp_no) targetEmp = String(hrmsEmp.emp_no).trim();
+            const hrmsConds = [];
+            if (email || decoded.email) hrmsConds.push({ email: email || decoded.email });
+            if (lookupPhone) {
+              hrmsConds.push({ phone: lookupPhone });
+              hrmsConds.push({ phone_number: lookupPhone });
+              hrmsConds.push({ mobile: lookupPhone });
+            }
+            if (crmUser?.hrms_id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                hrmsConds.push({ _id: new ObjectId(crmUser.hrms_id) });
+              } catch (_) {}
+            }
+            if (hrmsConds.length > 0) {
+              const hrmsEmp = await hrmsDb.collection('employees').findOne({ $or: hrmsConds });
+              if (hrmsEmp) {
+                if (hrmsEmp.emp_no) targetEmp = String(hrmsEmp.emp_no).trim();
+                if (hrmsEmp.employee_name && (!username || /^\d{10}$/.test(username))) {
+                  username = hrmsEmp.employee_name;
+                }
+              }
+            }
           }
         } catch (_) {}
       }
@@ -1069,6 +1093,7 @@ export const switchPortal = async (req, res, next) => {
       if (!resolvedUserId) resolvedUserId = bodyUser.id || bodyUser.userId || bodyUser._id;
       if (!resolvedUsername) resolvedUsername = bodyUser.username;
       if (!resolvedEmail) resolvedEmail = bodyUser.email;
+      if (!resolvedPhone) resolvedPhone = bodyUser.phone || bodyUser.mobile;
       if (bodyUser.role) resolvedRole = bodyUser.role;
       if (bodyUser.databaseSource) resolvedDatabaseSource = bodyUser.databaseSource;
       if (Array.isArray(bodyUser.portals) && bodyUser.portals.length > 0) {
@@ -1077,7 +1102,10 @@ export const switchPortal = async (req, res, next) => {
       if (!resolvedEmployeeId) resolvedEmployeeId = bodyUser.employeeId || bodyUser.emp_no || bodyUser.rollNumber;
       if (!resolvedUsername && resolvedEmployeeId) resolvedUsername = resolvedEmployeeId;
       if (!resolvedUsername && !resolvedEmployeeId) resolvedUsername = bodyUser.name;
-      if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
+      if (!resolvedPhone && resolvedUsername && /^\d{10}$/.test(resolvedUsername)) {
+        resolvedPhone = resolvedUsername;
+      }
+      if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername) && !/^\d{10}$/.test(resolvedUsername)) {
         resolvedEmployeeId = resolvedUsername;
       }
     }
@@ -1105,7 +1133,11 @@ export const switchPortal = async (req, res, next) => {
       resolvedDatabaseSource = PORTAL_TO_DB_SOURCE[currentPortalId];
     }
 
-    if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername)) {
+    if (!resolvedPhone && resolvedUsername && /^\d{10}$/.test(resolvedUsername)) {
+      resolvedPhone = resolvedUsername;
+    }
+
+    if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername) && !/^\d{10}$/.test(resolvedUsername)) {
       resolvedEmployeeId = resolvedUsername;
     }
 
@@ -1305,7 +1337,7 @@ export const getUserPortals = async (req, res, next) => {
 
     const resolvedDbSource = userObj.databaseSource || (currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) || currentPortalId;
 
-    if (userObj.id || userObj.userId || userObj.email || userObj.username || userObj.employeeId) {
+    if (userObj.id || userObj.userId || userObj.email || userObj.username || userObj.employeeId || userObj.phone || userObj.mobile) {
       resolvedPortals = await discoverUserPortals(userObj, resolvedDbSource);
     }
 

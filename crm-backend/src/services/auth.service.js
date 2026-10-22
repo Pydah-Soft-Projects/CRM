@@ -50,12 +50,18 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (!user.hrms_id && user.employeeId && /^[0-9a-fA-F]{24}$/.test(user.employeeId)) {
       user.hrms_id = user.employeeId;
     }
+    let phone = user.phone || user.mobile || null;
+    if (!phone && /^\d{10}$/.test(username)) {
+      phone = username;
+    }
     if (/^[0-9a-fA-F]{24}$/.test(rollOrEmp)) {
-      rollOrEmp = /^\d+$/.test(username) ? username : '';
-    } else if (!rollOrEmp && /^\d+$/.test(username)) {
+      rollOrEmp = (/^\d+$/.test(username) && !/^\d{10}$/.test(username)) ? username : '';
+    } else if (/^\d{10}$/.test(rollOrEmp)) {
+      if (!phone) phone = rollOrEmp;
+      rollOrEmp = '';
+    } else if (!rollOrEmp && /^\d+$/.test(username) && !/^\d{10}$/.test(username)) {
       rollOrEmp = username;
     }
-    let phone = user.phone || user.mobile || null;
     const name = (user.name || '').trim();
 
     // 1.4 If coming from Academic Portal, resolve user from ap_users to extract hrms_employee_id, email, phone
@@ -161,7 +167,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         const hrmsDb = await getHRMSDb();
         if (hrmsDb) {
           const empQuery = [];
-          if (rollOrEmp) {
+          if (rollOrEmp && !/^\d{10}$/.test(rollOrEmp)) {
             empQuery.push({ emp_no: rollOrEmp });
             empQuery.push({ emp_no: rollOrEmp.toUpperCase() });
           }
@@ -172,6 +178,12 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             } catch (_) {}
           }
           if (email) empQuery.push({ email: email });
+          const targetPhone = phone || (/^\d{10}$/.test(username) ? username : null);
+          if (targetPhone) {
+            empQuery.push({ phone: targetPhone });
+            empQuery.push({ phone_number: targetPhone });
+            empQuery.push({ mobile: targetPhone });
+          }
           if (name && name.length > 3) empQuery.push({ employee_name: name });
           if (empQuery.length > 0) {
             const emp = await hrmsDb.collection('employees').findOne({
@@ -181,8 +193,76 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             if (emp) {
               if (emp._id && !user.hrms_id) user.hrms_id = emp._id.toString();
               if (emp.email && (!email || email.includes('@pydahsoft.in'))) email = emp.email.trim().toLowerCase();
-              if (emp.emp_no && (!rollOrEmp || /^[0-9a-fA-F]{24}$/.test(rollOrEmp))) rollOrEmp = emp.emp_no;
+              if (emp.emp_no) rollOrEmp = String(emp.emp_no).trim();
               if ((emp.phone || emp.phone_number) && (!phone || phone.length !== 10)) phone = emp.phone || emp.phone_number;
+              if (emp.employee_name && !user.name) user.name = emp.employee_name;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Fallback check against Transport database if identity came from transport management
+    if ((!rollOrEmp || !email) && (databaseSource === 'transport' || databaseSource === 'transport-management')) {
+      try {
+        const transportDb = await getTransportDb();
+        if (transportDb && (username || user.id || user._id || phone || email)) {
+          const transportConditions = [];
+          if (user.id || user._id) {
+            try {
+              const { ObjectId } = await import('mongodb');
+              transportConditions.push({ _id: new ObjectId(user.id || user._id) });
+            } catch (_) {}
+          }
+          const targetPhone = phone || (/^\d{10}$/.test(username) ? username : null);
+          if (targetPhone) {
+            transportConditions.push({ phone: targetPhone });
+          }
+          if (email) {
+            transportConditions.push({ email: email.toLowerCase() });
+            transportConditions.push({ email: email });
+          }
+          if (transportConditions.length > 0) {
+            const roleDoc = await transportDb.collection('userroles').findOne({ $or: transportConditions });
+            if (roleDoc) {
+              if (roleDoc.phone && !phone) phone = roleDoc.phone;
+              if (roleDoc.email && !email) email = roleDoc.email.trim().toLowerCase();
+              if (roleDoc.employeeId) {
+                const empIdStr = roleDoc.employeeId.toString();
+                if (!user.hrms_id) user.hrms_id = empIdStr;
+                try {
+                  const hrmsDb = await getHRMSDb();
+                  if (hrmsDb) {
+                    const { ObjectId } = await import('mongodb');
+                    const hrmsEmp = await hrmsDb.collection('employees').findOne({ _id: new ObjectId(empIdStr) });
+                    if (hrmsEmp) {
+                      if (hrmsEmp.emp_no) rollOrEmp = String(hrmsEmp.emp_no).trim();
+                      if (hrmsEmp.email && !email) email = hrmsEmp.email.trim().toLowerCase();
+                      if ((hrmsEmp.phone || hrmsEmp.phone_number) && !phone) phone = hrmsEmp.phone || hrmsEmp.phone_number;
+                      if (hrmsEmp.employee_name && !user.name) user.name = hrmsEmp.employee_name;
+                    }
+                  }
+                } catch (_) {}
+              }
+            } else {
+              const adminConditions = [];
+              if (user.id || user._id) {
+                try {
+                  const { ObjectId } = await import('mongodb');
+                  adminConditions.push({ _id: new ObjectId(user.id || user._id) });
+                } catch (_) {}
+              }
+              if (username) adminConditions.push({ username: username });
+              if (email) adminConditions.push({ email: email });
+              if (targetPhone) adminConditions.push({ phone: targetPhone });
+              if (adminConditions.length > 0) {
+                const adminDoc = await transportDb.collection('admins').findOne({ $or: adminConditions });
+                if (adminDoc) {
+                  if (adminDoc.email && !email) email = adminDoc.email.trim().toLowerCase();
+                  if (adminDoc.phone && !phone) phone = adminDoc.phone;
+                  if (adminDoc.name && !user.name) user.name = adminDoc.name;
+                }
+              }
             }
           }
         }
@@ -1136,7 +1216,10 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
         return {
           email: transportUser.email || null,
           name: transportUser.name || null,
-          username: transportUser.username || null
+          username: transportUser.username || null,
+          phone: transportUser.phone || null,
+          employeeId: transportUser.employeeId || null,
+          hrms_id: transportUser.hrms_id || null
         };
       }
       return null;

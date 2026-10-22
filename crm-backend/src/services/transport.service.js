@@ -216,10 +216,42 @@ export const getTransportUserById = async (userId) => {
     // Check admins first
     const admin = await db.collection('admins').findOne({ _id: objId });
     if (admin) {
+      let resolvedEmpNo = null;
+      let resolvedPhone = admin.phone || null;
+      let resolvedEmail = admin.email || null;
+      let resolvedName = admin.name || admin.username;
+
+      // Try HRMS lookup if phone or email is available
+      if (resolvedPhone || resolvedEmail) {
+        try {
+          const { getHRMSDb } = await import('../config/database.js');
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const conds = [];
+            if (resolvedEmail) conds.push({ email: resolvedEmail });
+            if (resolvedPhone) {
+              conds.push({ phone: resolvedPhone });
+              conds.push({ phone_number: resolvedPhone });
+              conds.push({ mobile: resolvedPhone });
+            }
+            if (conds.length > 0) {
+              const hrmsEmp = await hrmsDb.collection('employees').findOne({ $or: conds });
+              if (hrmsEmp) {
+                if (hrmsEmp.emp_no) resolvedEmpNo = String(hrmsEmp.emp_no).trim();
+                if (hrmsEmp.employee_name) resolvedName = hrmsEmp.employee_name;
+                if (hrmsEmp.email && !resolvedEmail) resolvedEmail = hrmsEmp.email;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       return {
         username: admin.username,
-        name: admin.name || admin.username,
-        email: admin.email || null,
+        name: resolvedName,
+        email: resolvedEmail,
+        phone: resolvedPhone,
+        employeeId: resolvedEmpNo,
         role: admin.role || 'admin'
       };
     }
@@ -229,10 +261,63 @@ export const getTransportUserById = async (userId) => {
       $or: [{ _id: objId }, { employeeId: objId }]
     });
     if (roleDoc) {
+      let resolvedEmpNo = null;
+      let resolvedName = null;
+      let resolvedEmail = roleDoc.email || null;
+      let resolvedPhone = roleDoc.phone || null;
+
+      // 1. Resolve through linked HRMS employeeId ObjectId
+      if (roleDoc.employeeId) {
+        try {
+          const { getHRMSDb } = await import('../config/database.js');
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const empOid = typeof roleDoc.employeeId === 'string' && /^[0-9a-fA-F]{24}$/.test(roleDoc.employeeId)
+              ? new ObjectId(roleDoc.employeeId)
+              : roleDoc.employeeId;
+            const hrmsEmp = await hrmsDb.collection('employees').findOne({ _id: empOid });
+            if (hrmsEmp) {
+              if (hrmsEmp.emp_no) resolvedEmpNo = String(hrmsEmp.emp_no).trim();
+              if (hrmsEmp.employee_name) resolvedName = hrmsEmp.employee_name;
+              if (hrmsEmp.email && !resolvedEmail) resolvedEmail = hrmsEmp.email;
+              if ((hrmsEmp.phone || hrmsEmp.phone_number) && !resolvedPhone) resolvedPhone = hrmsEmp.phone || hrmsEmp.phone_number;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. If no employee number yet, try matching HRMS by phone or email
+      if (!resolvedEmpNo && (resolvedPhone || resolvedEmail)) {
+        try {
+          const { getHRMSDb } = await import('../config/database.js');
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const conds = [];
+            if (resolvedPhone) {
+              conds.push({ phone: resolvedPhone });
+              conds.push({ phone_number: resolvedPhone });
+              conds.push({ mobile: resolvedPhone });
+            }
+            if (resolvedEmail) conds.push({ email: resolvedEmail });
+            if (conds.length > 0) {
+              const hrmsEmp = await hrmsDb.collection('employees').findOne({ $or: conds });
+              if (hrmsEmp) {
+                if (hrmsEmp.emp_no) resolvedEmpNo = String(hrmsEmp.emp_no).trim();
+                if (hrmsEmp.employee_name && !resolvedName) resolvedName = hrmsEmp.employee_name;
+                if (hrmsEmp.email && !resolvedEmail) resolvedEmail = hrmsEmp.email;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       return {
         username: roleDoc.phone || null,
-        name: null,
-        email: roleDoc.email || null,
+        name: resolvedName,
+        email: resolvedEmail,
+        phone: resolvedPhone,
+        employeeId: resolvedEmpNo,
+        hrms_id: roleDoc.employeeId ? roleDoc.employeeId.toString() : null,
         roles: roleDoc.roles || [],
         permissions: roleDoc.permissions || []
       };
