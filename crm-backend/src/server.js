@@ -138,8 +138,9 @@ app.get('/CRM-APP-logo.png', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/CRM-APP-logo.png'));
 });
 
-// API Routes
+// API Routes (supports both /auth and /api/auth)
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // 404 handler
 app.use((req, res) => {
