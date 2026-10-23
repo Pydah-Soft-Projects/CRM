@@ -1,15 +1,17 @@
-export default {
-  apps: [
-    {
-      name: 'crm-backend',
-      script: 'src/server.js',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        NODE_ENV: 'production'
-      }
+export const apps = [
+  {
+    name: 'crm-backend',
+    script: './src/server.js',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production'
     }
-  ]
+  }
+];
+
+export default {
+  apps
 };

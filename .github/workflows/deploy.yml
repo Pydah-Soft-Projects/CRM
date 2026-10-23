@@ -144,7 +144,11 @@ jobs:
           echo "==> Reloading PM2 process via ecosystem file..."
           cd "${PROJECT_DIR}/crm-backend"
           mkdir -p logs
-          pm2 startOrReload ecosystem.config.js --update-env
+          if [ -f ecosystem.config.cjs ]; then
+            pm2 startOrReload ecosystem.config.cjs --update-env
+          else
+            pm2 startOrReload ecosystem.config.js --update-env
+          fi
 
           echo "==> Saving PM2 process list..."
           pm2 save
