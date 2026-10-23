@@ -9,7 +9,8 @@ import { validateHostelCredentials, getHostelUserById, findHostelUserForVerify }
 import { validateTransportCredentials, getTransportUserById, findTransportUserRole } from './transport.service.js';
 import { validateFeeCredentials, getFeeUserById } from './fee.service.js';
 import { validateStationaryCredentials, getStationarySubAdminById, findStationarySubAdmin } from './stationary.service.js';
-import { getFeeDb, getStationaryDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
+import { validateSRSCredentials, getSRSUserById, findSRSUser } from './srs.service.js';
+import { getFeeDb, getStationaryDb, getSRSDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
 import { generateSSOToken } from './token.service.js';
 import { encryptToken } from './encryption.service.js';
 import { ERROR_MESSAGES } from '../config/constants.js';
@@ -43,6 +44,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'rbac_users') portals.add('student-portal');
     if (databaseSource === 'academic_portal' || databaseSource === 'academic-portal') portals.add('academic-portal');
     if (databaseSource === 'examination_portal' || databaseSource === 'examination-portal') portals.add('examination-portal');
+    if (databaseSource === 'srs' || databaseSource === 'staff-recruitment') portals.add('staff-recruitment');
 
     const username = (user.username || '').trim();
     let email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
@@ -357,6 +359,37 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         } catch (_) {}
       }
 
+      // Fallback check against Staff Recruitment System (SRS) database if identity came from SRS
+      if ((!rollOrEmp || !email) && (databaseSource === 'srs' || databaseSource === 'staff-recruitment')) {
+        try {
+          const srsDb = await getSRSDb();
+          if (srsDb && (username || user.id || user._id || email || phone)) {
+            const srsConditions = [];
+            if (user.id || user._id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                srsConditions.push({ _id: new ObjectId(user.id || user._id) });
+              } catch (_) {}
+            }
+            if (email) srsConditions.push({ email: email });
+            if (username) {
+              srsConditions.push({ email: username.toLowerCase() });
+              srsConditions.push({ name: username });
+            }
+            if (phone) srsConditions.push({ 'profile.phone': phone });
+            if (srsConditions.length > 0) {
+              const srsDoc = await srsDb.collection('users').findOne({ $or: srsConditions });
+              if (srsDoc) {
+                if (srsDoc.employeeId && !rollOrEmp) rollOrEmp = srsDoc.employeeId;
+                if (srsDoc.email && !email) email = srsDoc.email.trim().toLowerCase();
+                if (srsDoc.name && !user.name) user.name = srsDoc.name;
+                if (srsDoc.profile?.phone && !phone) phone = srsDoc.profile.phone;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
     const identifier = username || email;
 
     // Attach enriched fields back to user for downstream consumers
@@ -473,6 +506,47 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
             }
           } catch (e) {
             console.error('[discoverUserPortals] Stationary check error:', e.message);
+          }
+        })()
+      );
+    }
+
+    // Check Staff Recruitment System (checks 'users' collection in SRS MongoDB)
+    if (!portals.has('staff-recruitment')) {
+      checks.push(
+        (async () => {
+          try {
+            const db = await getSRSDb();
+            if (db && (identifier || email || rollOrEmp || user.hrms_id || user.employeeId || phone)) {
+              const orConditions = [];
+              if (email) {
+                orConditions.push({ email: email.toLowerCase() });
+                orConditions.push({ email: email });
+              }
+              if (identifier && identifier.includes('@')) {
+                orConditions.push({ email: identifier.toLowerCase() });
+              }
+              if (rollOrEmp) {
+                orConditions.push({ employeeId: rollOrEmp });
+              }
+              if (user.employeeId && user.employeeId !== rollOrEmp) {
+                orConditions.push({ employeeId: user.employeeId });
+              }
+              if (identifier && !identifier.includes('@')) {
+                orConditions.push({ employeeId: identifier });
+                orConditions.push({ name: identifier });
+              }
+              if (phone) {
+                orConditions.push({ 'profile.phone': phone });
+              }
+              const srsUser = await db.collection('users').findOne({
+                $or: orConditions,
+                $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+              });
+              if (srsUser) portals.add('staff-recruitment');
+            }
+          } catch (e) {
+            console.error('[discoverUserPortals] SRS check error:', e.message);
           }
         })()
       );
@@ -675,6 +749,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'transport') return ['transport-management'];
     if (databaseSource === 'fee') return ['fee-management'];
     if (databaseSource === 'stationary') return ['stationary-management'];
+    if (databaseSource === 'srs' || databaseSource === 'staff-recruitment') return ['staff-recruitment'];
     if (databaseSource === 'admissions_db') return ['admissions-crm'];
     if (databaseSource === 'student_credentials') return ['student-portal'];
     return ['admissions-crm'];
@@ -903,6 +978,29 @@ export const validateCredentials = async (username, password, role = null) => {
       return normalizedUser;
     }
 
+    console.log(`[Auth] Checking Staff Recruitment System (SRS) MongoDB for: ${username}`);
+    const srsUser = await validateSRSCredentials(username, password);
+    if (srsUser) {
+      console.log(`[Auth] User authenticated via SRS MongoDB: ${srsUser.id}`);
+      const normalizedUser = {
+        ...srsUser,
+        databaseSource: srsUser.databaseSource || 'srs'
+      };
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.empNo,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {}
+      }
+      normalizedUser.portals = await discoverUserPortals(normalizedUser, 'srs');
+      return normalizedUser;
+    }
+
     console.log(`[Auth] User not found or invalid credentials across all databases for username: ${username}`);
     return null;
   } catch (error) {
@@ -1125,6 +1223,78 @@ export const validateCredentialsForStationary = async (username, password) => {
 };
 
 /**
+ * Validate credentials against SRS MongoDB, fallback to HRMS MongoDB if not found or if HRMS employee.
+ * @param {string} username - Email / employeeId / name / phone
+ * @param {string} password - Plain password
+ * @returns {Promise<Object|null>} User object with dynamically discovered portals
+ */
+export const validateCredentialsForSRS = async (username, password) => {
+  // 1. Try SRS database first (users collection)
+  console.log(`[Auth-SRS] Attempting login via SRS database for: ${username}`);
+  let user = await validateSRSCredentials(username, password);
+  let dbSource = 'srs';
+
+  if (!user) {
+    // 2. Fallback to HRMS database if not found in SRS
+    console.log(`[Auth-SRS] User not found in SRS, falling back to HRMS database for: ${username}`);
+    user = await validateHRMSCredentials(username, password);
+    dbSource = 'hrms';
+
+    if (user) {
+      // Check if user has profile in SRS DB by matching employeeId or email
+      try {
+        const db = await getSRSDb();
+        if (db) {
+          const empIdentifier = user.emp_no || user.employeeId || username;
+          const srsUser = await db.collection('users').findOne({
+            $or: [
+              { employeeId: empIdentifier },
+              ...(user.email ? [{ email: user.email.toLowerCase() }] : []),
+              { name: username },
+              { name: user.name }
+            ],
+            $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+          });
+          if (srsUser) {
+            user.role = srsUser.role || user.role;
+            user.campus = srsUser.campus || null;
+            user.permissions = srsUser.permissions || {};
+            user.hasPanelMemberAccess = Boolean(srsUser.hasPanelMemberAccess);
+            user.profile = srsUser.profile || {};
+            user.srsUserId = srsUser._id.toString();
+          }
+        }
+      } catch (e) {
+        console.error('[Auth-SRS] HRMS SRS user lookup error:', e.message);
+      }
+    }
+  }
+
+  if (user) {
+    const normalizedUser = {
+      ...user,
+      databaseSource: dbSource
+    };
+    if (!normalizedUser.profilePhoto) {
+      try {
+        const photo = await getEmployeeProfilePhoto({
+          email: normalizedUser.email,
+          employeeId: normalizedUser.employeeId || normalizedUser.emp_no || normalizedUser.empNo,
+          username: normalizedUser.username,
+          phone: normalizedUser.phone
+        });
+        if (photo) normalizedUser.profilePhoto = photo;
+      } catch (e) {}
+    }
+    normalizedUser.portals = await discoverUserPortals(normalizedUser, dbSource);
+    return normalizedUser;
+  }
+
+  console.log(`[Auth-SRS] User not found in either SRS or HRMS for: ${username}`);
+  return null;
+};
+
+/**
  * Generate encrypted SSO token for portal access
  * @param {string} userId - User ID
  * @param {string} portalId - Target portal identifier
@@ -1252,6 +1422,24 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
           permissions: stationaryUser.permissions || [],
           assignedCollege: stationaryUser.assignedCollege || null,
           assignedBranch: stationaryUser.assignedBranch || null
+        };
+      }
+      return null;
+    }
+    if (databaseSource === 'srs' || databaseSource === 'staff-recruitment') {
+      const srsUser = await getSRSUserById(userId);
+      if (srsUser) {
+        return {
+          email: srsUser.email || null,
+          name: srsUser.name || null,
+          username: srsUser.username || null,
+          role: srsUser.role || null,
+          employeeId: srsUser.employeeId || null,
+          empNo: srsUser.employeeId || null,
+          campus: srsUser.campus || null,
+          permissions: srsUser.permissions || {},
+          hasPanelMemberAccess: Boolean(srsUser.hasPanelMemberAccess),
+          phone: srsUser.phone || null
         };
       }
       return null;

@@ -17,7 +17,8 @@ export const PORTAL_IDS = {
   FEE_MANAGEMENT: 'fee-management',
   ACADEMIC_PORTAL: 'academic-portal',
   EXAMINATION_PORTAL: 'examination-portal',
-  STATIONARY_MANAGEMENT: 'stationary-management'
+  STATIONARY_MANAGEMENT: 'stationary-management',
+  STAFF_RECRUITMENT: 'staff-recruitment'
 };
 
 export const PORTAL_METADATA = {
@@ -92,6 +93,14 @@ export const PORTAL_METADATA = {
     description: 'Fleet vehicle tracking, bus transit routes, stops, and driver schedules.',
     color: '#d97706',
     url: 'https://transport.pydah.edu.in/login'
+  },
+  [PORTAL_IDS.STAFF_RECRUITMENT]: {
+    id: PORTAL_IDS.STAFF_RECRUITMENT,
+    title: 'Staff Recruitment System',
+    category: 'Hiring & Talent Acquisition',
+    description: 'Faculty and staff recruitment pipeline, panel interviews, candidate screening, and hiring approvals.',
+    color: '#0891b2',
+    url: 'https://srs.pydah.edu.in/login'
   }
 };
 

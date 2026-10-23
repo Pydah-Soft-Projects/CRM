@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen } from 'lucide-react';
+import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen, UserPlus } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -76,6 +76,14 @@ const solutions = [
     icon: Box,
     color: '#4f46e5',
     portalId: 'stationary-management'
+  },
+  {
+    title: 'Staff Recruitment System',
+    desc: 'Talent hiring pipeline, candidate screening, and panel interviews.',
+    url: 'https://srs.pydah.edu.in/login',
+    icon: UserPlus,
+    color: '#0891b2',
+    portalId: 'staff-recruitment'
   }
 ];
 

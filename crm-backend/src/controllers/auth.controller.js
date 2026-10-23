@@ -5,6 +5,7 @@ import {
   validateCredentialsForTransport,
   validateCredentialsForFee,
   validateCredentialsForStationary,
+  validateCredentialsForSRS,
   generatePortalToken, 
   getCRMUserForVerify,
   discoverUserPortals
@@ -18,7 +19,7 @@ import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findR
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser } from '../models/examination.model.js';
-import { getFeeDb, getStationaryDb } from '../config/database.js';
+import { getFeeDb, getStationaryDb, getSRSDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
 import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS, PORTAL_METADATA } from '../config/constants.js';
 
@@ -79,6 +80,8 @@ export const login = async (req, res, next) => {
       user = await validateCredentialsForFee(username, password);
     } else if (portalId === PORTAL_IDS.STATIONARY_MANAGEMENT) {
       user = await validateCredentialsForStationary(username, password);
+    } else if (portalId === PORTAL_IDS.STAFF_RECRUITMENT) {
+      user = await validateCredentialsForSRS(username, password);
     } else {
       user = await validateCredentials(username, password, role);
     }
@@ -818,6 +821,144 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
+    // 6.6 For Staff Recruitment System (SRS) portal: resolve to User in SRS MongoDB (users collection)
+    if (decoded.portalId === PORTAL_IDS.STAFF_RECRUITMENT) {
+      if (decoded.databaseSource === 'srs') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            name: decoded.name || username,
+            username: username,
+            email: email || decoded.email || null,
+            ...(decoded.employeeId && { employeeId: decoded.employeeId }),
+            ...(decoded.empNo && { empNo: decoded.empNo }),
+            role: decoded.role || 'candidate',
+            campus: decoded.campus || null,
+            permissions: decoded.permissions || {},
+            hasPanelMemberAccess: Boolean(decoded.hasPanelMemberAccess),
+            profile: decoded.profile || {},
+            ...baseData
+          }
+        });
+      }
+
+      const srsDb = await getSRSDb();
+      let targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) && !/^\d{10}$/.test(username) ? username : null);
+      if (targetEmp && /^\d{10}$/.test(targetEmp)) targetEmp = null;
+
+      const lookupPhone = decoded.phone || crmUser?.phone || (/^\d{10}$/.test(username) ? username : null);
+
+      if (!targetEmp && (email || decoded.email || lookupPhone || crmUser?.hrms_id)) {
+        try {
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const hrmsConds = [];
+            if (email || decoded.email) hrmsConds.push({ email: email || decoded.email });
+            if (lookupPhone) {
+              hrmsConds.push({ phone: lookupPhone });
+              hrmsConds.push({ phone_number: lookupPhone });
+              hrmsConds.push({ mobile: lookupPhone });
+            }
+            if (crmUser?.hrms_id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                hrmsConds.push({ _id: new ObjectId(crmUser.hrms_id) });
+              } catch (_) {}
+            }
+            if (hrmsConds.length > 0) {
+              const hrmsEmp = await hrmsDb.collection('employees').findOne({ $or: hrmsConds });
+              if (hrmsEmp) {
+                if (hrmsEmp.emp_no) targetEmp = String(hrmsEmp.emp_no).trim();
+                if (hrmsEmp.employee_name && (!username || /^\d{10}$/.test(username))) {
+                  username = hrmsEmp.employee_name;
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (srsDb && (identifier || targetEmp || username || decoded.userId || email)) {
+        const orConditions = [];
+        if (decoded.userId) {
+          try {
+            const { ObjectId } = await import('mongodb');
+            orConditions.push({ _id: new ObjectId(decoded.userId) });
+          } catch (_) {}
+        }
+        if (email || decoded.email) {
+          orConditions.push({ email: (email || decoded.email).toLowerCase() });
+          orConditions.push({ email: email || decoded.email });
+        }
+        if (targetEmp) {
+          orConditions.push({ employeeId: targetEmp });
+        }
+        if (identifier && identifier.includes('@')) {
+          orConditions.push({ email: identifier.toLowerCase() });
+        }
+        if (identifier && !identifier.includes('@')) {
+          orConditions.push({ name: identifier });
+        }
+        if (username && username !== identifier) {
+          orConditions.push({ name: username });
+        }
+        if (lookupPhone) {
+          orConditions.push({ 'profile.phone': lookupPhone });
+        }
+
+        const srsUser = await srsDb.collection('users').findOne({
+          $or: orConditions,
+          $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+        });
+
+        if (srsUser) {
+          console.log(`[VerifyToken] SRS lookup: resolved to user _id=${srsUser._id}, name=${srsUser.name}, role=${srsUser.role}`);
+          return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            valid: true,
+            data: {
+              userId: srsUser._id.toString(),
+              name: srsUser.name,
+              username: srsUser.email || srsUser.name,
+              email: srsUser.email,
+              employeeId: srsUser.employeeId || targetEmp || null,
+              empNo: srsUser.employeeId || targetEmp || null,
+              role: srsUser.role || 'candidate',
+              campus: srsUser.campus || null,
+              permissions: srsUser.permissions || {},
+              hasPanelMemberAccess: Boolean(srsUser.hasPanelMemberAccess),
+              profile: srsUser.profile || {},
+              isActive: srsUser.isActive !== false,
+              ...baseData
+            }
+          });
+        }
+      }
+
+      // Default/auto-provision payload if valid user coming from HRMS/CRM
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: String(decoded.userId),
+          name: crmUser?.name || decoded.name || username,
+          username: username,
+          email: email || decoded.email || null,
+          employeeId: targetEmp || null,
+          empNo: targetEmp || null,
+          role: crmUser?.role || decoded.role || 'candidate',
+          campus: null,
+          permissions: {},
+          hasPanelMemberAccess: false,
+          profile: { phone: lookupPhone || null },
+          isActive: true,
+          ...baseData
+        }
+      });
+    }
+
     // 7. For Academic Portal: return verified user details (userId, role, email, employeeId, expiresAt)
     if (decoded.portalId === PORTAL_IDS.ACADEMIC_PORTAL) {
       // Prevent replay attacks (one-time token use)
@@ -1126,7 +1267,9 @@ export const switchPortal = async (req, res, next) => {
       'admissions-crm': 'admissions_db',
       'admissions': 'admissions_db',
       'examination-portal': 'examination_portal',
-      'ems': 'examination_portal'
+      'ems': 'examination_portal',
+      'staff-recruitment': 'srs',
+      'srs': 'srs'
     };
 
     if (!resolvedDatabaseSource && currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) {
@@ -1309,7 +1452,9 @@ export const getUserPortals = async (req, res, next) => {
       'admissions-crm': 'admissions_db',
       'admissions': 'admissions_db',
       'examination-portal': 'examination_portal',
-      'ems': 'examination_portal'
+      'ems': 'examination_portal',
+      'staff-recruitment': 'srs',
+      'srs': 'srs'
     };
 
     if (token) {

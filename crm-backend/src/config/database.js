@@ -25,6 +25,8 @@ let feeMongoClient = null;
 let feeMongoDb = null;
 let stationaryMongoClient = null;
 let stationaryMongoDb = null;
+let srsMongoClient = null;
+let srsMongoDb = null;
 
 /**
  * Create MySQL connection pool for student database
@@ -493,6 +495,43 @@ export const getStationaryDb = async () => {
   return connectStationaryMongo();
 };
 
+/**
+ * Connect to Staff Recruitment System (SRS) MongoDB (optional; when SRS_MONGO_URI or STAFF_RECRUITMENT_MONGO_URI is set)
+ * @returns {Promise<import('mongodb').Db|null>} SRS db instance or null
+ */
+export const connectSRSMongo = async () => {
+  const uri = process.env.SRS_MONGO_URI || process.env.STAFF_RECRUITMENT_MONGO_URI || process.env.SRS_MONGO_URL;
+  if (!uri) {
+    return null;
+  }
+  if (srsMongoClient) {
+    return srsMongoDb;
+  }
+  try {
+    srsMongoClient = new MongoClient(uri);
+    await srsMongoClient.connect();
+    srsMongoDb = srsMongoClient.db();
+    console.log('✅ Staff Recruitment System (SRS) MongoDB connection established');
+    return srsMongoDb;
+  } catch (error) {
+    console.error('❌ SRS MongoDB connection error:', error.message);
+    srsMongoClient = null;
+    srsMongoDb = null;
+    return null;
+  }
+};
+
+/**
+ * Get SRS MongoDB db instance (lazy connect if URI is set)
+ * @returns {Promise<import('mongodb').Db|null>} SRS db or null if not configured
+ */
+export const getSRSDb = async () => {
+  if (srsMongoDb) {
+    return srsMongoDb;
+  }
+  return connectSRSMongo();
+};
+
 export default {
   createPool,
   createStudentPool,
@@ -509,6 +548,8 @@ export default {
   getFeeDb,
   connectStationaryMongo,
   getStationaryDb,
+  connectSRSMongo,
+  getSRSDb,
   getPool,
   getStudentPool,
   getAdmissionsPool,

@@ -53,8 +53,11 @@ const productionOrigins = [
   'https://academic.pydah.edu.in',           // Production Academic Portal
   'https://ems.pydah.edu.in',                // Production Examination Management System
   'https://stationary.pydah.edu.in',         // Production Stationary Management
+  'https://srs.pydah.edu.in',                // Production Staff Recruitment System
   'http://localhost:5176',                   // Local Stationary frontend
-  'http://localhost:5177'                    // Local dev port
+  'http://localhost:5177',                   // Local dev port
+  'http://localhost:5178',                   // Local SRS frontend
+  'http://localhost:5001'                    // Local SRS backend
 ];
 
 // Combine and remove duplicates

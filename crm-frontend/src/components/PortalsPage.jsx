@@ -86,6 +86,15 @@ const portalDetails = [
         image: '/Gemini_Generated_Image_xuaavlxuaavlxuaa.webp',
         url: 'https://transport.pydah.edu.in/login',
         portalId: 'transport-management'
+    },
+    {
+        title: 'Staff Recruitment System',
+        category: 'Hiring & Talent Acquisition',
+        description: 'Faculty and staff recruitment pipeline, panel interviews, candidate screening, and hiring approvals.',
+        color: '#0891b2',
+        image: '/Pastel Productivity Dashboard Hero Scene.webp',
+        url: 'https://srs.pydah.edu.in/login',
+        portalId: 'staff-recruitment'
     }
 ];
 

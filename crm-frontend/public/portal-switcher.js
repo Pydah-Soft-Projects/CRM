@@ -98,6 +98,15 @@
       color: '#4f46e5',
       url: 'https://stationary.pydah.edu.in/login',
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`
+    },
+    {
+      id: 'staff-recruitment',
+      title: 'Staff Recruitment',
+      category: 'Hiring & HR',
+      description: 'Staff recruitment pipeline, candidate screening, panel interviews, and hiring approvals.',
+      color: '#0891b2',
+      url: 'https://srs.pydah.edu.in/login',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>`
     }
   ];
 
@@ -173,7 +182,7 @@
     }
 
     // 2. Check common token storage keys
-    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken', 'transport_token', 'transportToken', 'fee_token', 'feeToken'];
+    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken', 'transport_token', 'transportToken', 'fee_token', 'feeToken', 'srs_token', 'srsToken'];
     for (const key of tokenKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val && typeof val === 'string' && val.length > 20) {
@@ -183,7 +192,7 @@
     }
 
     // 3. Check common user storage keys (including HRMS and portal-specific variants)
-    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser', 'transport_user', 'transportUser', 'fee_user', 'feeUser'];
+    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser', 'transport_user', 'transportUser', 'fee_user', 'feeUser', 'srs_user', 'srsUser'];
     for (const key of userKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val) {
@@ -1688,6 +1697,7 @@
         else if (host.includes('transport')) portalAttr = 'transport-management';
         else if (host.includes('hms') || host.includes('hostel')) portalAttr = 'hostel-automation';
         else if (host.includes('station')) portalAttr = 'stationary-management';
+        else if (host.includes('srs') || host.includes('recruit')) portalAttr = 'staff-recruitment';
       }
 
       const portalMeta = PORTAL_REGISTRY.find(p => p.id === portalAttr) || {

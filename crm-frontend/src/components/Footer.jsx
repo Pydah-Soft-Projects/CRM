@@ -20,7 +20,8 @@ const Footer = ({ onOpenInstall }) => {
         { name: 'Transport Hub', id: 'transport-management' },
         { name: 'HRMS & Payroll', id: 'hrms' },
         { name: 'Hostel Automation', id: 'hostel-automation' },
-        { name: 'Stationary Management', id: 'stationary-management' }
+        { name: 'Stationary Management', id: 'stationary-management' },
+        { name: 'Staff Recruitment', id: 'staff-recruitment' }
     ];
 
     const socialLinks = [
