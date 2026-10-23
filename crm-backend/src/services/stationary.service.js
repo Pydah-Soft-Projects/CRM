@@ -28,14 +28,15 @@ export const validateStationaryCredentials = async (username, password) => {
 
   try {
     console.log(`[Auth-Stationary] Checking subadmins collection for: ${identifier}`);
-    // Check by name (login ID) or empNo (case-insensitive regex for name, exact/regex for empNo)
-    let subAdmin = await subAdminCol.findOne({
-      $or: [
-        { name: identifier },
-        { name: { $regex: new RegExp(`^${identifier}$`, 'i') } },
-        { empNo: identifier }
-      ]
-    });
+    const orLoginConds = [
+      { name: identifier },
+      { name: { $regex: new RegExp(`^${identifier}$`, 'i') } },
+      { empNo: identifier }
+    ];
+    if (/^\d+$/.test(identifier)) {
+      orLoginConds.push({ empNo: Number(identifier) });
+    }
+    let subAdmin = await subAdminCol.findOne({ $or: orLoginConds });
 
     // Secondary fallback: check 'users' collection if present
     if (!subAdmin) {
@@ -99,16 +100,52 @@ export const getStationarySubAdminById = async (userId) => {
   const db = await getStationaryDb();
   if (!db) return null;
 
+  let subAdmin = null;
   try {
-    const { ObjectId } = await import('mongodb');
-    let subAdmin = null;
-    try {
-      subAdmin = await db.collection('subadmins').findOne({ _id: new ObjectId(userId) });
-    } catch (_) {}
+    const rawId = String(userId).trim();
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(rawId);
+
+    if (isObjectId) {
+      try {
+        const { ObjectId } = await import('mongodb');
+        subAdmin = await db.collection('subadmins').findOne({ _id: new ObjectId(rawId) });
+      } catch (_) {}
+    }
 
     if (!subAdmin) {
+      const orConds = [
+        { empNo: rawId },
+        { name: rawId },
+        { username: rawId },
+        { email: rawId.toLowerCase() }
+      ];
+      if (/^\d+$/.test(rawId)) {
+        orConds.push({ empNo: Number(rawId) });
+      }
       try {
-        subAdmin = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+        subAdmin = await db.collection('subadmins').findOne({ $or: orConds });
+      } catch (_) {}
+    }
+
+    if (!subAdmin && isObjectId) {
+      try {
+        const { ObjectId } = await import('mongodb');
+        subAdmin = await db.collection('users').findOne({ _id: new ObjectId(rawId) });
+      } catch (_) {}
+    }
+
+    if (!subAdmin) {
+      const orConds = [
+        { empNo: rawId },
+        { name: rawId },
+        { username: rawId },
+        { email: rawId.toLowerCase() }
+      ];
+      if (/^\d+$/.test(rawId)) {
+        orConds.push({ empNo: Number(rawId) });
+      }
+      try {
+        subAdmin = await db.collection('users').findOne({ $or: orConds });
       } catch (_) {}
     }
 

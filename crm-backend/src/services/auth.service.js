@@ -396,23 +396,40 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       if ((!rollOrEmp || !email) && (databaseSource === 'sams' || databaseSource === 'labour-management')) {
         try {
           const samsDb = await getSAMSDb();
-          if (samsDb && (username || user.id || user._id || email)) {
+          if (samsDb && (username || user.id || user._id || email || user.employeeId || rollOrEmp)) {
             const samsConditions = [];
-            if (user.id || user._id) {
-              try {
-                const { ObjectId } = await import('mongodb');
-                samsConditions.push({ _id: new ObjectId(user.id || user._id) });
-              } catch (_) {}
+            const rawId = String(user.id || user._id || '').trim();
+            if (rawId) {
+              if (/^[0-9a-fA-F]{24}$/.test(rawId)) {
+                try {
+                  const { ObjectId } = await import('mongodb');
+                  samsConditions.push({ _id: new ObjectId(rawId) });
+                } catch (_) {}
+              }
+              samsConditions.push({ hrmsEmployeeId: rawId });
+              samsConditions.push({ username: rawId.toLowerCase() });
             }
-            if (email) samsConditions.push({ email: email });
-            if (username) {
+            const empVal = rollOrEmp || user.employeeId;
+            if (empVal && String(empVal).trim() !== rawId) {
+              samsConditions.push({ hrmsEmployeeId: String(empVal).trim() });
+            }
+            if (email) samsConditions.push({ email: email.toLowerCase() });
+            if (username && username !== rawId) {
               samsConditions.push({ username: username.toLowerCase() });
               samsConditions.push({ displayName: username });
             }
             if (samsConditions.length > 0) {
-              const samsDoc = await samsDb.collection('systemusers').findOne({ $or: samsConditions });
+              let samsDoc = null;
+              try {
+                samsDoc = await samsDb.collection('systemusers').findOne({ $or: samsConditions });
+              } catch (_) {}
+              if (!samsDoc) {
+                try {
+                  samsDoc = await samsDb.collection('systemUsers').findOne({ $or: samsConditions });
+                } catch (_) {}
+              }
               if (samsDoc) {
-                if (samsDoc.hrmsEmployeeId && !rollOrEmp) rollOrEmp = samsDoc.hrmsEmployeeId;
+                if (samsDoc.hrmsEmployeeId && !rollOrEmp) rollOrEmp = String(samsDoc.hrmsEmployeeId).trim();
                 if (samsDoc.email && !email) email = samsDoc.email.trim().toLowerCase();
                 if (samsDoc.displayName && !user.name) user.name = samsDoc.displayName;
               }
@@ -510,29 +527,63 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       );
     }
 
-    // Check Stationary Management (checks 'subadmins' collection by name or empNo)
+    // Check Stationary Management (checks 'subadmins' and 'users' collections by name, empNo, email, or _id)
     if (!portals.has('stationary-management')) {
       checks.push(
         (async () => {
           try {
             const db = await getStationaryDb();
-            if (db && (identifier || email || rollOrEmp || user.hrms_id || user.employeeId)) {
+            if (db && (identifier || email || rollOrEmp || user.hrms_id || user.employeeId || user.id || user._id)) {
               const orConditions = [];
               if (identifier) {
                 orConditions.push({ name: identifier });
                 orConditions.push({ empNo: identifier });
+                if (/^\d+$/.test(String(identifier).trim())) {
+                  orConditions.push({ empNo: Number(identifier) });
+                }
               }
               if (rollOrEmp) {
-                orConditions.push({ empNo: rollOrEmp });
-                orConditions.push({ name: rollOrEmp });
+                const sEmp = String(rollOrEmp).trim();
+                orConditions.push({ empNo: sEmp });
+                orConditions.push({ name: sEmp });
+                if (/^\d+$/.test(sEmp)) {
+                  orConditions.push({ empNo: Number(sEmp) });
+                }
+              }
+              if (email) {
+                orConditions.push({ email: email.toLowerCase() });
+                orConditions.push({ email: email });
               }
               if (user.hrms_id) {
-                orConditions.push({ empNo: user.hrms_id });
+                orConditions.push({ empNo: String(user.hrms_id).trim() });
+                if (/^\d+$/.test(String(user.hrms_id).trim())) {
+                  orConditions.push({ empNo: Number(user.hrms_id) });
+                }
               }
               if (user.employeeId && user.employeeId !== rollOrEmp) {
-                orConditions.push({ empNo: user.employeeId });
+                const eId = String(user.employeeId).trim();
+                orConditions.push({ empNo: eId });
+                if (/^\d+$/.test(eId)) {
+                  orConditions.push({ empNo: Number(eId) });
+                }
               }
-              const subAdmin = await db.collection('subadmins').findOne({ $or: orConditions });
+              if (user.name) {
+                orConditions.push({ name: user.name });
+              }
+              const rawUid = String(user.id || user._id || '').trim();
+              if (rawUid && /^[0-9a-fA-F]{24}$/.test(rawUid)) {
+                try {
+                  const { ObjectId } = await import('mongodb');
+                  orConditions.push({ _id: new ObjectId(rawUid) });
+                } catch (_) {}
+              }
+
+              let subAdmin = await db.collection('subadmins').findOne({ $or: orConditions });
+              if (!subAdmin) {
+                try {
+                  subAdmin = await db.collection('users').findOne({ $or: orConditions });
+                } catch (_) {}
+              }
               if (subAdmin) portals.add('stationary-management');
             }
           } catch (e) {

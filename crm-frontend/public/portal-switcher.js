@@ -246,7 +246,7 @@
     }
 
     // 2. Check common token storage keys
-    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken', 'transport_token', 'transportToken', 'fee_token', 'feeToken', 'srs_token', 'srsToken', 'sams_token', 'samsToken'];
+    const tokenKeys = ['accessToken', 'token', 'jwt', 'authToken', 'crmAccessToken', 'auth_token', 'hrms_token', 'hrmsToken', 'transport_token', 'transportToken', 'fee_token', 'feeToken', 'srs_token', 'srsToken', 'sams_token', 'samsToken', 'stationary_token', 'stationaryToken'];
     for (const key of tokenKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val && typeof val === 'string' && val.length > 20) {
@@ -256,7 +256,7 @@
     }
 
     // 3. Check common user storage keys (including HRMS and portal-specific variants)
-    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser', 'transport_user', 'transportUser', 'fee_user', 'feeUser', 'srs_user', 'srsUser', 'sams_user', 'samsUser'];
+    const userKeys = ['user', 'currentUser', 'studentUser', 'auth_user', 'profile', 'employee', 'userData', 'userInfo', 'hrms_user', 'hrmsUser', 'transport_user', 'transportUser', 'fee_user', 'feeUser', 'srs_user', 'srsUser', 'sams_user', 'samsUser', 'subadmin', 'subAdmin', 'stationary_user', 'stationaryUser'];
     for (const key of userKeys) {
       const val = localStorage.getItem(key) || sessionStorage.getItem(key) || getCookie(key);
       if (val) {
@@ -264,8 +264,13 @@
           user = typeof val === 'object' ? val : JSON.parse(val);
           if (user && typeof user === 'object') {
             if (!user.employeeId && user.emp_no) user.employeeId = user.emp_no;
+            if (!user.employeeId && user.hrmsEmployeeId) user.employeeId = user.hrmsEmployeeId;
+            if (!user.employeeId && user.empNo) user.employeeId = user.empNo;
             if (!user.username && user.emp_no) user.username = user.emp_no;
+            if (!user.username && user.hrmsEmployeeId) user.username = user.hrmsEmployeeId;
+            if (!user.username && user.empNo) user.username = user.empNo;
             if (!user.name && user.employee_name) user.name = user.employee_name;
+            if (!user.name && user.displayName) user.name = user.displayName;
             if (!user.phone && user.mobile) user.phone = user.mobile;
             break;
           }
@@ -296,7 +301,7 @@
           phone: decoded.phone || decoded.mobile || user?.phone || user?.mobile,
           role: decoded.role || user?.role || 'user',
           portals: decoded.portals || user?.portals || portals || [],
-          employeeId: decoded.employeeId || user?.employeeId,
+          employeeId: decoded.employeeId || decoded.hrmsEmployeeId || decoded.empNo || user?.employeeId,
           databaseSource: decoded.databaseSource || user?.databaseSource,
           ...user
         };

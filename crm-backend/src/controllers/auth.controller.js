@@ -715,7 +715,7 @@ export const verifyToken = async (req, res, next) => {
     }
 
     // 6.5 For Stationary Management portal: resolve to SubAdmin in Stationary MongoDB (subadmins collection)
-    if (decoded.portalId === PORTAL_IDS.STATIONARY_MANAGEMENT) {
+    if (decoded.portalId === PORTAL_IDS.STATIONARY_MANAGEMENT || decoded.portalId === 'stationary') {
       if (decoded.databaseSource === 'stationary') {
         return res.status(HTTP_STATUS.OK).json({
           success: true,
@@ -738,6 +738,9 @@ export const verifyToken = async (req, res, next) => {
       const stationaryDb = await getStationaryDb();
       let targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) && !/^\d{10}$/.test(username) ? username : null);
       if (targetEmp && /^\d{10}$/.test(targetEmp)) targetEmp = null;
+      if (!targetEmp && decoded.userId && /^\d+$/.test(String(decoded.userId)) && !/^\d{10}$/.test(String(decoded.userId))) {
+        targetEmp = String(decoded.userId);
+      }
 
       const lookupPhone = decoded.phone || crmUser?.phone || (/^\d{10}$/.test(username) ? username : null);
 
@@ -771,22 +774,39 @@ export const verifyToken = async (req, res, next) => {
         } catch (_) {}
       }
 
-      if (stationaryDb && (identifier || targetEmp || username || decoded.userId)) {
+      if (stationaryDb && (identifier || targetEmp || username || decoded.userId || email || decoded.email)) {
         const orConditions = [];
         if (identifier) orConditions.push({ name: identifier });
         if (username && username !== identifier) orConditions.push({ name: username });
-        if (targetEmp) {
-          orConditions.push({ empNo: targetEmp });
-          orConditions.push({ name: targetEmp });
+        if (crmUser?.name && crmUser.name !== username) orConditions.push({ name: crmUser.name });
+        if (decoded.name && decoded.name !== username) orConditions.push({ name: decoded.name });
+        if (email || decoded.email) {
+          const em = (email || decoded.email).toLowerCase();
+          orConditions.push({ email: em });
+          orConditions.push({ email: email || decoded.email });
         }
-        if (decoded.userId) {
+        if (targetEmp) {
+          orConditions.push({ empNo: String(targetEmp).trim() });
+          if (/^\d+$/.test(String(targetEmp).trim())) {
+            orConditions.push({ empNo: Number(targetEmp) });
+          }
+          orConditions.push({ name: String(targetEmp).trim() });
+        }
+        const rawUid = String(decoded.userId).trim();
+        if (rawUid && /^[0-9a-fA-F]{24}$/.test(rawUid)) {
           try {
             const { ObjectId } = await import('mongodb');
-            orConditions.push({ _id: new ObjectId(decoded.userId) });
+            orConditions.push({ _id: new ObjectId(rawUid) });
           } catch (_) {}
         }
 
-        const subAdmin = await stationaryDb.collection('subadmins').findOne({ $or: orConditions });
+        let subAdmin = await stationaryDb.collection('subadmins').findOne({ $or: orConditions });
+        if (!subAdmin) {
+          try {
+            subAdmin = await stationaryDb.collection('users').findOne({ $or: orConditions });
+          } catch (_) {}
+        }
+
         if (subAdmin) {
           console.log(`[VerifyToken] Stationary lookup: resolved to subAdmin _id=${subAdmin._id}, name=${subAdmin.name}`);
           return res.status(HTTP_STATUS.OK).json({
@@ -1401,7 +1421,7 @@ export const switchPortal = async (req, res, next) => {
             resolvedUsername = payload.username || payload.name;
             resolvedEmail = payload.email;
             resolvedRole = payload.role || 'user';
-            resolvedEmployeeId = payload.employeeId || payload.emp_no;
+            resolvedEmployeeId = payload.employeeId || payload.emp_no || payload.hrmsEmployeeId;
             if (Array.isArray(payload.portals)) resolvedPortals = payload.portals;
           }
         } catch (_) {}
@@ -1419,7 +1439,7 @@ export const switchPortal = async (req, res, next) => {
       if (Array.isArray(bodyUser.portals) && bodyUser.portals.length > 0) {
         resolvedPortals = bodyUser.portals;
       }
-      if (!resolvedEmployeeId) resolvedEmployeeId = bodyUser.employeeId || bodyUser.emp_no || bodyUser.rollNumber;
+      if (!resolvedEmployeeId) resolvedEmployeeId = bodyUser.hrmsEmployeeId || bodyUser.employeeId || bodyUser.emp_no || bodyUser.rollNumber || bodyUser.empNo;
       if (!resolvedUsername && resolvedEmployeeId) resolvedUsername = resolvedEmployeeId;
       if (!resolvedUsername && !resolvedEmployeeId) resolvedUsername = bodyUser.name;
       if (!resolvedPhone && resolvedUsername && /^\d{10}$/.test(resolvedUsername)) {
@@ -1427,6 +1447,9 @@ export const switchPortal = async (req, res, next) => {
       }
       if (!resolvedEmployeeId && resolvedUsername && /^\d+$/.test(resolvedUsername) && !/^\d{10}$/.test(resolvedUsername)) {
         resolvedEmployeeId = resolvedUsername;
+      }
+      if (!resolvedEmployeeId && resolvedUserId && /^\d+$/.test(String(resolvedUserId)) && !/^\d{10}$/.test(String(resolvedUserId))) {
+        resolvedEmployeeId = String(resolvedUserId);
       }
     }
 
@@ -1503,6 +1526,55 @@ export const switchPortal = async (req, res, next) => {
     let targetUserId = resolvedUserId || resolvedEmail || resolvedUsername;
     let targetDatabaseSource = resolvedDatabaseSource || 'rbac_users';
 
+    if ((targetPortalId === PORTAL_IDS.STATIONARY_MANAGEMENT || targetPortalId === 'stationary') && !isMasterAdmin) {
+      try {
+        const stationaryDb = await getStationaryDb();
+        if (stationaryDb) {
+          const targetEmp = resolvedEmployeeId || (/^\d+$/.test(resolvedUsername) ? resolvedUsername : null);
+          const orConds = [];
+          if (resolvedEmail) {
+            orConds.push({ email: resolvedEmail.toLowerCase() });
+            orConds.push({ email: resolvedEmail });
+          }
+          if (targetEmp) {
+            orConds.push({ empNo: String(targetEmp).trim() });
+            if (/^\d+$/.test(String(targetEmp).trim())) {
+              orConds.push({ empNo: Number(targetEmp) });
+            }
+            orConds.push({ name: String(targetEmp).trim() });
+          }
+          if (resolvedUsername) {
+            orConds.push({ name: resolvedUsername });
+            orConds.push({ username: resolvedUsername });
+          }
+          if (userToDiscover.name) {
+            orConds.push({ name: userToDiscover.name });
+          }
+          if (resolvedUserId && /^[0-9a-fA-F]{24}$/.test(String(resolvedUserId))) {
+            try {
+              const { ObjectId } = await import('mongodb');
+              orConds.push({ _id: new ObjectId(resolvedUserId) });
+            } catch (_) {}
+          }
+          if (orConds.length > 0) {
+            let sAdmin = await stationaryDb.collection('subadmins').findOne({ $or: orConds });
+            if (!sAdmin) {
+              try {
+                sAdmin = await stationaryDb.collection('users').findOne({ $or: orConds });
+              } catch (_) {}
+            }
+            if (sAdmin) {
+              targetUserId = sAdmin._id.toString();
+              targetRole = sAdmin.role || 'Editor';
+              targetDatabaseSource = 'stationary';
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[switchPortal] Stationary user resolution error:', err.message);
+      }
+    }
+
     if (targetPortalId === PORTAL_IDS.STUDENT_PORTAL && !isMasterAdmin) {
       // Resolve user's actual local role in Student Portal to prevent Admissions role leakage
       let resolvedStudentUser = null;
@@ -1565,7 +1637,7 @@ export const switchPortal = async (req, res, next) => {
     );
 
     // 6. Build target redirect URL
-    const portalMeta = PORTAL_METADATA[targetPortalId];
+    const portalMeta = PORTAL_METADATA[targetPortalId] || (targetPortalId === 'stationary' ? PORTAL_METADATA[PORTAL_IDS.STATIONARY_MANAGEMENT] : null);
     let baseUrl = portalMeta ? portalMeta.url : 'https://crm.pydah.edu.in';
 
     // Special logic for Student Portal (staff vs student entrypoint)
@@ -1635,7 +1707,9 @@ export const getUserPortals = async (req, res, next) => {
       'examination-portal': 'examination_portal',
       'ems': 'examination_portal',
       'staff-recruitment': 'srs',
-      'srs': 'srs'
+      'srs': 'srs',
+      'sams': 'sams',
+      'labour-management': 'sams'
     };
 
     if (token) {
@@ -1659,6 +1733,13 @@ export const getUserPortals = async (req, res, next) => {
           }
         } catch (_) {}
       }
+    }
+
+    if (!userObj.employeeId && userObj.hrmsEmployeeId) userObj.employeeId = userObj.hrmsEmployeeId;
+    if (!userObj.employeeId && userObj.empNo) userObj.employeeId = userObj.empNo;
+    if (!userObj.employeeId && userObj.emp_no) userObj.employeeId = userObj.emp_no;
+    if (!userObj.employeeId && userObj.userId && /^\d+$/.test(String(userObj.userId)) && !/^\d{10}$/.test(String(userObj.userId))) {
+      userObj.employeeId = String(userObj.userId);
     }
 
     const resolvedDbSource = userObj.databaseSource || (currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) || currentPortalId;

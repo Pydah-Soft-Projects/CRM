@@ -109,13 +109,20 @@ export const getSAMSUserById = async (userId) => {
   if (!db) return null;
 
   try {
-    if (!/^[0-9a-fA-F]{24}$/.test(userId)) return null;
-    const objId = new ObjectId(userId);
     const col = await getSystemUsersCollection(db);
+    const orConditions = [];
+
+    if (/^[0-9a-fA-F]{24}$/.test(String(userId))) {
+      try {
+        orConditions.push({ _id: new ObjectId(String(userId)) });
+      } catch (_) {}
+    }
+    orConditions.push({ hrmsEmployeeId: String(userId).trim() });
+    orConditions.push({ username: String(userId).trim().toLowerCase() });
 
     const user = await col.findOne({
-      _id: objId,
-      $or: [{ isActive: true }, { isActive: { $exists: false } }]
+      $or: orConditions,
+      $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
     });
 
     if (user) {
