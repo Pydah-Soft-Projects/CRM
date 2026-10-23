@@ -220,7 +220,9 @@ export const PORTAL_IDS = {
   'https://stationary.pydah.edu.in': 'stationary-management',
   'https://stationary.pydah.edu.in/login': 'stationary-management',
   'https://srs.pydah.edu.in': 'staff-recruitment',
-  'https://srs.pydah.edu.in/login': 'staff-recruitment'
+  'https://srs.pydah.edu.in/login': 'staff-recruitment',
+  'https://sams.pydah.edu.in': 'sams',
+  'https://sams.pydah.edu.in/login': 'sams'
 };
 
 /**

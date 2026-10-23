@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen, UserPlus } from 'lucide-react';
+import { Menu, X, ChevronDown, Users, Home, ClipboardCheck, UserCircle, CreditCard, Box, Layout, Bus, ReceiptText, LogOut, User, BookOpen, UserPlus, UserCheck } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -84,6 +84,14 @@ const solutions = [
     icon: UserPlus,
     color: '#0891b2',
     portalId: 'staff-recruitment'
+  },
+  {
+    title: 'Labour Management (SAMS)',
+    desc: 'Labour attendance tracking, gate access control, and shift logs.',
+    url: 'https://sams.pydah.edu.in/login',
+    icon: UserCheck,
+    color: '#0f766e',
+    portalId: 'sams'
   }
 ];
 

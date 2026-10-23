@@ -54,10 +54,13 @@ const productionOrigins = [
   'https://ems.pydah.edu.in',                // Production Examination Management System
   'https://stationary.pydah.edu.in',         // Production Stationary Management
   'https://srs.pydah.edu.in',                // Production Staff Recruitment System
+  'https://sams.pydah.edu.in',               // Production SAMS (Labour Management)
   'http://localhost:5176',                   // Local Stationary frontend
   'http://localhost:5177',                   // Local dev port
   'http://localhost:5178',                   // Local SRS frontend
-  'http://localhost:5001'                    // Local SRS backend
+  'http://localhost:5001',                   // Local SRS backend
+  'http://localhost:5179',                   // Local SAMS frontend
+  'http://localhost:5002'                    // Local SAMS backend
 ];
 
 // Combine and remove duplicates

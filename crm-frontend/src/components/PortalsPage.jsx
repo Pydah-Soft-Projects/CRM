@@ -95,6 +95,15 @@ const portalDetails = [
         image: '/Pastel Productivity Dashboard Hero Scene.webp',
         url: 'https://srs.pydah.edu.in/login',
         portalId: 'staff-recruitment'
+    },
+    {
+        title: 'Labour Management (SAMS)',
+        category: 'Workforce & Operations',
+        description: 'Labour attendance tracking, gate access control, shift scanning, and workforce management.',
+        color: '#0f766e',
+        image: '/Gemini_Generated_Image_87w73787w73787w7.webp',
+        url: 'https://sams.pydah.edu.in/login',
+        portalId: 'sams'
     }
 ];
 

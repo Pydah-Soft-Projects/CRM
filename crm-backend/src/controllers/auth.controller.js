@@ -6,6 +6,7 @@ import {
   validateCredentialsForFee,
   validateCredentialsForStationary,
   validateCredentialsForSRS,
+  validateCredentialsForSAMS,
   generatePortalToken, 
   getCRMUserForVerify,
   discoverUserPortals
@@ -19,7 +20,7 @@ import { findRBACUserByIdentifier, findRBACUserById, findRBACUserByHrmsId, findR
 import { findStudentByUsername, findStudentById } from '../models/student.model.js';
 import { findAcademicUser } from '../models/academic.model.js';
 import { findExaminationUser } from '../models/examination.model.js';
-import { getFeeDb, getStationaryDb, getSRSDb } from '../config/database.js';
+import { getFeeDb, getStationaryDb, getSRSDb, getSAMSDb } from '../config/database.js';
 import { decryptToken } from '../services/encryption.service.js';
 import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, TOKEN_TYPES, PORTAL_IDS, PORTAL_METADATA } from '../config/constants.js';
 
@@ -82,6 +83,8 @@ export const login = async (req, res, next) => {
       user = await validateCredentialsForStationary(username, password);
     } else if (portalId === PORTAL_IDS.STAFF_RECRUITMENT) {
       user = await validateCredentialsForSRS(username, password);
+    } else if (portalId === PORTAL_IDS.SAMS || portalId === 'sams' || portalId === 'labour-management') {
+      user = await validateCredentialsForSAMS(username, password);
     } else {
       user = await validateCredentials(username, password, role);
     }
@@ -959,6 +962,116 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
+    // 6.7. For SAMS (Labour Management): Resolve SystemUser from SAMS MongoDB or provide auto-provision payload
+    if (
+      decoded.portalId === PORTAL_IDS.SAMS ||
+      decoded.portalId === 'sams' ||
+      decoded.portalId === 'labour-management'
+    ) {
+      const tokenKey = `${decoded.userId}_${decoded.iat}_${decoded.portalId}`;
+      if (isTokenUsed(tokenKey)) {
+        console.warn(`[VerifyToken] SAMS token already used: ${tokenKey}`);
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          valid: false,
+          message: 'Invalid or expired token'
+        });
+      }
+      markTokenUsed(tokenKey, decoded.exp * 1000);
+
+      let samsDb = null;
+      try {
+        samsDb = await getSAMSDb();
+      } catch (err) {
+        console.warn('[VerifyToken] SAMS DB connection error:', err.message);
+      }
+
+      if (samsDb && (identifier || targetEmp || username || decoded.userId || email)) {
+        const orConditions = [];
+        if (decoded.userId) {
+          try {
+            const { ObjectId } = await import('mongodb');
+            orConditions.push({ _id: new ObjectId(decoded.userId) });
+          } catch (_) {}
+        }
+        if (targetEmp) {
+          orConditions.push({ hrmsEmployeeId: targetEmp });
+        }
+        if (email || decoded.email) {
+          orConditions.push({ email: (email || decoded.email).toLowerCase() });
+          orConditions.push({ email: email || decoded.email });
+        }
+        if (username) {
+          orConditions.push({ username: username.toLowerCase() });
+          orConditions.push({ displayName: username });
+        }
+        if (identifier && identifier !== username) {
+          orConditions.push({ username: identifier.toLowerCase() });
+          orConditions.push({ displayName: identifier });
+        }
+
+        const samsCol = samsDb.collection('systemusers');
+        const samsUser = await samsCol.findOne({
+          $or: orConditions,
+          $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+        });
+
+        if (samsUser) {
+          console.log(`[VerifyToken] SAMS lookup: resolved to user _id=${samsUser._id}, username=${samsUser.username}, isSuperAdmin=${samsUser.isSuperAdmin}`);
+          return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            valid: true,
+            data: {
+              userId: samsUser._id.toString(),
+              username: samsUser.username,
+              name: samsUser.displayName || samsUser.username,
+              displayName: samsUser.displayName,
+              email: samsUser.email || email,
+              hrmsEmployeeId: samsUser.hrmsEmployeeId || targetEmp || null,
+              employeeId: samsUser.hrmsEmployeeId || targetEmp || null,
+              empNo: samsUser.hrmsEmployeeId || targetEmp || null,
+              role: samsUser.isSuperAdmin ? 'super_admin' : (decoded.role || 'operator'),
+              isSuperAdmin: Boolean(samsUser.isSuperAdmin),
+              systemRoleId: samsUser.systemRoleId ? samsUser.systemRoleId.toString() : null,
+              divisionIds: (samsUser.divisionIds || []).map(id => id.toString()),
+              gateIds: (samsUser.gateIds || []).map(id => id.toString()),
+              departmentIds: (samsUser.departmentIds || []).map(id => id.toString()),
+              allowedLocationIds: (samsUser.allowedLocationIds || []).map(id => id.toString()),
+              gateAccessModes: samsUser.gateAccessModes || {},
+              departmentAccessModes: samsUser.departmentAccessModes || {},
+              isActive: samsUser.isActive !== false,
+              ...baseData
+            }
+          });
+        }
+      }
+
+      // Default/auto-provision payload if valid user coming from HRMS/CRM
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        valid: true,
+        data: {
+          userId: String(decoded.userId),
+          username: username || (email ? email.split('@')[0] : targetEmp) || 'user',
+          name: crmUser?.name || decoded.name || username,
+          displayName: crmUser?.name || decoded.name || username,
+          email: email || decoded.email || null,
+          hrmsEmployeeId: targetEmp || null,
+          employeeId: targetEmp || null,
+          empNo: targetEmp || null,
+          role: decoded.role || 'operator',
+          isSuperAdmin: false,
+          systemRoleId: null,
+          divisionIds: [],
+          gateIds: [],
+          departmentIds: [],
+          allowedLocationIds: [],
+          isActive: true,
+          ...baseData
+        }
+      });
+    }
+
     // 7. For Academic Portal: return verified user details (userId, role, email, employeeId, expiresAt)
     if (decoded.portalId === PORTAL_IDS.ACADEMIC_PORTAL) {
       // Prevent replay attacks (one-time token use)
@@ -1269,7 +1382,9 @@ export const switchPortal = async (req, res, next) => {
       'examination-portal': 'examination_portal',
       'ems': 'examination_portal',
       'staff-recruitment': 'srs',
-      'srs': 'srs'
+      'srs': 'srs',
+      'sams': 'sams',
+      'labour-management': 'sams'
     };
 
     if (!resolvedDatabaseSource && currentPortalId && PORTAL_TO_DB_SOURCE[currentPortalId]) {

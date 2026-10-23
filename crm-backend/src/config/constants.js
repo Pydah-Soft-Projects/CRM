@@ -18,7 +18,9 @@ export const PORTAL_IDS = {
   ACADEMIC_PORTAL: 'academic-portal',
   EXAMINATION_PORTAL: 'examination-portal',
   STATIONARY_MANAGEMENT: 'stationary-management',
-  STAFF_RECRUITMENT: 'staff-recruitment'
+  STAFF_RECRUITMENT: 'staff-recruitment',
+  SAMS: 'sams',
+  LABOUR_MANAGEMENT: 'sams'
 };
 
 export const PORTAL_METADATA = {
@@ -101,6 +103,14 @@ export const PORTAL_METADATA = {
     description: 'Faculty and staff recruitment pipeline, panel interviews, candidate screening, and hiring approvals.',
     color: '#0891b2',
     url: 'https://srs.pydah.edu.in/login'
+  },
+  [PORTAL_IDS.SAMS]: {
+    id: PORTAL_IDS.SAMS,
+    title: 'Labour Management (SAMS)',
+    category: 'Workforce & Operations',
+    description: 'Labour attendance tracking, gate access control, shift scanning, and workforce management.',
+    color: '#0f766e',
+    url: 'https://sams.pydah.edu.in/login'
   }
 };
 

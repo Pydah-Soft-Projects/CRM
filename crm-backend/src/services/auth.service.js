@@ -10,7 +10,8 @@ import { validateTransportCredentials, getTransportUserById, findTransportUserRo
 import { validateFeeCredentials, getFeeUserById } from './fee.service.js';
 import { validateStationaryCredentials, getStationarySubAdminById, findStationarySubAdmin } from './stationary.service.js';
 import { validateSRSCredentials, getSRSUserById, findSRSUser } from './srs.service.js';
-import { getFeeDb, getStationaryDb, getSRSDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
+import { validateSAMSCredentials, getSAMSUserById, findSAMSUser } from './sams.service.js';
+import { getFeeDb, getStationaryDb, getSRSDb, getSAMSDb, getTransportDb, getHRMSDb, getAcademicPool, getStudentPool, getAdmissionsPool } from '../config/database.js';
 import { generateSSOToken } from './token.service.js';
 import { encryptToken } from './encryption.service.js';
 import { ERROR_MESSAGES } from '../config/constants.js';
@@ -45,6 +46,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'academic_portal' || databaseSource === 'academic-portal') portals.add('academic-portal');
     if (databaseSource === 'examination_portal' || databaseSource === 'examination-portal') portals.add('examination-portal');
     if (databaseSource === 'srs' || databaseSource === 'staff-recruitment') portals.add('staff-recruitment');
+    if (databaseSource === 'sams' || databaseSource === 'labour-management') portals.add('sams');
 
     const username = (user.username || '').trim();
     let email = (user.email || (username.includes('@') ? username : '')).trim().toLowerCase();
@@ -384,6 +386,35 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
                 if (srsDoc.email && !email) email = srsDoc.email.trim().toLowerCase();
                 if (srsDoc.name && !user.name) user.name = srsDoc.name;
                 if (srsDoc.profile?.phone && !phone) phone = srsDoc.profile.phone;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Fallback check against SAMS (Labour Management) database if identity came from SAMS
+      if ((!rollOrEmp || !email) && (databaseSource === 'sams' || databaseSource === 'labour-management')) {
+        try {
+          const samsDb = await getSAMSDb();
+          if (samsDb && (username || user.id || user._id || email)) {
+            const samsConditions = [];
+            if (user.id || user._id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                samsConditions.push({ _id: new ObjectId(user.id || user._id) });
+              } catch (_) {}
+            }
+            if (email) samsConditions.push({ email: email });
+            if (username) {
+              samsConditions.push({ username: username.toLowerCase() });
+              samsConditions.push({ displayName: username });
+            }
+            if (samsConditions.length > 0) {
+              const samsDoc = await samsDb.collection('systemusers').findOne({ $or: samsConditions });
+              if (samsDoc) {
+                if (samsDoc.hrmsEmployeeId && !rollOrEmp) rollOrEmp = samsDoc.hrmsEmployeeId;
+                if (samsDoc.email && !email) email = samsDoc.email.trim().toLowerCase();
+                if (samsDoc.displayName && !user.name) user.name = samsDoc.displayName;
               }
             }
           }
@@ -739,6 +770,52 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       );
     }
 
+    // Check Staff Recruitment System (SRS)
+    if (!portals.has('staff-recruitment')) {
+      checks.push(
+        (async () => {
+          try {
+            const srsUser = await findSRSUser({
+              $or: [
+                ...(email ? [{ email: email }] : []),
+                ...(rollOrEmp ? [{ employeeId: rollOrEmp }] : []),
+                ...(identifier ? [{ name: identifier }] : []),
+                ...(phone ? [{ 'profile.phone': phone }] : [])
+              ]
+            });
+            if (srsUser) {
+              portals.add('staff-recruitment');
+            }
+          } catch (e) {
+            console.warn('[discoverUserPortals] SRS check error:', e.message);
+          }
+        })()
+      );
+    }
+
+    // Check SAMS (Labour Management)
+    if (!portals.has('sams')) {
+      checks.push(
+        (async () => {
+          try {
+            const samsUser = await findSAMSUser({
+              $or: [
+                ...(email ? [{ email: email }] : []),
+                ...(rollOrEmp ? [{ hrmsEmployeeId: rollOrEmp }, { username: rollOrEmp.toLowerCase() }] : []),
+                ...(identifier ? [{ username: identifier.toLowerCase() }, { displayName: identifier }] : []),
+                ...(user.name ? [{ displayName: user.name }] : [])
+              ]
+            });
+            if (samsUser) {
+              portals.add('sams');
+            }
+          } catch (e) {
+            console.warn('[discoverUserPortals] SAMS check error:', e.message);
+          }
+        })()
+      );
+    }
+
     await Promise.allSettled(checks);
 
     return Array.from(portals);
@@ -750,6 +827,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
     if (databaseSource === 'fee') return ['fee-management'];
     if (databaseSource === 'stationary') return ['stationary-management'];
     if (databaseSource === 'srs' || databaseSource === 'staff-recruitment') return ['staff-recruitment'];
+    if (databaseSource === 'sams' || databaseSource === 'labour-management') return ['sams'];
     if (databaseSource === 'admissions_db') return ['admissions-crm'];
     if (databaseSource === 'student_credentials') return ['student-portal'];
     return ['admissions-crm'];
@@ -998,6 +1076,29 @@ export const validateCredentials = async (username, password, role = null) => {
         } catch (e) {}
       }
       normalizedUser.portals = await discoverUserPortals(normalizedUser, 'srs');
+      return normalizedUser;
+    }
+
+    console.log(`[Auth] Checking SAMS (Labour Management) MongoDB for: ${username}`);
+    const samsUser = await validateSAMSCredentials(username, password);
+    if (samsUser) {
+      console.log(`[Auth] User authenticated via SAMS MongoDB: ${samsUser.id}`);
+      const normalizedUser = {
+        ...samsUser,
+        databaseSource: samsUser.databaseSource || 'sams'
+      };
+      if (!normalizedUser.profilePhoto) {
+        try {
+          const photo = await getEmployeeProfilePhoto({
+            email: normalizedUser.email,
+            employeeId: normalizedUser.employeeId || normalizedUser.empNo || normalizedUser.hrmsEmployeeId,
+            username: normalizedUser.username,
+            phone: normalizedUser.phone
+          });
+          if (photo) normalizedUser.profilePhoto = photo;
+        } catch (e) {}
+      }
+      normalizedUser.portals = await discoverUserPortals(normalizedUser, 'sams');
       return normalizedUser;
     }
 
@@ -1295,6 +1396,78 @@ export const validateCredentialsForSRS = async (username, password) => {
 };
 
 /**
+ * Validate credentials against SAMS MongoDB, fallback to HRMS MongoDB if not found or if HRMS employee.
+ * @param {string} username - Username / email / hrmsEmployeeId / displayName
+ * @param {string} password - Plain password
+ * @returns {Promise<Object|null>} User object with dynamically discovered portals
+ */
+export const validateCredentialsForSAMS = async (username, password) => {
+  // 1. Try SAMS database first (systemusers collection)
+  console.log(`[Auth-SAMS] Attempting login via SAMS database for: ${username}`);
+  let user = await validateSAMSCredentials(username, password);
+  let dbSource = 'sams';
+
+  if (!user) {
+    // 2. Fallback to HRMS database if not found in SAMS
+    console.log(`[Auth-SAMS] User not found in SAMS, falling back to HRMS database for: ${username}`);
+    user = await validateHRMSCredentials(username, password);
+    dbSource = 'hrms';
+
+    if (user) {
+      // Check if user has SystemUser profile in SAMS DB by matching hrmsEmployeeId or email or username
+      try {
+        const db = await getSAMSDb();
+        if (db) {
+          const empIdentifier = user.emp_no || user.employeeId || username;
+          const samsCol = db.collection('systemusers');
+          const samsUser = await samsCol.findOne({
+            $or: [
+              { hrmsEmployeeId: empIdentifier },
+              ...(user.email ? [{ email: user.email.toLowerCase() }] : []),
+              { username: username.toLowerCase() }
+            ],
+            $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+          });
+          if (samsUser) {
+            user.isSuperAdmin = Boolean(samsUser.isSuperAdmin);
+            user.systemRoleId = samsUser.systemRoleId ? samsUser.systemRoleId.toString() : null;
+            user.divisionIds = (samsUser.divisionIds || []).map(id => id.toString());
+            user.gateIds = (samsUser.gateIds || []).map(id => id.toString());
+            user.departmentIds = (samsUser.departmentIds || []).map(id => id.toString());
+            user.samsUserId = samsUser._id.toString();
+          }
+        }
+      } catch (e) {
+        console.error('[Auth-SAMS] HRMS SAMS user lookup error:', e.message);
+      }
+    }
+  }
+
+  if (user) {
+    const normalizedUser = {
+      ...user,
+      databaseSource: dbSource
+    };
+    if (!normalizedUser.profilePhoto) {
+      try {
+        const photo = await getEmployeeProfilePhoto({
+          email: normalizedUser.email,
+          employeeId: normalizedUser.employeeId || normalizedUser.emp_no || normalizedUser.empNo,
+          username: normalizedUser.username,
+          phone: normalizedUser.phone
+        });
+        if (photo) normalizedUser.profilePhoto = photo;
+      } catch (e) {}
+    }
+    normalizedUser.portals = await discoverUserPortals(normalizedUser, dbSource);
+    return normalizedUser;
+  }
+
+  console.log(`[Auth-SAMS] User not found in either SAMS or HRMS for: ${username}`);
+  return null;
+};
+
+/**
  * Generate encrypted SSO token for portal access
  * @param {string} userId - User ID
  * @param {string} portalId - Target portal identifier
@@ -1444,6 +1617,26 @@ export const getCRMUserForVerify = async (userId, databaseSource = null) => {
       }
       return null;
     }
+    if (databaseSource === 'sams' || databaseSource === 'labour-management') {
+      const samsUser = await getSAMSUserById(userId);
+      if (samsUser) {
+        return {
+          email: samsUser.email || null,
+          name: samsUser.displayName || samsUser.name || null,
+          displayName: samsUser.displayName || null,
+          username: samsUser.username || null,
+          role: samsUser.role || null,
+          isSuperAdmin: samsUser.isSuperAdmin,
+          hrmsEmployeeId: samsUser.hrmsEmployeeId || null,
+          employeeId: samsUser.hrmsEmployeeId || null,
+          systemRoleId: samsUser.systemRoleId || null,
+          divisionIds: samsUser.divisionIds || [],
+          gateIds: samsUser.gateIds || [],
+          departmentIds: samsUser.departmentIds || []
+        };
+      }
+      return null;
+    }
     if (databaseSource === 'academic_portal' || databaseSource === 'academic-portal') {
       const academicUser = await findAcademicUserById(userId);
       if (academicUser) {
@@ -1572,6 +1765,9 @@ export default {
   validateCredentialsForHostel,
   validateCredentialsForTransport,
   validateCredentialsForFee,
+  validateCredentialsForStationary,
+  validateCredentialsForSRS,
+  validateCredentialsForSAMS,
   generatePortalToken,
   getCRMUserForVerify,
   hashPassword,

@@ -21,7 +21,8 @@ const Footer = ({ onOpenInstall }) => {
         { name: 'HRMS & Payroll', id: 'hrms' },
         { name: 'Hostel Automation', id: 'hostel-automation' },
         { name: 'Stationary Management', id: 'stationary-management' },
-        { name: 'Staff Recruitment', id: 'staff-recruitment' }
+        { name: 'Staff Recruitment', id: 'staff-recruitment' },
+        { name: 'Labour Management (SAMS)', id: 'sams' }
     ];
 
     const socialLinks = [

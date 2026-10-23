@@ -27,6 +27,8 @@ let stationaryMongoClient = null;
 let stationaryMongoDb = null;
 let srsMongoClient = null;
 let srsMongoDb = null;
+let samsMongoClient = null;
+let samsMongoDb = null;
 
 /**
  * Create MySQL connection pool for student database
@@ -241,7 +243,17 @@ export const connectDatabase = async () => {
       await connectStationaryMongo();
     }
 
-    return { studentPool, admissionsPool, academicPool, examinationPool, hrmsMongoDb, hostelMongoDb, transportMongoDb, feeMongoDb, stationaryMongoDb };
+    // Connect to SRS MongoDB if configured
+    if (process.env.SRS_MONGO_URI || process.env.STAFF_RECRUITMENT_MONGO_URI || process.env.SRS_MONGO_URL) {
+      await connectSRSMongo();
+    }
+
+    // Connect to SAMS (Labour Management) MongoDB if configured
+    if (process.env.SAMS_MONGO_URI || process.env.LABOUR_MANAGEMENT_MONGO_URI || process.env.SAMS_MONGO_URL) {
+      await connectSAMSMongo();
+    }
+
+    return { studentPool, admissionsPool, academicPool, examinationPool, hrmsMongoDb, hostelMongoDb, transportMongoDb, feeMongoDb, stationaryMongoDb, srsMongoDb, samsMongoDb };
   } catch (error) {
     console.error('❌ Database connection error:', error);
     throw error;
@@ -532,6 +544,43 @@ export const getSRSDb = async () => {
   return connectSRSMongo();
 };
 
+/**
+ * Connect to SAMS (Labour Management) MongoDB (optional; when SAMS_MONGO_URI or LABOUR_MANAGEMENT_MONGO_URI is set)
+ * @returns {Promise<import('mongodb').Db|null>} SAMS db instance or null
+ */
+export const connectSAMSMongo = async () => {
+  const uri = process.env.SAMS_MONGO_URI || process.env.LABOUR_MANAGEMENT_MONGO_URI || process.env.SAMS_MONGO_URL;
+  if (!uri) {
+    return null;
+  }
+  if (samsMongoClient) {
+    return samsMongoDb;
+  }
+  try {
+    samsMongoClient = new MongoClient(uri);
+    await samsMongoClient.connect();
+    samsMongoDb = samsMongoClient.db();
+    console.log('✅ SAMS (Labour Management) MongoDB connection established');
+    return samsMongoDb;
+  } catch (error) {
+    console.error('❌ SAMS MongoDB connection error:', error.message);
+    samsMongoClient = null;
+    samsMongoDb = null;
+    return null;
+  }
+};
+
+/**
+ * Get SAMS MongoDB db instance (lazy connect if URI is set)
+ * @returns {Promise<import('mongodb').Db|null>} SAMS db or null if not configured
+ */
+export const getSAMSDb = async () => {
+  if (samsMongoDb) {
+    return samsMongoDb;
+  }
+  return connectSAMSMongo();
+};
+
 export default {
   createPool,
   createStudentPool,
@@ -550,6 +599,8 @@ export default {
   getStationaryDb,
   connectSRSMongo,
   getSRSDb,
+  connectSAMSMongo,
+  getSAMSDb,
   getPool,
   getStudentPool,
   getAdmissionsPool,
