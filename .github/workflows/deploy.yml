@@ -1,0 +1,168 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to AWS Lightsail
+    runs-on: ubuntu-latest
+
+    steps:
+      #################################################
+      # Checkout code
+      #################################################
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      #################################################
+      # Setup Node.js for frontend build
+      #################################################
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: crm-frontend/package-lock.json
+
+      #################################################
+      # Build frontend on GitHub Actions
+      #################################################
+      - name: Install frontend dependencies
+        working-directory: crm-frontend
+        run: |
+          npm ci
+
+      - name: Build frontend
+        working-directory: crm-frontend
+        env:
+          VITE_API_BASE_URL: https://crm.pydah.edu.in
+        run: |
+          npm run build
+
+      #################################################
+      # Configure SSH
+      #################################################
+      - name: Configure SSH
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
+
+      #################################################
+      # Upload frontend dist to server
+      #################################################
+      - name: Upload frontend build
+        run: |
+          rsync -avz \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            crm-frontend/dist/ \
+            "ec2-user@${{ secrets.SERVER_IP }}:/tmp/frontend-dist/"
+
+      #################################################
+      # Deploy to server
+      #################################################
+      - name: Deploy to server
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: |
+          set -e
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            "ec2-user@${SERVER_IP}" << 'ENDSSH'
+
+          set -e
+
+          PROJECT_DIR="/home/ec2-user/CRM"
+          FRONTEND_WEB_ROOT="/var/www/crm"
+
+          echo "=========================================="
+          echo "Starting deployment"
+          echo "=========================================="
+
+          cd "${PROJECT_DIR}"
+
+          echo "==> Pulling latest code from main..."
+          git fetch origin main
+          git checkout main
+          # Discard any local changes to log files before pulling
+          git checkout -- crm-backend/logs/ 2>/dev/null || true
+          git pull origin main
+
+          #################################################
+          # BACKEND PART
+          #################################################
+          echo "==> Checking backend dependencies..."
+          cd "${PROJECT_DIR}/crm-backend"
+
+          LOCK_HASH_FILE="${PROJECT_DIR}/crm-backend/.npm-ci-lockhash"
+          CURRENT_HASH="$(sha256sum package-lock.json package.json 2>/dev/null | sha256sum | awk '{print $1}')"
+          PREV_HASH="$(cat "${LOCK_HASH_FILE}" 2>/dev/null || true)"
+
+          if [ ! -d node_modules ] || [ "${CURRENT_HASH}" != "${PREV_HASH}" ]; then
+            echo "==> Installing backend dependencies (lockfile changed or node_modules missing)..."
+            if [ -f package-lock.json ]; then
+              npm ci --omit=dev
+            else
+              npm install --omit=dev
+            fi
+            echo "${CURRENT_HASH}" > "${LOCK_HASH_FILE}"
+          else
+            echo "==> Backend dependencies unchanged, skipping npm ci"
+          fi
+
+          #################################################
+          # FRONTEND PART
+          #################################################
+          echo "==> Deploying frontend to ${FRONTEND_WEB_ROOT}..."
+          sudo mkdir -p "${FRONTEND_WEB_ROOT}"
+
+          sudo rsync -av --delete \
+            /tmp/frontend-dist/ \
+            "${FRONTEND_WEB_ROOT}/"
+
+          sudo chmod -R a+rX "${FRONTEND_WEB_ROOT}"
+
+          # Fallback sync to /home/ec2-user/CRM/crm-frontend/dist in case Nginx points to CRM folder
+          mkdir -p "${PROJECT_DIR}/crm-frontend/dist"
+          rsync -av --delete /tmp/frontend-dist/ "${PROJECT_DIR}/crm-frontend/dist/" 2>/dev/null || true
+          chmod -R a+rX "${PROJECT_DIR}/crm-frontend/dist" 2>/dev/null || true
+          chmod a+x /home/ec2-user /home/ec2-user/CRM /home/ec2-user/CRM/crm-frontend 2>/dev/null || true
+
+          #################################################
+          # PM2
+          #################################################
+          echo "==> Reloading PM2 process via ecosystem file..."
+          cd "${PROJECT_DIR}/crm-backend"
+          mkdir -p logs
+          pm2 startOrReload ecosystem.config.js --update-env
+
+          echo "==> Saving PM2 process list..."
+          pm2 save
+
+          #################################################
+          # Cleanup
+          #################################################
+          rm -rf /tmp/frontend-dist
+
+          echo "=========================================="
+          echo "Deployment completed successfully"
+          echo "=========================================="
+
+          ENDSSH
+
+      #################################################
+      # Cleanup SSH key
+      #################################################
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
