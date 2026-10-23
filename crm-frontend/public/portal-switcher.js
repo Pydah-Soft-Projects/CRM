@@ -869,6 +869,7 @@
 
       this.shadowRoot.innerHTML = `
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&display=swap');
           :host {
             all: initial;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -1002,31 +1003,42 @@
             gap: 12px;
             z-index: 2;
           }
-          .banner-badge {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 19px;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-            flex-shrink: 0;
-          }
           .banner-titles {
             display: flex;
             flex-direction: column;
           }
+          .banner-title-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            width: fit-content;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+          }
+          .banner-title-link:hover {
+            transform: translateX(2px);
+            opacity: 0.92;
+          }
+          .banner-title-link:hover .banner-title-ext {
+            transform: translate(2px, -2px);
+            stroke: #4338ca;
+          }
           .banner-title {
             margin: 0;
-            font-size: 15.5px;
-            font-weight: 700;
-            color: #0f172a;
+            font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.025em;
             line-height: 1.2;
-            letter-spacing: -0.01em;
+            background: linear-gradient(135deg, #0f172a 0%, #312e81 45%, #2563eb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          .banner-title-ext {
+            stroke: #6366f1;
+            transition: transform 0.2s ease, stroke 0.2s ease;
+            flex-shrink: 0;
           }
           .banner-subtitle {
             font-size: 11px;
@@ -1568,9 +1580,14 @@
               <!-- Pictorial Banner Header -->
               <div class="popover-banner">
                 <div class="banner-left">
-                  <div class="banner-badge">P</div>
                   <div class="banner-titles">
-                    <h3 class="banner-title">Pydah Suite</h3>
+                    <a href="${this.landingUrl}" target="_blank" rel="noopener noreferrer" class="banner-title-link" title="Open Pydah Central CRM">
+                      <span class="banner-title">Pydah Suite</span>
+                      <svg class="banner-title-ext" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                        <polyline points="7 7 17 7 17 17"></polyline>
+                      </svg>
+                    </a>
                     <span class="banner-subtitle">Your Campus, Unified</span>
                     ${this.user ? `
                       <div class="banner-user-chip">
