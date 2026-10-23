@@ -979,6 +979,71 @@ export const verifyToken = async (req, res, next) => {
       }
       markTokenUsed(tokenKey, decoded.exp * 1000);
 
+      // If token originated directly from SAMS database session
+      if (decoded.databaseSource === 'sams') {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId),
+            username: username || decoded.username,
+            name: decoded.displayName || decoded.name || username,
+            displayName: decoded.displayName || decoded.name || username,
+            email: email || decoded.email || null,
+            hrmsEmployeeId: decoded.hrmsEmployeeId || null,
+            employeeId: decoded.hrmsEmployeeId || null,
+            empNo: decoded.hrmsEmployeeId || null,
+            role: decoded.isSuperAdmin ? 'super_admin' : (decoded.role || 'operator'),
+            isSuperAdmin: Boolean(decoded.isSuperAdmin),
+            systemRoleId: decoded.systemRoleId ? String(decoded.systemRoleId) : null,
+            divisionIds: decoded.divisionIds || [],
+            gateIds: decoded.gateIds || [],
+            departmentIds: decoded.departmentIds || [],
+            allowedLocationIds: decoded.allowedLocationIds || [],
+            isActive: true,
+            ...baseData
+          }
+        });
+      }
+
+      let targetEmp = decoded.hrmsEmployeeId || decoded.employeeId || decoded.empNo || crmUser?.employeeId || (/^\d+$/.test(username) && !/^\d{10}$/.test(username) ? username : null);
+      if (!targetEmp && decoded.userId && /^\d+$/.test(String(decoded.userId)) && !/^\d{10}$/.test(String(decoded.userId))) {
+        targetEmp = String(decoded.userId);
+      }
+      if (targetEmp && /^\d{10}$/.test(targetEmp)) targetEmp = null;
+
+      const lookupPhone = decoded.phone || crmUser?.phone || (/^\d{10}$/.test(username) ? username : null);
+
+      if (!targetEmp && (email || decoded.email || lookupPhone || crmUser?.hrms_id)) {
+        try {
+          const hrmsDb = await getHRMSDb();
+          if (hrmsDb) {
+            const hrmsConds = [];
+            if (email || decoded.email) hrmsConds.push({ email: email || decoded.email });
+            if (lookupPhone) {
+              hrmsConds.push({ phone: lookupPhone });
+              hrmsConds.push({ phone_number: lookupPhone });
+              hrmsConds.push({ mobile: lookupPhone });
+            }
+            if (crmUser?.hrms_id) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                hrmsConds.push({ _id: new ObjectId(crmUser.hrms_id) });
+              } catch (_) {}
+            }
+            if (hrmsConds.length > 0) {
+              const hrmsEmp = await hrmsDb.collection('employees').findOne({ $or: hrmsConds });
+              if (hrmsEmp) {
+                if (hrmsEmp.emp_no) targetEmp = String(hrmsEmp.emp_no).trim();
+                if (hrmsEmp.employee_name && (!username || /^\d{10}$/.test(username))) {
+                  username = hrmsEmp.employee_name;
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       let samsDb = null;
       try {
         samsDb = await getSAMSDb();
@@ -996,6 +1061,7 @@ export const verifyToken = async (req, res, next) => {
         }
         if (targetEmp) {
           orConditions.push({ hrmsEmployeeId: targetEmp });
+          orConditions.push({ username: targetEmp.toLowerCase() });
         }
         if (email || decoded.email) {
           orConditions.push({ email: (email || decoded.email).toLowerCase() });
