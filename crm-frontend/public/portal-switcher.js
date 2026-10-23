@@ -821,12 +821,6 @@
 
       const filtered = this.getFilteredPortals();
 
-      // Update bottom action banner count dynamically
-      const countEl = this.shadowRoot.querySelector('#pydah-count-text');
-      if (countEl) {
-        countEl.textContent = `${filtered.length} Portals`;
-      }
-
       if (filtered.length === 0) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column: span 3; padding: 36px 12px;">
@@ -960,11 +954,11 @@
             position: absolute;
             bottom: 64px;
             right: 0;
-            width: 375px;
+            width: 345px;
             max-width: calc(100vw - 32px);
             max-height: min(650px, calc(100vh - 90px));
             background: #ffffff;
-            border-radius: 24px;
+            border-radius: 22px;
             box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(15, 23, 42, 0.08);
             display: flex;
             flex-direction: column;
@@ -1112,9 +1106,9 @@
           .waffle-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            padding: 14px 16px;
-            max-height: 420px;
+            gap: 8px;
+            padding: 12px 14px 14px 14px;
+            max-height: 440px;
             overflow-y: auto;
             overscroll-behavior: contain;
           }
@@ -1132,8 +1126,8 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 14px 6px 12px 6px;
-            border-radius: 18px;
+            padding: 10px 4px 8px 4px;
+            border-radius: 14px;
             background: var(--card-tint);
             border: 1px solid var(--card-border);
             cursor: pointer;
@@ -1141,13 +1135,13 @@
             user-select: none;
           }
           .waffle-card:hover:not(.is-current) {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
             border-color: var(--card-accent);
-            box-shadow: 0 10px 20px -6px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.12);
             filter: brightness(1.02);
           }
           .waffle-card:active:not(.is-current) {
-            transform: translateY(-1px) scale(0.98);
+            transform: translateY(0) scale(0.98);
           }
           .waffle-card.is-current {
             border-color: var(--card-accent);
@@ -1159,38 +1153,38 @@
             pointer-events: none;
           }
           .waffle-icon-wrap {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
             background: var(--icon-bg);
             color: var(--card-accent);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 7px;
+            margin-bottom: 5px;
             transition: transform 0.2s ease;
             flex-shrink: 0;
           }
           .waffle-card:hover:not(.is-current) .waffle-icon-wrap {
-            transform: scale(1.08);
+            transform: scale(1.06);
           }
           .waffle-icon-wrap svg {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
           }
           .waffle-title {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: #1e293b;
             line-height: 1.2;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 95%;
           }
           .waffle-subtitle {
-            font-size: 10.5px;
+            font-size: 9.5px;
             font-weight: 500;
             color: #64748b;
             line-height: 1.2;
@@ -1201,53 +1195,13 @@
           }
           .active-badge-dot {
             position: absolute;
-            top: 7px;
-            right: 7px;
-            width: 8px;
-            height: 8px;
+            top: 6px;
+            right: 6px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             background: var(--card-accent);
             box-shadow: 0 0 0 2px #ffffff;
-          }
-          /* Bottom Action Banner */
-          .waffle-bottom-banner {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 4px 14px 14px 14px;
-            padding: 12px 18px;
-            border-radius: 14px;
-            background: linear-gradient(90deg, #4f46e5 0%, #3b82f6 100%);
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 12.5px;
-            font-weight: 600;
-            box-shadow: 0 6px 18px -4px rgba(79, 70, 229, 0.45);
-            transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-            cursor: pointer;
-          }
-          .waffle-bottom-banner:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 24px -4px rgba(79, 70, 229, 0.55);
-            filter: brightness(1.04);
-          }
-          .bottom-banner-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
-          .sparkle-icon {
-            font-size: 15px;
-            line-height: 1;
-            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
-          }
-          .bottom-banner-arrow {
-            display: flex;
-            align-items: center;
-            transition: transform 0.2s;
-          }
-          .waffle-bottom-banner:hover .bottom-banner-arrow {
-            transform: translateX(3px);
           }
           /* Loading Spinner */
           .spinner-sm {
@@ -1319,35 +1273,30 @@
               height: 56px;
             }
             .waffle-grid {
-              padding: 10px 12px;
-              gap: 8px;
-              max-height: 52vh;
+              padding: 10px 10px 14px 10px;
+              gap: 7px;
+              max-height: 54vh;
               -webkit-overflow-scrolling: touch;
             }
             .waffle-card {
-              padding: 12px 4px 10px 4px;
-              border-radius: 16px;
+              padding: 9px 3px 7px 3px;
+              border-radius: 12px;
             }
             .waffle-icon-wrap {
-              width: 40px;
-              height: 40px;
-              border-radius: 12px;
-              margin-bottom: 5px;
+              width: 34px;
+              height: 34px;
+              border-radius: 10px;
+              margin-bottom: 4px;
             }
             .waffle-icon-wrap svg {
-              width: 22px;
-              height: 22px;
+              width: 18px;
+              height: 18px;
             }
             .waffle-title {
-              font-size: 12px;
+              font-size: 11px;
             }
             .waffle-subtitle {
-              font-size: 10px;
-            }
-            .waffle-bottom-banner {
-              margin: 4px 12px 14px 12px;
-              padding: 11px 16px;
-              font-size: 12px;
+              font-size: 9px;
             }
           }
           @media (max-width: 360px) {
@@ -1357,25 +1306,25 @@
               max-width: calc(100vw - 12px) !important;
             }
             .waffle-grid {
-              gap: 6px;
-              padding: 8px;
+              gap: 5px;
+              padding: 6px;
             }
             .waffle-card {
-              padding: 10px 2px 8px 2px;
+              padding: 7px 2px 6px 2px;
             }
             .waffle-icon-wrap {
-              width: 36px;
-              height: 36px;
+              width: 30px;
+              height: 30px;
             }
             .waffle-icon-wrap svg {
-              width: 20px;
-              height: 20px;
+              width: 16px;
+              height: 16px;
             }
             .waffle-title {
-              font-size: 11px;
+              font-size: 10.5px;
             }
             .waffle-subtitle {
-              font-size: 9px;
+              font-size: 8.5px;
             }
           }
           @keyframes pydah-sheet-slide {
@@ -1690,19 +1639,6 @@
               <div class="waffle-grid" id="pydah-portals-grid">
                 <!-- Portals injected via renderPortalList -->
               </div>
-
-              <!-- Bottom Action Banner -->
-              <a class="waffle-bottom-banner" id="pydah-bottom-banner" href="${this.landingUrl}" target="_blank" rel="noopener noreferrer" title="Explore all campus suites">
-                <div class="bottom-banner-content">
-                  <span class="sparkle-icon">✦</span>
-                  <span class="banner-text"><strong id="pydah-count-text">11 Portals</strong> · 1 Powerful Suite</span>
-                </div>
-                <div class="bottom-banner-arrow">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                </div>
-              </a>
             </div>
           ` : ''}
           <button class="pydah-fab ${this.isOpen ? 'is-open' : ''}" id="pydah-fab-btn" title="Pydah Portal Switcher (Drag to reposition)">
