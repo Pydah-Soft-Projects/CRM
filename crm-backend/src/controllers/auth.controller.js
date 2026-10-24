@@ -1155,29 +1155,39 @@ export const verifyToken = async (req, res, next) => {
         }
       }
 
-      // Default/auto-provision payload if valid user coming from HRMS/CRM
-      return res.status(HTTP_STATUS.OK).json({
-        success: true,
-        valid: true,
-        data: {
-          userId: String(decoded.userId),
-          username: username || (email ? email.split('@')[0] : targetEmp) || 'user',
-          name: crmUser?.name || decoded.name || username,
-          displayName: crmUser?.name || decoded.name || username,
-          email: email || decoded.email || null,
-          hrmsEmployeeId: targetEmp || null,
-          employeeId: targetEmp || null,
-          empNo: targetEmp || null,
-          role: decoded.role || 'operator',
-          isSuperAdmin: false,
-          systemRoleId: null,
-          divisionIds: [],
-          gateIds: [],
-          departmentIds: [],
-          allowedLocationIds: [],
-          isActive: true,
-          ...baseData
-        }
+      // Master Admin bootstrap only
+      if (isMasterAdmin) {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId || 'admin'),
+            username: 'superadmin',
+            name: 'Master Admin',
+            displayName: 'Master Admin',
+            email: 'ravi@pydahsoft.in',
+            hrmsEmployeeId: null,
+            employeeId: null,
+            empNo: null,
+            role: 'super_admin',
+            isSuperAdmin: true,
+            systemRoleId: null,
+            divisionIds: [],
+            gateIds: [],
+            departmentIds: [],
+            allowedLocationIds: [],
+            isActive: true,
+            ...baseData
+          }
+        });
+      }
+
+      // Deny access if user does not exist in SAMS database
+      console.warn(`[VerifyToken] Access Denied: User ${decoded.userId} (${email || username}) has no active account in Labour Management System (SAMS)`);
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        valid: false,
+        message: 'User does not have an active account in Labour Management System (SAMS)'
       });
     }
 
@@ -1599,6 +1609,7 @@ export const switchPortal = async (req, res, next) => {
     }
 
     if ((targetPortalId === PORTAL_IDS.STAFF_RECRUITMENT || targetPortalId === 'staff-recruitment' || targetPortalId === 'srs') && !isMasterAdmin) {
+      let srsUser = null;
       try {
         const srsDb = await getSRSDb();
         if (srsDb) {
@@ -1614,6 +1625,10 @@ export const switchPortal = async (req, res, next) => {
               orConds.push({ employeeId: Number(targetEmp) });
             }
           }
+          const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff', 'faculty', 'editor'];
+          if (resolvedUsername && !resolvedUsername.includes('@') && !GENERIC_NAMES.includes(resolvedUsername.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(resolvedUsername)) {
+            orConds.push({ employeeId: resolvedUsername });
+          }
           if (resolvedPhone && /^\d{10}$/.test(String(resolvedPhone).trim())) {
             orConds.push({ 'profile.phone': String(resolvedPhone).trim() });
           }
@@ -1623,26 +1638,84 @@ export const switchPortal = async (req, res, next) => {
               orConds.push({ _id: new ObjectId(resolvedUserId) });
             } catch (_) {}
           }
-          let srsUser = null;
           if (orConds.length > 0) {
             srsUser = await srsDb.collection('users').findOne({
               $or: orConds,
               $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
             });
           }
-          if (!srsUser) {
-            return res.status(HTTP_STATUS.FORBIDDEN).json({
-              success: false,
-              message: 'Your account does not have access permissions for staff-recruitment.'
-            });
-          }
-          targetUserId = srsUser._id.toString();
-          targetRole = srsUser.role || 'candidate';
-          targetDatabaseSource = 'srs';
         }
       } catch (err) {
         console.error('[switchPortal] SRS user resolution error:', err.message);
       }
+      if (!srsUser) {
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          success: false,
+          message: 'Your account does not have access permissions for staff-recruitment.'
+        });
+      }
+      targetUserId = srsUser._id.toString();
+      targetRole = srsUser.role || 'candidate';
+      targetDatabaseSource = 'srs';
+    }
+
+    if ((targetPortalId === PORTAL_IDS.SAMS || targetPortalId === 'sams' || targetPortalId === 'labour-management') && !isMasterAdmin) {
+      let samsUser = null;
+      try {
+        const samsDb = await getSAMSDb();
+        if (samsDb) {
+          const targetEmp = resolvedEmployeeId || (/^\d+$/.test(resolvedUsername) ? resolvedUsername : null);
+          const orConds = [];
+          if (resolvedEmail) {
+            orConds.push({ email: resolvedEmail.toLowerCase() });
+            orConds.push({ email: resolvedEmail });
+          }
+          if (targetEmp) {
+            orConds.push({ hrmsEmployeeId: String(targetEmp).trim() });
+            orConds.push({ username: String(targetEmp).trim().toLowerCase() });
+          }
+          const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff', 'faculty', 'editor'];
+          if (resolvedUsername && !resolvedUsername.includes('@') && !GENERIC_NAMES.includes(resolvedUsername.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(resolvedUsername)) {
+            orConds.push({ username: resolvedUsername.toLowerCase() });
+            orConds.push({ hrmsEmployeeId: resolvedUsername });
+          }
+          if (resolvedPhone && /^\d{10}$/.test(String(resolvedPhone).trim())) {
+            orConds.push({ phone: String(resolvedPhone).trim() });
+            orConds.push({ mobile: String(resolvedPhone).trim() });
+          }
+          if (resolvedUserId && /^[0-9a-fA-F]{24}$/.test(String(resolvedUserId))) {
+            try {
+              const { ObjectId } = await import('mongodb');
+              orConds.push({ _id: new ObjectId(resolvedUserId) });
+            } catch (_) {}
+          }
+          if (orConds.length > 0) {
+            samsUser = await samsDb.collection('systemusers').findOne({
+              $or: orConds,
+              $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+            });
+            if (!samsUser) {
+              try {
+                samsUser = await samsDb.collection('systemUsers').findOne({
+                  $or: orConds,
+                  $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+                });
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[switchPortal] SAMS user resolution error:', err.message);
+      }
+      if (!samsUser) {
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          success: false,
+          message: 'Your account does not have access permissions for labour-management (SAMS).'
+        });
+      }
+      targetUserId = samsUser._id.toString();
+      targetRole = samsUser.isSuperAdmin ? 'super_admin' : (samsUser.role || 'operator');
+      targetDatabaseSource = 'sams';
     }
 
     if (targetPortalId === PORTAL_IDS.STUDENT_PORTAL && !isMasterAdmin) {

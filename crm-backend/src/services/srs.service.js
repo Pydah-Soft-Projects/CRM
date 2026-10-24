@@ -124,15 +124,20 @@ export const getSRSUserById = async (userId) => {
  * @returns {Promise<Object|null>} Normalized SRS user or null
  */
 export const findSRSUser = async (query) => {
-  if (!query) return null;
+  if (!query || Object.keys(query).length === 0) return null;
   const db = await getSRSDb();
   if (!db) return null;
 
   try {
-    const user = await db.collection('users').findOne({
-      ...query,
-      $or: [{ isActive: true }, { isActive: { $exists: false } }]
-    });
+    const activeCondition = { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
+    const finalFilter = {
+      $and: [
+        query,
+        activeCondition
+      ]
+    };
+
+    const user = await db.collection('users').findOne(finalFilter);
 
     if (user) {
       return normalizeSRSUser(user);
