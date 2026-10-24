@@ -599,7 +599,7 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
         (async () => {
           try {
             const db = await getSRSDb();
-            if (db && (identifier || email || rollOrEmp || user.hrms_id || user.employeeId || phone)) {
+            if (db && (identifier || email || rollOrEmp || user.hrms_id || user.employeeId || phone || user.id || user._id)) {
               const orConditions = [];
               if (email) {
                 orConditions.push({ email: email.toLowerCase() });
@@ -607,25 +607,44 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
               }
               if (identifier && identifier.includes('@')) {
                 orConditions.push({ email: identifier.toLowerCase() });
+                orConditions.push({ email: identifier });
               }
               if (rollOrEmp) {
-                orConditions.push({ employeeId: rollOrEmp });
+                const sEmp = String(rollOrEmp).trim();
+                orConditions.push({ employeeId: sEmp });
+                if (/^\d+$/.test(sEmp)) {
+                  orConditions.push({ employeeId: Number(sEmp) });
+                }
               }
               if (user.employeeId && user.employeeId !== rollOrEmp) {
-                orConditions.push({ employeeId: user.employeeId });
+                const sEmp = String(user.employeeId).trim();
+                orConditions.push({ employeeId: sEmp });
+                if (/^\d+$/.test(sEmp)) {
+                  orConditions.push({ employeeId: Number(sEmp) });
+                }
               }
-              if (identifier && !identifier.includes('@')) {
+              const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff', 'faculty', 'editor'];
+              if (identifier && !identifier.includes('@') && !GENERIC_NAMES.includes(identifier.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(identifier)) {
                 orConditions.push({ employeeId: identifier });
-                orConditions.push({ name: identifier });
               }
-              if (phone) {
-                orConditions.push({ 'profile.phone': phone });
+              if (phone && /^\d{10}$/.test(String(phone).trim())) {
+                orConditions.push({ 'profile.phone': String(phone).trim() });
               }
-              const srsUser = await db.collection('users').findOne({
-                $or: orConditions,
-                $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
-              });
-              if (srsUser) portals.add('staff-recruitment');
+              const rawUid = String(user.id || user._id || '').trim();
+              if (rawUid && /^[0-9a-fA-F]{24}$/.test(rawUid)) {
+                try {
+                  const { ObjectId } = await import('mongodb');
+                  orConditions.push({ _id: new ObjectId(rawUid) });
+                } catch (_) {}
+              }
+
+              if (orConditions.length > 0) {
+                const srsUser = await db.collection('users').findOne({
+                  $or: orConditions,
+                  $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+                });
+                if (srsUser) portals.add('staff-recruitment');
+              }
             }
           } catch (e) {
             console.error('[discoverUserPortals] SRS check error:', e.message);

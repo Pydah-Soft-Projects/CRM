@@ -845,31 +845,41 @@ export const verifyToken = async (req, res, next) => {
     }
 
     // 6.6 For Staff Recruitment System (SRS) portal: resolve to User in SRS MongoDB (users collection)
-    if (decoded.portalId === PORTAL_IDS.STAFF_RECRUITMENT) {
-      if (decoded.databaseSource === 'srs') {
-        return res.status(HTTP_STATUS.OK).json({
-          success: true,
-          valid: true,
-          data: {
-            userId: String(decoded.userId),
-            name: decoded.name || username,
-            username: username,
-            email: email || decoded.email || null,
-            ...(decoded.employeeId && { employeeId: decoded.employeeId }),
-            ...(decoded.empNo && { empNo: decoded.empNo }),
-            role: decoded.role || 'candidate',
-            campus: decoded.campus || null,
-            permissions: decoded.permissions || {},
-            hasPanelMemberAccess: Boolean(decoded.hasPanelMemberAccess),
-            profile: decoded.profile || {},
-            ...baseData
-          }
-        });
+    // 6.6 For Staff Recruitment System (SRS) portal: resolve to User in SRS MongoDB (users collection)
+    if (decoded.portalId === PORTAL_IDS.STAFF_RECRUITMENT || decoded.portalId === 'staff-recruitment' || decoded.portalId === 'srs') {
+      const isMasterAdmin = (email || decoded.email || '').toLowerCase() === 'ravi@pydahsoft.in';
+
+      if (decoded.databaseSource === 'srs' && decoded.userId) {
+        const srsDoc = await getSRSUserById(decoded.userId);
+        if (srsDoc) {
+          return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            valid: true,
+            data: {
+              userId: srsDoc.id,
+              name: srsDoc.name,
+              username: srsDoc.email || srsDoc.name,
+              email: srsDoc.email,
+              employeeId: srsDoc.employeeId || null,
+              empNo: srsDoc.employeeId || null,
+              role: srsDoc.role || 'candidate',
+              campus: srsDoc.campus || null,
+              permissions: srsDoc.permissions || {},
+              hasPanelMemberAccess: Boolean(srsDoc.hasPanelMemberAccess),
+              profile: srsDoc.profile || {},
+              isActive: srsDoc.isActive !== false,
+              ...baseData
+            }
+          });
+        }
       }
 
       const srsDb = await getSRSDb();
       let targetEmp = decoded.employeeId || crmUser?.employeeId || (/^\d+$/.test(username) && !/^\d{10}$/.test(username) ? username : null);
       if (targetEmp && /^\d{10}$/.test(targetEmp)) targetEmp = null;
+      if (!targetEmp && decoded.userId && /^\d+$/.test(String(decoded.userId)) && !/^\d{10}$/.test(String(decoded.userId))) {
+        targetEmp = String(decoded.userId);
+      }
 
       const lookupPhone = decoded.phone || crmUser?.phone || (/^\d{10}$/.test(username) ? username : null);
 
@@ -879,10 +889,10 @@ export const verifyToken = async (req, res, next) => {
           if (hrmsDb) {
             const hrmsConds = [];
             if (email || decoded.email) hrmsConds.push({ email: email || decoded.email });
-            if (lookupPhone) {
-              hrmsConds.push({ phone: lookupPhone });
-              hrmsConds.push({ phone_number: lookupPhone });
-              hrmsConds.push({ mobile: lookupPhone });
+            if (lookupPhone && /^\d{10}$/.test(String(lookupPhone).trim())) {
+              hrmsConds.push({ phone: String(lookupPhone).trim() });
+              hrmsConds.push({ phone_number: String(lookupPhone).trim() });
+              hrmsConds.push({ mobile: String(lookupPhone).trim() });
             }
             if (crmUser?.hrms_id) {
               try {
@@ -903,9 +913,10 @@ export const verifyToken = async (req, res, next) => {
         } catch (_) {}
       }
 
-      if (srsDb && (identifier || targetEmp || username || decoded.userId || email)) {
+      let srsUser = null;
+      if (srsDb && (identifier || targetEmp || username || decoded.userId || email || decoded.email)) {
         const orConditions = [];
-        if (decoded.userId) {
+        if (decoded.userId && /^[0-9a-fA-F]{24}$/.test(String(decoded.userId))) {
           try {
             const { ObjectId } = await import('mongodb');
             orConditions.push({ _id: new ObjectId(decoded.userId) });
@@ -916,25 +927,29 @@ export const verifyToken = async (req, res, next) => {
           orConditions.push({ email: email || decoded.email });
         }
         if (targetEmp) {
-          orConditions.push({ employeeId: targetEmp });
+          orConditions.push({ employeeId: String(targetEmp).trim() });
+          if (/^\d+$/.test(String(targetEmp).trim())) {
+            orConditions.push({ employeeId: Number(targetEmp) });
+          }
         }
         if (identifier && identifier.includes('@')) {
           orConditions.push({ email: identifier.toLowerCase() });
+          orConditions.push({ email: identifier });
         }
-        if (identifier && !identifier.includes('@')) {
-          orConditions.push({ name: identifier });
+        const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff', 'faculty', 'editor'];
+        if (identifier && !identifier.includes('@') && !GENERIC_NAMES.includes(identifier.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(identifier)) {
+          orConditions.push({ employeeId: identifier });
         }
-        if (username && username !== identifier) {
-          orConditions.push({ name: username });
-        }
-        if (lookupPhone) {
-          orConditions.push({ 'profile.phone': lookupPhone });
+        if (lookupPhone && /^\d{10}$/.test(String(lookupPhone).trim())) {
+          orConditions.push({ 'profile.phone': String(lookupPhone).trim() });
         }
 
-        const srsUser = await srsDb.collection('users').findOne({
-          $or: orConditions,
-          $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
-        });
+        if (orConditions.length > 0) {
+          srsUser = await srsDb.collection('users').findOne({
+            $or: orConditions,
+            $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+          });
+        }
 
         if (srsUser) {
           console.log(`[VerifyToken] SRS lookup: resolved to user _id=${srsUser._id}, name=${srsUser.name}, role=${srsUser.role}`);
@@ -960,25 +975,33 @@ export const verifyToken = async (req, res, next) => {
         }
       }
 
-      // Default/auto-provision payload if valid user coming from HRMS/CRM
-      return res.status(HTTP_STATUS.OK).json({
-        success: true,
-        valid: true,
-        data: {
-          userId: String(decoded.userId),
-          name: crmUser?.name || decoded.name || username,
-          username: username,
-          email: email || decoded.email || null,
-          employeeId: targetEmp || null,
-          empNo: targetEmp || null,
-          role: crmUser?.role || decoded.role || 'candidate',
-          campus: null,
-          permissions: {},
-          hasPanelMemberAccess: false,
-          profile: { phone: lookupPhone || null },
-          isActive: true,
-          ...baseData
-        }
+      // Master Admin bootstrap only
+      if (isMasterAdmin) {
+        return res.status(HTTP_STATUS.OK).json({
+          success: true,
+          valid: true,
+          data: {
+            userId: String(decoded.userId || 'admin'),
+            name: 'Master Admin',
+            username: 'superadmin',
+            email: 'ravi@pydahsoft.in',
+            role: 'superadmin',
+            campus: null,
+            permissions: { admin: true },
+            hasPanelMemberAccess: true,
+            profile: {},
+            isActive: true,
+            ...baseData
+          }
+        });
+      }
+
+      // Deny access if user does not exist in SRS database
+      console.warn(`[VerifyToken] Access Denied: User ${decoded.userId} (${email || username}) has no active account in Staff Recruitment System`);
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        valid: false,
+        message: 'User does not have an active account in Staff Recruitment System'
       });
     }
 
@@ -1572,6 +1595,53 @@ export const switchPortal = async (req, res, next) => {
         }
       } catch (err) {
         console.error('[switchPortal] Stationary user resolution error:', err.message);
+      }
+    }
+
+    if ((targetPortalId === PORTAL_IDS.STAFF_RECRUITMENT || targetPortalId === 'staff-recruitment' || targetPortalId === 'srs') && !isMasterAdmin) {
+      try {
+        const srsDb = await getSRSDb();
+        if (srsDb) {
+          const targetEmp = resolvedEmployeeId || (/^\d+$/.test(resolvedUsername) ? resolvedUsername : null);
+          const orConds = [];
+          if (resolvedEmail) {
+            orConds.push({ email: resolvedEmail.toLowerCase() });
+            orConds.push({ email: resolvedEmail });
+          }
+          if (targetEmp) {
+            orConds.push({ employeeId: String(targetEmp).trim() });
+            if (/^\d+$/.test(String(targetEmp).trim())) {
+              orConds.push({ employeeId: Number(targetEmp) });
+            }
+          }
+          if (resolvedPhone && /^\d{10}$/.test(String(resolvedPhone).trim())) {
+            orConds.push({ 'profile.phone': String(resolvedPhone).trim() });
+          }
+          if (resolvedUserId && /^[0-9a-fA-F]{24}$/.test(String(resolvedUserId))) {
+            try {
+              const { ObjectId } = await import('mongodb');
+              orConds.push({ _id: new ObjectId(resolvedUserId) });
+            } catch (_) {}
+          }
+          let srsUser = null;
+          if (orConds.length > 0) {
+            srsUser = await srsDb.collection('users').findOne({
+              $or: orConds,
+              $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }]
+            });
+          }
+          if (!srsUser) {
+            return res.status(HTTP_STATUS.FORBIDDEN).json({
+              success: false,
+              message: 'Your account does not have access permissions for staff-recruitment.'
+            });
+          }
+          targetUserId = srsUser._id.toString();
+          targetRole = srsUser.role || 'candidate';
+          targetDatabaseSource = 'srs';
+        }
+      } catch (err) {
+        console.error('[switchPortal] SRS user resolution error:', err.message);
       }
     }
 
