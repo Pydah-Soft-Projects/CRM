@@ -645,76 +645,151 @@
       const container = this.shadowRoot.querySelector('.pydah-switcher-container');
       if (!container) return;
 
-      if (window.innerWidth > 640) {
-        if (this.currentX !== undefined && this.currentY !== undefined) {
-          container.style.right = 'auto';
-          container.style.bottom = 'auto';
-          container.style.left = `${this.currentX}px`;
-          container.style.top = `${this.currentY}px`;
-        } else {
-          const savedPos = localStorage.getItem('pydah_switcher_pos');
-          if (savedPos) {
-            try {
-              const { x, y } = JSON.parse(savedPos);
-              const safeX = Math.max(10, Math.min(window.innerWidth - 60, x));
-              const safeY = Math.max(10, Math.min(window.innerHeight - 60, y));
-              this.currentX = safeX;
-              this.currentY = safeY;
-              container.style.right = 'auto';
-              container.style.bottom = 'auto';
-              container.style.left = `${safeX}px`;
-              container.style.top = `${safeY}px`;
-            } catch (_) {}
-          }
+      const getLimits = () => {
+        const btnW = btn.offsetWidth || 50;
+        const btnH = btn.offsetHeight || 50;
+        const maxX = Math.max(0, window.innerWidth - btnW);
+        const maxY = Math.max(0, window.innerHeight - btnH);
+        return { maxX, maxY };
+      };
+
+      // Restore position if previously dragged or saved (on both mobile and desktop)
+      if (this.currentX !== undefined && this.currentY !== undefined) {
+        const { maxX, maxY } = getLimits();
+        const safeX = Math.max(0, Math.min(maxX, this.currentX));
+        const safeY = Math.max(0, Math.min(maxY, this.currentY));
+        this.currentX = safeX;
+        this.currentY = safeY;
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+        container.style.left = `${safeX}px`;
+        container.style.top = `${safeY}px`;
+      } else {
+        const savedPos = localStorage.getItem('pydah_switcher_pos');
+        if (savedPos) {
+          try {
+            const { x, y } = JSON.parse(savedPos);
+            const { maxX, maxY } = getLimits();
+            const safeX = Math.max(0, Math.min(maxX, x));
+            const safeY = Math.max(0, Math.min(maxY, y));
+            this.currentX = safeX;
+            this.currentY = safeY;
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+            container.style.left = `${safeX}px`;
+            container.style.top = `${safeY}px`;
+          } catch (_) {}
         }
       }
 
-      const onMouseDown = (e) => {
-        if (e.button !== 0 || window.innerWidth <= 640) return;
+      const startDrag = (clientX, clientY) => {
         this.isDragging = true;
         this.dragMoved = false;
-        this.startX = e.clientX;
-        this.startY = e.clientY;
+        this.startX = clientX;
+        this.startY = clientY;
         const rect = container.getBoundingClientRect();
         this.initialX = rect.left;
         this.initialY = rect.top;
+      };
+
+      const moveDrag = (clientX, clientY, ev) => {
+        if (!this.isDragging) return;
+        const dx = clientX - this.startX;
+        const dy = clientY - this.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          this.dragMoved = true;
+          if (ev && ev.cancelable) {
+            ev.preventDefault();
+          }
+          const { maxX, maxY } = getLimits();
+          const newX = Math.max(0, Math.min(maxX, this.initialX + dx));
+          const newY = Math.max(0, Math.min(maxY, this.initialY + dy));
+          this.currentX = newX;
+          this.currentY = newY;
+          container.style.right = 'auto';
+          container.style.bottom = 'auto';
+          container.style.left = `${newX}px`;
+          container.style.top = `${newY}px`;
+        }
+      };
+
+      const endDrag = (ev) => {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        if (this.dragMoved) {
+          if (ev && ev.cancelable) {
+            ev.preventDefault();
+          }
+          const rect = container.getBoundingClientRect();
+          localStorage.setItem('pydah_switcher_pos', JSON.stringify({
+            x: Math.round(rect.left),
+            y: Math.round(rect.top)
+          }));
+        }
+      };
+
+      // 1. Pointer Events (Modern standard for both desktop mouse and mobile touch/stylus)
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        startDrag(e.clientX, e.clientY);
+        try {
+          btn.setPointerCapture(e.pointerId);
+        } catch (_) {}
+      });
+
+      btn.addEventListener('pointermove', (e) => {
+        if (!this.isDragging) return;
+        moveDrag(e.clientX, e.clientY, e);
+      });
+
+      const onPointerEnd = (e) => {
+        if (!this.isDragging) return;
+        try {
+          btn.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+        endDrag(e);
+      };
+
+      btn.addEventListener('pointerup', onPointerEnd);
+      btn.addEventListener('pointercancel', onPointerEnd);
+
+      // 2. Touch Events (Fallback for mobile touch screens)
+      btn.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+
+      btn.addEventListener('touchmove', (e) => {
+        if (!this.isDragging || !e.touches || e.touches.length !== 1) return;
+        moveDrag(e.touches[0].clientX, e.touches[0].clientY, e);
+      }, { passive: false });
+
+      btn.addEventListener('touchend', (e) => {
+        endDrag(e);
+      });
+
+      btn.addEventListener('touchcancel', (e) => {
+        endDrag(e);
+      });
+
+      // 3. Mouse Events (Desktop fallback)
+      btn.addEventListener('mousedown', (e) => {
+        if (window.PointerEvent || e.button !== 0) return;
+        startDrag(e.clientX, e.clientY);
 
         const onMouseMove = (ev) => {
-          if (!this.isDragging) return;
-          const dx = ev.clientX - this.startX;
-          const dy = ev.clientY - this.startY;
-          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-            this.dragMoved = true;
-            const newX = Math.max(10, Math.min(window.innerWidth - 60, this.initialX + dx));
-            const newY = Math.max(10, Math.min(window.innerHeight - 60, this.initialY + dy));
-            this.currentX = newX;
-            this.currentY = newY;
-            container.style.right = 'auto';
-            container.style.bottom = 'auto';
-            container.style.left = `${newX}px`;
-            container.style.top = `${newY}px`;
-          }
+          moveDrag(ev.clientX, ev.clientY, ev);
         };
 
-        const onMouseUp = () => {
-          if (!this.isDragging) return;
-          this.isDragging = false;
+        const onMouseUp = (ev) => {
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
-          if (this.dragMoved) {
-            const rect = container.getBoundingClientRect();
-            localStorage.setItem('pydah_switcher_pos', JSON.stringify({
-              x: Math.round(rect.left),
-              y: Math.round(rect.top)
-            }));
-          }
+          endDrag(ev);
         };
 
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-      };
-
-      btn.addEventListener('mousedown', onMouseDown);
+      });
     }
 
     async fetchUserPortals() {
@@ -898,6 +973,7 @@
             flex-direction: column;
             align-items: flex-end;
             user-select: none;
+            touch-action: none;
           }
           /* Floating Action Button (Waffle 9-Dots) */
           .pydah-fab {
@@ -908,13 +984,17 @@
             color: white;
             border: 2px solid rgba(255, 255, 255, 0.9);
             box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.5), 0 8px 10px -6px rgba(79, 70, 229, 0.3);
-            cursor: pointer;
+            cursor: grab;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
             position: relative;
             outline: none;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
           }
           .pydah-fab:hover {
             transform: scale(1.08) translateY(-2px);
@@ -922,6 +1002,7 @@
           }
           .pydah-fab:active {
             transform: scale(0.96);
+            cursor: grabbing;
           }
           .pydah-fab-icon {
             width: 24px;
@@ -930,10 +1011,12 @@
             align-items: center;
             justify-content: center;
             transition: transform 0.3s ease;
+            pointer-events: none;
           }
-          .pydah-fab-icon svg {
-            width: 100%;
-            height: 100%;
+          .pydah-fab-icon svg,
+          .pydah-fab-icon rect,
+          .pydah-fab-icon path {
+            pointer-events: none;
           }
           .pydah-fab.is-open .pydah-fab-icon {
             transform: rotate(90deg);
@@ -1255,10 +1338,8 @@
               animation: pydah-fade-in 0.2s ease-out;
             }
             .pydah-switcher-container {
-              left: auto !important;
-              top: auto !important;
-              bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
-              right: max(16px, env(safe-area-inset-right, 16px)) !important;
+              bottom: max(16px, env(safe-area-inset-bottom, 16px));
+              right: max(16px, env(safe-area-inset-right, 16px));
             }
             .pydah-fab {
               width: 50px;
