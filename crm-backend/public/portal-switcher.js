@@ -660,10 +660,10 @@
         const safeY = Math.max(0, Math.min(maxY, this.currentY));
         this.currentX = safeX;
         this.currentY = safeY;
-        container.style.right = 'auto';
-        container.style.bottom = 'auto';
-        container.style.left = `${safeX}px`;
-        container.style.top = `${safeY}px`;
+        container.style.setProperty('right', 'auto', 'important');
+        container.style.setProperty('bottom', 'auto', 'important');
+        container.style.setProperty('left', `${safeX}px`, 'important');
+        container.style.setProperty('top', `${safeY}px`, 'important');
       } else {
         const savedPos = localStorage.getItem('pydah_switcher_pos');
         if (savedPos) {
@@ -674,49 +674,59 @@
             const safeY = Math.max(0, Math.min(maxY, y));
             this.currentX = safeX;
             this.currentY = safeY;
-            container.style.right = 'auto';
-            container.style.bottom = 'auto';
-            container.style.left = `${safeX}px`;
-            container.style.top = `${safeY}px`;
+            container.style.setProperty('right', 'auto', 'important');
+            container.style.setProperty('bottom', 'auto', 'important');
+            container.style.setProperty('left', `${safeX}px`, 'important');
+            container.style.setProperty('top', `${safeY}px`, 'important');
           } catch (_) {}
         }
       }
 
-      const startDrag = (clientX, clientY) => {
-        this.isDragging = true;
+      let isDragging = false;
+      let hasMoved = false;
+      let startClientX = 0;
+      let startClientY = 0;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      const handleStart = (clientX, clientY) => {
+        isDragging = true;
+        hasMoved = false;
         this.dragMoved = false;
-        this.startX = clientX;
-        this.startY = clientY;
+        startClientX = clientX;
+        startClientY = clientY;
         const rect = container.getBoundingClientRect();
-        this.initialX = rect.left;
-        this.initialY = rect.top;
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
       };
 
-      const moveDrag = (clientX, clientY, ev) => {
-        if (!this.isDragging) return;
-        const dx = clientX - this.startX;
-        const dy = clientY - this.startY;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      const handleMove = (clientX, clientY, ev) => {
+        if (!isDragging) return;
+        const dist = Math.hypot(clientX - startClientX, clientY - startClientY);
+        if (dist > 3) {
+          hasMoved = true;
           this.dragMoved = true;
           if (ev && ev.cancelable) {
             ev.preventDefault();
           }
           const { maxX, maxY } = getLimits();
-          const newX = Math.max(0, Math.min(maxX, this.initialX + dx));
-          const newY = Math.max(0, Math.min(maxY, this.initialY + dy));
-          this.currentX = newX;
-          this.currentY = newY;
-          container.style.right = 'auto';
-          container.style.bottom = 'auto';
-          container.style.left = `${newX}px`;
-          container.style.top = `${newY}px`;
+          const targetX = clientX - offsetX;
+          const targetY = clientY - offsetY;
+          const clampedX = Math.max(0, Math.min(maxX, targetX));
+          const clampedY = Math.max(0, Math.min(maxY, targetY));
+          this.currentX = clampedX;
+          this.currentY = clampedY;
+          container.style.setProperty('right', 'auto', 'important');
+          container.style.setProperty('bottom', 'auto', 'important');
+          container.style.setProperty('left', `${clampedX}px`, 'important');
+          container.style.setProperty('top', `${clampedY}px`, 'important');
         }
       };
 
-      const endDrag = (ev) => {
-        if (!this.isDragging) return;
-        this.isDragging = false;
-        if (this.dragMoved) {
+      const handleEnd = (ev) => {
+        if (!isDragging) return;
+        isDragging = false;
+        if (hasMoved) {
           if (ev && ev.cancelable) {
             ev.preventDefault();
           }
@@ -728,65 +738,80 @@
         }
       };
 
-      // 1. Pointer Events (Modern standard for both desktop mouse and mobile touch/stylus)
+      // 1. Pointer Events
       btn.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-        startDrag(e.clientX, e.clientY);
+        handleStart(e.clientX, e.clientY);
         try {
           btn.setPointerCapture(e.pointerId);
         } catch (_) {}
       });
 
       btn.addEventListener('pointermove', (e) => {
-        if (!this.isDragging) return;
-        moveDrag(e.clientX, e.clientY, e);
+        if (!isDragging) return;
+        handleMove(e.clientX, e.clientY, e);
       });
 
       const onPointerEnd = (e) => {
-        if (!this.isDragging) return;
+        if (!isDragging) return;
         try {
           btn.releasePointerCapture(e.pointerId);
         } catch (_) {}
-        endDrag(e);
+        handleEnd(e);
       };
-
       btn.addEventListener('pointerup', onPointerEnd);
       btn.addEventListener('pointercancel', onPointerEnd);
 
-      // 2. Touch Events (Fallback for mobile touch screens)
+      // Window pointer listeners backup
+      window.addEventListener('pointermove', (e) => {
+        if (isDragging) handleMove(e.clientX, e.clientY, e);
+      });
+      window.addEventListener('pointerup', (e) => {
+        if (isDragging) handleEnd(e);
+      });
+
+      // 2. Touch Events for mobile browsers
       btn.addEventListener('touchstart', (e) => {
         if (!e.touches || e.touches.length !== 1) return;
-        startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        const t = e.touches[0];
+        handleStart(t.clientX, t.clientY);
       }, { passive: true });
 
       btn.addEventListener('touchmove', (e) => {
-        if (!this.isDragging || !e.touches || e.touches.length !== 1) return;
-        moveDrag(e.touches[0].clientX, e.touches[0].clientY, e);
+        if (!isDragging || !e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        handleMove(t.clientX, t.clientY, e);
       }, { passive: false });
 
       btn.addEventListener('touchend', (e) => {
-        endDrag(e);
+        handleEnd(e);
       });
-
       btn.addEventListener('touchcancel', (e) => {
-        endDrag(e);
+        handleEnd(e);
       });
 
-      // 3. Mouse Events (Desktop fallback)
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches && e.touches.length === 1) {
+          handleMove(e.touches[0].clientX, e.touches[0].clientY, e);
+        }
+      }, { passive: false });
+      window.addEventListener('touchend', (e) => {
+        if (isDragging) handleEnd(e);
+      });
+
+      // 3. Mouse Events fallback
       btn.addEventListener('mousedown', (e) => {
         if (window.PointerEvent || e.button !== 0) return;
-        startDrag(e.clientX, e.clientY);
+        handleStart(e.clientX, e.clientY);
 
         const onMouseMove = (ev) => {
-          moveDrag(ev.clientX, ev.clientY, ev);
+          handleMove(ev.clientX, ev.clientY, ev);
         };
-
         const onMouseUp = (ev) => {
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
-          endDrag(ev);
+          handleEnd(ev);
         };
-
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
       });
