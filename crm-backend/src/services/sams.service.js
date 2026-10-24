@@ -142,16 +142,21 @@ export const getSAMSUserById = async (userId) => {
  * @returns {Promise<Object|null>} Normalized SAMS user or null
  */
 export const findSAMSUser = async (query) => {
-  if (!query) return null;
+  if (!query || Object.keys(query).length === 0) return null;
   const db = await getSAMSDb();
   if (!db) return null;
 
   try {
     const col = await getSystemUsersCollection(db);
-    const user = await col.findOne({
-      ...query,
-      $or: [{ isActive: true }, { isActive: { $exists: false } }]
-    });
+    const activeCondition = { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
+    const finalFilter = {
+      $and: [
+        query,
+        activeCondition
+      ]
+    };
+
+    const user = await col.findOne(finalFilter);
 
     if (user) {
       return normalizeSAMSUser(user);

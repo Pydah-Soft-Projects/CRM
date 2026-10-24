@@ -840,44 +840,42 @@ export const discoverUserPortals = async (user, databaseSource = null) => {
       );
     }
 
-    // Check Staff Recruitment System (SRS)
-    if (!portals.has('staff-recruitment')) {
-      checks.push(
-        (async () => {
-          try {
-            const srsUser = await findSRSUser({
-              $or: [
-                ...(email ? [{ email: email }] : []),
-                ...(rollOrEmp ? [{ employeeId: rollOrEmp }] : []),
-                ...(identifier ? [{ name: identifier }] : []),
-                ...(phone ? [{ 'profile.phone': phone }] : [])
-              ]
-            });
-            if (srsUser) {
-              portals.add('staff-recruitment');
-            }
-          } catch (e) {
-            console.warn('[discoverUserPortals] SRS check error:', e.message);
-          }
-        })()
-      );
-    }
-
     // Check SAMS (Labour Management)
     if (!portals.has('sams')) {
       checks.push(
         (async () => {
           try {
-            const samsUser = await findSAMSUser({
-              $or: [
-                ...(email ? [{ email: email }] : []),
-                ...(rollOrEmp ? [{ hrmsEmployeeId: rollOrEmp }, { username: rollOrEmp.toLowerCase() }] : []),
-                ...(identifier ? [{ username: identifier.toLowerCase() }, { displayName: identifier }] : []),
-                ...(user.name ? [{ displayName: user.name }] : [])
-              ]
-            });
-            if (samsUser) {
-              portals.add('sams');
+            const orConditions = [];
+            if (email) {
+              orConditions.push({ email: email.toLowerCase() });
+              orConditions.push({ email: email });
+            }
+            if (rollOrEmp) {
+              orConditions.push({ hrmsEmployeeId: String(rollOrEmp).trim() });
+              orConditions.push({ username: String(rollOrEmp).trim().toLowerCase() });
+            }
+            const GENERIC_NAMES = ['admin', 'superadmin', 'super_admin', 'sub_super_admin', 'subadmin', 'user', 'manager', 'counsellor', 'staff', 'faculty', 'editor'];
+            if (identifier && !identifier.includes('@') && !GENERIC_NAMES.includes(identifier.toLowerCase()) && !/^[0-9a-f-]{36}$/i.test(identifier)) {
+              orConditions.push({ username: identifier.toLowerCase() });
+              orConditions.push({ hrmsEmployeeId: identifier });
+            }
+            const rawUid = String(user.id || user._id || '').trim();
+            if (rawUid && /^[0-9a-fA-F]{24}$/.test(rawUid)) {
+              try {
+                const { ObjectId } = await import('mongodb');
+                orConditions.push({ _id: new ObjectId(rawUid) });
+              } catch (_) {}
+            }
+            if (phone && /^\d{10}$/.test(String(phone).trim())) {
+              orConditions.push({ phone: String(phone).trim() });
+              orConditions.push({ mobile: String(phone).trim() });
+            }
+
+            if (orConditions.length > 0) {
+              const samsUser = await findSAMSUser({ $or: orConditions });
+              if (samsUser) {
+                portals.add('sams');
+              }
             }
           } catch (e) {
             console.warn('[discoverUserPortals] SAMS check error:', e.message);
