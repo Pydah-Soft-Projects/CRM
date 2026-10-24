@@ -117,7 +117,7 @@ const Navbar = ({ user, onNavigate, onPortalClick, onLogout, onOpenInstall }) =>
 
   return (
     <nav className="glass fixed top-0 w-full z-[1000] border-b" style={{ borderColor: 'var(--color-border-soft)', paddingTop: 'clamp(1rem, 2.5vw, 1.25rem)', paddingBottom: 'clamp(1rem, 2.5vw, 1.25rem)' }}>
-      <div className="section-container flex justify-between items-center">
+      <div className="w-full px-3.5 sm:px-6 lg:px-8 xl:px-10 flex justify-between items-center">
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer"
           onClick={() => onNavigate(user ? 'portals' : 'home')}
