@@ -1043,8 +1043,8 @@
           .pydah-fab-icon path {
             pointer-events: none;
           }
-          .pydah-fab.is-open .pydah-fab-icon {
-            transform: rotate(90deg);
+          .pydah-fab.is-open {
+            display: none !important;
           }
           .fab-pulse {
             position: absolute;
